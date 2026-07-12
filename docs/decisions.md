@@ -245,3 +245,119 @@ expansion, rather than a special-purpose partition feature.
 - Work happens on short-lived feature branches merged via pull request — even solo, to
   build the habit and run CI per PR. Milestones are tracked with labels/issues, not
   long-lived branches.
+
+---
+
+## 19. Local persistence: SQLite, scoped to connection profiles
+
+**Status:** Accepted
+
+- Shirube stores its own state in a single **SQLite** file in the OS config directory
+  (resolved via `platformdirs`). Secrets — database passwords and AI API keys — live in
+  the **OS keychain**, never in the SQLite file.
+- Stored: connection profiles (non-secret fields), AI provider settings, ER node
+  layout, manual relationships, and later saved views and chat history.
+- **Per-database data (layout, manual relationships, view state) is keyed to the
+  connection profile**, not to a host+port+database identity. Why: with external SSH
+  tunnels every database appears as `localhost:5432`, so an identity-based key would
+  conflate different databases; a user-named profile disambiguates reliably.
+- The ER layout **auto-saves** per profile (with a reset-to-auto-layout action); there
+  is no explicit save step.
+- **Why SQLite over JSON/TOML:** structured, transactional, and robust as the data
+  grows (profiles, layouts, relationships, saved views, chat history). It fits a
+  database tool and reuses SQLAlchemy.
+
+## 20. Schema introspection: fresh per connect, in-memory cache, drift-tolerant
+
+**Status:** Accepted
+
+- The schema is **re-introspected on each connect** and held in memory for the session;
+  there is **no persistent schema cache**. Introspection of hundreds of tables is fast,
+  and this avoids cache-invalidation complexity and stale, misleading metadata. A manual
+  "refresh schema" action covers mid-session changes.
+- Metadata is stored as **lightweight structures** queried from
+  `information_schema`/`pg_catalog` on the backend — not full SQLAlchemy ORM reflection
+  — keeping memory and startup light. The browser holds only the currently displayed
+  neighbourhood.
+- **Schema drift on reconnect:** layout entries for tables that no longer exist are
+  silently skipped; manual relationships whose columns/tables no longer match are
+  **kept but flagged "needs attention"** and never drawn as broken edges — the user
+  re-maps or removes them. Renames are treated as drop+add (not auto-followed).
+
+## 21. Onboarding and the sample database
+
+**Status:** Accepted
+
+- **First launch** (no profiles) opens the connection form directly; **subsequent
+  launches** open the saved-profiles list. Shirube **never auto-connects on launch** —
+  the user always chooses a database (an optional "auto-connect to last profile"
+  preference may come later). Avoiding surprise connections keeps it "never dangerous".
+- The **sample database** is delivered via Docker Compose running **Postgres only**
+  (e.g. `pagila`) — Shirube itself is **not containerised** and always runs via `uvx`.
+  The first-run screen offers a "sample database" connection preset pointing at the
+  local sample Postgres, for a near-one-click demo.
+- **Why not a SQLite sample:** the MVP speaks only Postgres, so a SQLite sample would
+  force an off-mission SQLite adapter and would not exercise the real code path.
+
+## 22. Error UX: translated, localised, non-destructive
+
+**Status:** Accepted
+
+- **Connect-time errors** are translated into plain-language messages with actionable
+  hints (host/tunnel, credentials, database name, sslmode, permissions), shown inline
+  on the form, with the raw driver error available under a "details" expander. A "test
+  connection" action is available before saving.
+- **Mid-session errors** are scoped to the affected area with a retry — a failed sample
+  fetch never tears down the map or the app. **Structure (columns, relationships, from
+  the catalog) is shown even when the data fetch fails** (permission/timeout), so a
+  table can still be understood without reading its rows. Connection loss shows a
+  reconnect banner; the saved layout persists.
+
+## 23. Multiple databases and schemas
+
+**Status:** Accepted
+
+- **One connection profile maps to one database** (matching PostgreSQL's
+  one-connection-one-database model and decision 19's keying). Browsing another database
+  on the same server means another profile ("duplicate profile" eases this). An in-app
+  server-level database switcher is deferred.
+- **Schemas** selected at connect time are shown **together on one map**:
+  schema-qualified node names (`schema.table`), visual grouping/colour per schema,
+  cross-schema foreign keys drawn, and a per-schema visibility filter. System schemas
+  are excluded by default.
+
+## 24. AI chat: per-profile history and token display
+
+**Status:** Accepted
+
+- A conversation is **scoped to the connection profile** and its history is **persisted
+  in SQLite**, so prior Q&A about a database can be revisited; "new conversation" and
+  "clear" are available.
+- **Token usage** (input/output, per response and cumulative) is shown from the
+  provider's usage data; there is **no built-in currency conversion** (pricing tables go
+  stale and mislead). Ollama shows "local, no API cost". A user-configurable rate for a
+  rough cost estimate may come later.
+
+## 25. UI language: English base with i18n scaffolding
+
+**Status:** Accepted
+
+- The UI ships in **English** (the widest OSS reach), but strings go through an **i18n
+  layer** (keys + dictionaries) from the start rather than being hard-coded, so other
+  languages (e.g. Japanese) can be added later by supplying a dictionary.
+
+## 26. Licence: AGPL-3.0
+
+**Status:** Accepted
+
+- The project is licensed under **AGPL-3.0** — genuinely OSI-approved open source, whose
+  network-copyleft clause deters a competitor from offering a closed, hosted Shirube
+  while the "commercial later" plan matures. As sole copyright holder we retain the
+  option to **dual-licence** (a commercial licence for organisations that cannot accept
+  AGPL).
+- Because Shirube is a **standalone, locally-run tool** rather than a library embedded
+  in other software, AGPL's adoption friction is limited: internal local use does not
+  trigger source disclosure.
+- **Follow-up:** to preserve the ability to relicence/dual-licence once external
+  contributors arrive, adopt a CLA or DCO before accepting outside contributions.
+  Per-file AGPL notices are to be added as source is written.
