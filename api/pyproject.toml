@@ -10,6 +10,7 @@ dependencies = [
     "sqlalchemy>=2.0",
     "pydantic-settings>=2.4",
     "platformdirs>=4.2",
+    "keyring>=25.7.0",
 ]
 
 [project.scripts]

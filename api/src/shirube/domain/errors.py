@@ -16,3 +16,10 @@ class ShirubeError(Exception):
 
     status_code: int = 400
     detail: str = "The request could not be processed"
+
+
+class ProfileNotFoundError(ShirubeError):
+    """Raised when a connection profile does not exist."""
+
+    status_code = 404
+    detail = "Connection profile not found"
