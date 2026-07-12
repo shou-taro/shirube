@@ -32,6 +32,35 @@ of tables and little documentation.
 - **Database:** PostgreSQL (MySQL and SQL Server planned)
 - **AI:** pluggable providers behind a common interface (OpenAI-compatible, Ollama)
 
+## Development
+
+Prerequisites: [uv](https://docs.astral.sh/uv/) and Node.js. The backend lives in
+`api/` (FastAPI, package `shirube`) and the frontend in `web/` (Vite + React).
+
+Run in development — two processes, with the frontend proxying `/api` to the backend:
+
+```bash
+# terminal 1 — backend on http://127.0.0.1:7472
+cd api && uv sync && uv run uvicorn shirube.adapters.api.app:app --reload --port 7472
+
+# terminal 2 — frontend dev server on http://localhost:5173
+cd web && npm install && npm run dev
+```
+
+Run as a single origin — the backend serves the built SPA on one port:
+
+```bash
+./scripts/build.sh                # build the SPA and bundle it into the API package
+uv run --directory api shirube    # serves UI + API on http://127.0.0.1:7472
+```
+
+Checks:
+
+```bash
+cd api && uv run ruff check . && uv run mypy -p shirube && uv run pytest
+cd web && npm run lint && npm run build
+```
+
 ## Licence
 
 Shirube is licensed under the
