@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from shirube import __version__
 from shirube.adapters.api.errors import register_exception_handlers
-from shirube.adapters.api.routes import health
+from shirube.adapters.api.routes import health, profiles
 from shirube.adapters.persistence.bootstrap import bootstrap_database
 
 # The built SPA, copied here by scripts/build.sh and bundled into the wheel. It is
@@ -52,6 +52,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Shirube", version=__version__, lifespan=lifespan)
     register_exception_handlers(app)
     app.include_router(health.router, prefix="/api")
+    app.include_router(profiles.router, prefix="/api")
     if STATIC_DIR.is_dir():
         # Mounted after the API router so "/api/*" matches first; this then catches
         # every remaining path and serves index.html for "/".
