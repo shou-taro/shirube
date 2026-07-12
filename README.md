@@ -34,4 +34,8 @@ of tables and little documentation.
 
 ## Licence
 
-To be decided.
+Shirube is licensed under the
+[GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
+
+As sole copyright holder, the project may additionally be offered under a commercial
+licence in future (dual-licensing) for organisations that cannot use AGPL-3.0.
