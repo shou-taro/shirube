@@ -62,7 +62,7 @@ class SecretStore(Protocol):
 
 
 class AiProvider(Protocol):
-    """Talks to an AI provider behind a common interface (M2).
+    """Talks to an AI provider behind a common interface (Milestone 2 — AI navigator).
 
     Concrete adapters cover OpenAI-compatible APIs and local Ollama.
     """
