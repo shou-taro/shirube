@@ -10,8 +10,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -43,6 +41,9 @@ web/dist/
 dist-ssr/
 *.local
 
+# Bundled SPA (generated into the API package at build time)
+api/src/shirube/static/
+
 # Logs
 logs/
 *.log
@@ -61,6 +62,7 @@ pnpm-debug.log*
 !.vscode/settings.json
 !.vscode/extensions.json
 .idea/
+.claude/settings.local.json
 *.swp
 *.swo
 .DS_Store

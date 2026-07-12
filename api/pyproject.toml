@@ -29,6 +29,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/shirube"]
+# Include the built SPA (generated, git-ignored) in the wheel for single-origin serving.
+artifacts = ["src/shirube/static/**/*"]
 
 [tool.ruff]
 line-length = 100
