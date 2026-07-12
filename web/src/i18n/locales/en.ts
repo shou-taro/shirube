@@ -1,3 +1,9 @@
+/**
+ * English UI strings, grouped by area of the interface.
+ *
+ * Referenced with `t('group.key')`; `{{name}}` placeholders are filled by i18next
+ * interpolation. Adding a language means providing an object with the same shape.
+ */
 const en = {
   app: {
     name: 'Shirube',
