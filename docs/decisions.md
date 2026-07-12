@@ -230,12 +230,14 @@ expansion, rather than a special-purpose partition feature.
 
 **Status:** Accepted
 
-- **M1 (internal):** connection → schema inspection → neighbourhood ER → table detail →
-  search → relationship navigation. The whole architectural backbone, no AI. Usable for
-  dogfooding, but not released.
-- **M2 (public release):** add the AI navigator on top of M1's schema look-up tools,
-  then release. The public product is therefore AI-native from day one, while the
-  foundation is proven before the AI is layered on.
+The MVP is built in two milestones:
+
+- **Milestone 1 — Foundation (internal):** connection → schema inspection → neighbourhood
+  ER → table detail → search → relationship navigation. The whole architectural backbone,
+  no AI. Usable for dogfooding, but not released.
+- **Milestone 2 — AI navigator (public release):** add the AI navigator on top of
+  Milestone 1's schema look-up tools, then release. The public product is therefore
+  AI-native from day one, while the foundation is proven before the AI is layered on.
 
 ## 18. Branching: GitHub Flow
 
