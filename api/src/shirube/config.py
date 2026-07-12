@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SHIRUBE_", env_file=".env", extra="ignore")
 
     host: str = "127.0.0.1"
-    port: int = 8765
+    # 7472 = "shrb" (the consonants of shirube) on a phone keypad — s7 h4 r7 b2.
+    port: int = 7472
     open_browser: bool = True
     data_dir: Path = Field(default_factory=lambda: Path(user_data_dir(APP_NAME)))
 
