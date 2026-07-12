@@ -4,6 +4,7 @@ import { Database, RefreshCw, Search, Settings } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { fetchHealth } from '@/lib/api'
 
@@ -43,7 +44,10 @@ export default function App() {
     <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Top bar: brand, current connection, search, health status, and global actions. */}
       <header className="flex items-center gap-2 border-b px-3 py-2 text-sm">
-        <span className="font-medium">{t('app.name')}</span>
+        <span className="flex items-center gap-1.5 font-medium">
+          <Logo className="size-5" />
+          {t('app.name')}
+        </span>
         <span className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-muted-foreground">
           <Database className="size-3.5" />
           {t('connection.placeholder')}
