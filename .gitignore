@@ -39,7 +39,7 @@ htmlcov/
 node_modules/
 .pnp
 .pnp.js
-frontend/dist/
+web/dist/
 dist-ssr/
 *.local
 
@@ -57,7 +57,9 @@ pnpm-debug.log*
 !.env.example
 
 # ---- Editors / OS ----
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
