@@ -1,3 +1,4 @@
+import { Lock } from 'lucide-react'
 import type { FormEvent, ReactNode } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -160,34 +161,44 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
         </Field>
       </div>
       <Field label={t('connection.fields.password')} hint={editingId ? t('connection.passwordKeepHint') : undefined}>
-        <Input
-          type="password"
-          value={form.password}
-          onChange={(event) => set('password', event.target.value)}
-          required={editingId === null}
-        />
-      </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t('connection.fields.sslmode')}>
-          <select
-            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-            value={form.sslmode}
-            onChange={(event) => set('sslmode', event.target.value as SslMode)}
-          >
-            {SSL_MODES.map((mode) => (
-              <option key={mode} value={mode}>
-                {mode}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label={t('connection.fields.schemas')} hint={t('connection.schemasHint')}>
+        {/* Lock glyph as a quiet reminder that the password goes to the OS keychain. */}
+        <div className="relative">
+          <Lock className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            value={form.schemas}
-            onChange={(event) => set('schemas', event.target.value)}
-            placeholder="public"
+            type="password"
+            className="pl-8"
+            value={form.password}
+            onChange={(event) => set('password', event.target.value)}
+            required={editingId === null}
           />
-        </Field>
+        </div>
+      </Field>
+
+      {/* Connection options grouped apart from the core credentials. */}
+      <div className="border-t pt-3">
+        <p className="mb-2 text-xs text-muted-foreground">{t('connection.optionsLabel')}</p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t('connection.fields.sslmode')}>
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              value={form.sslmode}
+              onChange={(event) => set('sslmode', event.target.value as SslMode)}
+            >
+              {SSL_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={t('connection.fields.schemas')} hint={t('connection.schemasHint')}>
+            <Input
+              value={form.schemas}
+              onChange={(event) => set('schemas', event.target.value)}
+              placeholder="public"
+            />
+          </Field>
+        </div>
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -195,7 +206,8 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
         <p className="text-sm text-green-600">{t('connection.testOk')}</p>
       ) : null}
 
-      <div className="flex items-center gap-2 pt-1">
+      {/* Secondary actions on the left; the primary CTA anchored bottom-right. */}
+      <div className="flex items-center gap-2 pt-2">
         <Button
           type="button"
           variant="outline"
@@ -204,11 +216,11 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
         >
           {testState === 'testing' ? t('connection.testing') : t('connection.test')}
         </Button>
-        <Button type="submit" disabled={saving}>
-          {saving ? t('connection.saving') : t('connection.saveAndConnect')}
-        </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           {t('connection.cancel')}
+        </Button>
+        <Button type="submit" variant="brand" className="ml-auto" disabled={saving}>
+          {saving ? t('connection.saving') : t('connection.saveAndConnect')}
         </Button>
       </div>
     </form>

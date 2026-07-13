@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ConnectionForm } from '@/components/connection/connection-form'
+import { HeroBackdrop } from '@/components/connection/hero-backdrop'
 import { ProfilesList } from '@/components/connection/profiles-list'
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
@@ -42,18 +43,26 @@ export function ConnectionScreen({ onConnected }: ConnectionScreenProps) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center gap-2">
-          <Logo className="size-7" />
-          <span className="text-lg font-medium">{t('app.name')}</span>
-        </div>
-        <div className="rounded-xl border bg-card p-5">
+    <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
+      <div className="grid w-full max-w-3xl overflow-hidden rounded-2xl border bg-card shadow-sm md:grid-cols-[16rem_1fr]">
+        {/* Branded hero: the product's face on first run. Hidden on narrow screens,
+            where the content column takes the full width. */}
+        <aside className="brand-hero relative hidden flex-col justify-between overflow-hidden p-8 text-brand-foreground md:flex">
+          <HeroBackdrop />
+          <div className="relative flex items-center gap-3">
+            <Logo className="size-9" />
+            <span className="text-2xl font-medium tracking-tight">{t('app.name')}</span>
+          </div>
+          <p className="relative text-sm leading-relaxed text-brand-foreground">{t('app.tagline')}</p>
+        </aside>
+
+        {/* Content: the saved-connections list or the connection form. */}
+        <div className="p-6 sm:p-8">
           {profiles === null ? (
             <p className="text-sm text-muted-foreground">{t('connection.loading')}</p>
           ) : view.mode === 'form' ? (
             <>
-              <h1 className="mb-4 text-base font-medium">{t('connection.newConnection')}</h1>
+              <h1 className="mb-5 text-base font-medium">{t('connection.newConnection')}</h1>
               <ConnectionForm
                 initial={view.initial}
                 editingId={view.editingId}
@@ -63,7 +72,7 @@ export function ConnectionScreen({ onConnected }: ConnectionScreenProps) {
             </>
           ) : (
             <>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between">
                 <h1 className="text-base font-medium">{t('connection.savedConnections')}</h1>
                 <Button
                   variant="outline"
