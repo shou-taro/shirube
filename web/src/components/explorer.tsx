@@ -1,9 +1,9 @@
 import {
   ArrowUp,
+  ChevronDown,
+  ChevronUp,
   Database,
   Loader2,
-  PanelLeftClose,
-  PanelLeftOpen,
   PanelRightClose,
   RefreshCw,
   Search,
@@ -136,45 +136,12 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
         </Button>
       </header>
 
-      <div className="flex min-h-0 flex-1 bg-muted/30">
-        {/* Left pane: the selected table's detail — a card floating over the canvas,
-            collapsible to a slim toggle. */}
-        {detailOpen ? (
-          <aside className="w-64 shrink-0 p-2">
-            <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
-              <div className="flex h-9 items-center border-b pl-3 pr-1.5 text-xs font-medium text-muted-foreground">
-                <span className="flex-1">{t('panes.detail')}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6"
-                  onClick={() => setDetailOpen(false)}
-                  aria-label={t('panes.collapse')}
-                >
-                  <PanelLeftClose className="size-3.5" />
-                </Button>
-              </div>
-              <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
-                {t('panes.detailEmpty')}
-              </div>
-            </div>
-          </aside>
-        ) : (
-          <div className="shrink-0 p-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setDetailOpen(true)}
-              aria-label={t('panes.expand')}
-              title={t('panes.detail')}
-            >
-              <PanelLeftOpen className="size-4" />
-            </Button>
-          </div>
-        )}
-
-        {/* Centre: the ER map — the canvas itself. */}
-        <main className="min-w-0 flex-1">
+      <div className="flex min-h-0 flex-1">
+        {/* Centre: the ER map canvas, with the table-detail card floating over it. */}
+        <div
+          className="relative min-w-0 flex-1"
+          style={{ background: 'linear-gradient(155deg, #f6f3fd 0%, #ece6fb 100%)' }}
+        >
           {schema.status === 'loading' ? (
             <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
@@ -194,7 +161,28 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           ) : (
             <ErDiagram graph={schema.graph} />
           )}
-        </main>
+
+          {/* Floating table-detail card, minimisable to just its title bar. */}
+          <div className="absolute left-3 top-3 z-10 w-64 overflow-hidden rounded-xl border bg-card shadow-md">
+            <div className="flex h-9 items-center border-b pl-3 pr-1.5 text-xs font-medium text-muted-foreground">
+              <span className="flex-1">{t('panes.detail')}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                onClick={() => setDetailOpen((open) => !open)}
+                aria-label={detailOpen ? t('panes.collapse') : t('panes.expand')}
+              >
+                {detailOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+              </Button>
+            </div>
+            {detailOpen ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">
+                {t('panes.detailEmpty')}
+              </div>
+            ) : null}
+          </div>
+        </div>
 
         {/* Right pane: the AI navigator (Milestone 2) — docked so chat gets the full
             height, collapsible to a slim rail. */}
