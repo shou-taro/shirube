@@ -11,7 +11,7 @@ interface never runs ahead of a real use case.
 
 from typing import Protocol
 
-from shirube.domain.connection import ConnectionProfile
+from shirube.domain.connection import ConnectionParams, ConnectionProfile
 
 
 class ProfileRepository(Protocol):
@@ -40,6 +40,14 @@ class ProfileRepository(Protocol):
 
 class SchemaInspector(Protocol):
     """Introspects a database into domain metadata (feat/schema-introspection)."""
+
+
+class DatabaseConnector(Protocol):
+    """Opens and validates connections to a target database."""
+
+    def test_connection(self, params: ConnectionParams) -> None:
+        """Attempt a read-only connection, raising ConnectionFailedError on failure."""
+        ...
 
 
 class SecretStore(Protocol):

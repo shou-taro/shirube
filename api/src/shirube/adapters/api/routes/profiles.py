@@ -9,7 +9,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
-from shirube.adapters.api.dependencies import get_profile_service
+from shirube.adapters.api.dependencies import get_connection_service, get_profile_service
+from shirube.adapters.api.routes.connections import ConnectionTestResult
+from shirube.application.connections import ConnectionService
 from shirube.application.profiles import ProfileFields, ProfileService
 from shirube.domain.connection import ConnectionProfile, SslMode
 
@@ -97,6 +99,7 @@ class ProfileUpdate(BaseModel):
 
 
 ServiceDep = Annotated[ProfileService, Depends(get_profile_service)]
+ConnectionServiceDep = Annotated[ConnectionService, Depends(get_connection_service)]
 
 
 @router.get("", response_model=list[ProfileRead])
@@ -127,3 +130,13 @@ def update_profile(profile_id: str, body: ProfileUpdate, service: ServiceDep) ->
 def delete_profile(profile_id: str, service: ServiceDep) -> None:
     """Delete a profile and its stored password."""
     service.delete(profile_id)
+
+
+@router.post("/{profile_id}/test", response_model=ConnectionTestResult)
+def test_profile_connection(
+    profile_id: str,
+    service: ConnectionServiceDep,
+) -> ConnectionTestResult:
+    """Test a saved profile's connection, using its password from the keychain."""
+    service.test_profile(profile_id)
+    return ConnectionTestResult()
