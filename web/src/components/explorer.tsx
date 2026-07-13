@@ -15,7 +15,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ErDiagram } from '@/components/er/er-diagram'
-import { HeaderWave } from '@/components/header-wave'
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
@@ -63,13 +62,11 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <header className="relative flex h-12 shrink-0 items-center overflow-hidden border-b bg-card px-3">
-        <HeaderWave />
-        <div className="relative z-10 flex w-full items-center gap-3">
-          <span className="flex items-center gap-1.5 font-medium">
-            <Logo className="size-5" />
-            {t('app.name')}
-          </span>
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-[#e9e3fb] px-3">
+        <span className="flex items-center gap-1.5 font-medium">
+          <Logo className="size-5" />
+          {t('app.name')}
+        </span>
 
         {/* Search — a placeholder for now; wired up with the search feature. */}
         <span className="mx-auto flex h-8 w-full max-w-md items-center gap-2 rounded-lg border bg-background/85 px-2.5 text-sm text-muted-foreground">
@@ -115,8 +112,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           ) : (
             <PanelRightOpen className="size-4" />
           )}
-          </Button>
-        </div>
+        </Button>
       </header>
 
       <div className="flex min-h-0 flex-1">
