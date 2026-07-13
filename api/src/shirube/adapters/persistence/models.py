@@ -1,4 +1,4 @@
-"""ORM models for Shirube's local app state.
+"""ORM models for shirube's local app state.
 
 Importing this module registers every model on ``Base.metadata``, so the start-up
 bootstrap can create the corresponding tables.
