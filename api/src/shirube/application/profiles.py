@@ -73,7 +73,10 @@ class ProfileService:
         return profile
 
     def update(
-        self, profile_id: str, fields: ProfileFields, password: str | None
+        self,
+        profile_id: str,
+        fields: ProfileFields,
+        password: str | None,
     ) -> ConnectionProfile:
         """Replace a profile's fields, and its password when one is supplied.
 
