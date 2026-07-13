@@ -12,9 +12,16 @@ from shirube.adapters.keyring.secret_store import KeyringSecretStore
 from shirube.adapters.persistence.database import get_session_factory
 from shirube.adapters.persistence.profile_repository import SqlProfileRepository
 from shirube.adapters.postgres.connector import PostgresConnector
+from shirube.adapters.postgres.schema_inspector import PostgresSchemaInspector
 from shirube.application.connections import ConnectionService
 from shirube.application.profiles import ProfileService
-from shirube.ports.repositories import DatabaseConnector, ProfileRepository, SecretStore
+from shirube.application.schema import SchemaService
+from shirube.ports.repositories import (
+    DatabaseConnector,
+    ProfileRepository,
+    SchemaInspector,
+    SecretStore,
+)
 
 
 def get_profile_repository() -> ProfileRepository:
@@ -32,6 +39,11 @@ def get_database_connector() -> DatabaseConnector:
     return PostgresConnector()
 
 
+def get_schema_inspector() -> SchemaInspector:
+    """Provide the PostgreSQL schema inspector."""
+    return PostgresSchemaInspector()
+
+
 def get_profile_service(
     repository: Annotated[ProfileRepository, Depends(get_profile_repository)],
     secrets: Annotated[SecretStore, Depends(get_secret_store)],
@@ -47,3 +59,12 @@ def get_connection_service(
 ) -> ConnectionService:
     """Compose the connection service from the repository, secret store and connector."""
     return ConnectionService(repository, secrets, connector)
+
+
+def get_schema_service(
+    repository: Annotated[ProfileRepository, Depends(get_profile_repository)],
+    secrets: Annotated[SecretStore, Depends(get_secret_store)],
+    inspector: Annotated[SchemaInspector, Depends(get_schema_inspector)],
+) -> SchemaService:
+    """Compose the schema service from the repository, secret store and inspector."""
+    return SchemaService(repository, secrets, inspector)
