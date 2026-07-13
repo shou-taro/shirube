@@ -123,19 +123,23 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
         </Button>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      {/* The workspace is one continuous canvas; the side panes float above it as
+          cards, keeping the ER map the hero. */}
+      <div className="flex min-h-0 flex-1 bg-muted/30">
         {/* Left pane: the selected table's detail. */}
-        <aside className="flex w-60 shrink-0 flex-col border-r">
-          <div className="flex h-9 items-center border-b px-3 text-xs font-medium text-muted-foreground">
-            {t('panes.detail')}
-          </div>
-          <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
-            {t('panes.detailEmpty')}
+        <aside className="w-64 shrink-0 p-2">
+          <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex h-9 items-center border-b px-3 text-xs font-medium text-muted-foreground">
+              {t('panes.detail')}
+            </div>
+            <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
+              {t('panes.detailEmpty')}
+            </div>
           </div>
         </aside>
 
-        {/* Centre: the ER map. */}
-        <main className="min-w-0 flex-1 bg-muted/20">
+        {/* Centre: the ER map — the canvas itself. */}
+        <main className="min-w-0 flex-1">
           {schema.status === 'loading' ? (
             <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
@@ -158,28 +162,30 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
         </main>
 
         {/* Right pane: the AI navigator (Milestone 2). */}
-        <aside className="flex w-72 shrink-0 flex-col border-l">
-          <div className="flex h-9 items-center gap-1.5 border-b px-3 text-xs font-medium text-muted-foreground">
-            <Sparkles className="size-3.5 text-brand" />
-            {t('panes.chat')}
-          </div>
-          <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
-            {t('panes.chatIntro')}
-          </div>
-          <div className="border-t p-2.5">
-            <div className="flex items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5">
-              <span className="flex-1 truncate text-sm text-muted-foreground">
-                {t('chat.inputPlaceholder')}
-              </span>
-              <Button
-                variant="brand"
-                size="icon"
-                className="size-7"
-                disabled
-                aria-label={t('chat.send')}
-              >
-                <ArrowUp className="size-4" />
-              </Button>
+        <aside className="w-72 shrink-0 p-2">
+          <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex h-9 items-center gap-1.5 border-b px-3 text-xs font-medium text-muted-foreground">
+              <Sparkles className="size-3.5 text-brand" />
+              {t('panes.chat')}
+            </div>
+            <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
+              {t('panes.chatIntro')}
+            </div>
+            <div className="border-t p-2.5">
+              <div className="flex items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5">
+                <span className="flex-1 truncate text-sm text-muted-foreground">
+                  {t('chat.inputPlaceholder')}
+                </span>
+                <Button
+                  variant="brand"
+                  size="icon"
+                  className="size-7"
+                  disabled
+                  aria-label={t('chat.send')}
+                >
+                  <ArrowUp className="size-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </aside>
