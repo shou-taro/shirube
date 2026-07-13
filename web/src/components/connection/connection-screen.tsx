@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { ConnectionForm } from '@/components/connection/connection-form'
 import { ProfilesList } from '@/components/connection/profiles-list'
+import { Waves } from '@/components/connection/waves'
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { deleteProfile, listProfiles, type Profile } from '@/lib/api'
@@ -46,12 +47,13 @@ export function ConnectionScreen({ onConnected }: ConnectionScreenProps) {
       <div className="grid w-full max-w-3xl overflow-hidden rounded-2xl border bg-card shadow-sm md:grid-cols-[16rem_1fr]">
         {/* Branded hero: the product's face on first run. Hidden on narrow screens,
             where the content column takes the full width. */}
-        <aside className="brand-hero hidden flex-col justify-between p-8 text-brand-foreground md:flex">
-          <div className="flex items-center gap-3">
+        <aside className="brand-hero relative hidden flex-col justify-between overflow-hidden p-8 text-brand-foreground md:flex">
+          <Waves />
+          <div className="relative flex items-center gap-3">
             <Logo className="size-9" />
             <span className="text-2xl font-medium tracking-tight">{t('app.name')}</span>
           </div>
-          <p className="text-sm leading-relaxed text-brand-foreground/80">{t('app.tagline')}</p>
+          <p className="relative text-sm leading-relaxed text-brand-foreground/80">{t('app.tagline')}</p>
         </aside>
 
         {/* Content: the saved-connections list or the connection form. */}

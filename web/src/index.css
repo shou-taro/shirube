@@ -92,8 +92,8 @@
   }
 }
 
-/* A soft pastel wash for the connection screen's brand panel — pink easing into
-   lilac down the diagonal. Light enough that the deep-purple ink stays legible. */
+/* Fallback fill for the connection screen's brand panel; the wavy pastel bands are
+   painted on top by the <Waves> SVG (see connection/waves.tsx). */
 .brand-hero {
-  background-image: linear-gradient(155deg, #fcd3ea 0%, #e6cbf7 48%, #c3b1fb 100%);
+  background-color: #fcd4ea;
 }
