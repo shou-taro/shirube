@@ -7,7 +7,8 @@ live database.
 import psycopg
 import pytest
 
-from shirube.adapters.postgres.connector import PostgresConnector, _friendly_message
+from shirube.adapters.postgres._common import friendly_message
+from shirube.adapters.postgres.connector import PostgresConnector
 from shirube.domain.connection import ConnectionParams, SslMode
 from shirube.domain.errors import ConnectionFailedError
 
@@ -22,7 +23,7 @@ _PARAMS = ConnectionParams(
 
 
 def test_authentication_failure_names_the_user() -> None:
-    message = _friendly_message(
+    message = friendly_message(
         psycopg.OperationalError("FATAL: password authentication failed for user"),
         _PARAMS,
     )
@@ -31,7 +32,7 @@ def test_authentication_failure_names_the_user() -> None:
 
 
 def test_unreachable_host_names_host_and_port() -> None:
-    message = _friendly_message(
+    message = friendly_message(
         psycopg.OperationalError("could not translate host name to address"),
         _PARAMS,
     )
@@ -39,7 +40,7 @@ def test_unreachable_host_names_host_and_port() -> None:
 
 
 def test_missing_database() -> None:
-    message = _friendly_message(
+    message = friendly_message(
         psycopg.OperationalError('database "shop" does not exist'),
         _PARAMS,
     )
