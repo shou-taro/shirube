@@ -25,12 +25,15 @@ export function ErDiagram({ graph }: { graph: SchemaGraph }) {
       edges={edges}
       nodeTypes={nodeTypes}
       fitView
+      fitViewOptions={{ padding: 0.2 }}
       minZoom={0.1}
       proOptions={{ hideAttribution: true }}
     >
       <Background />
-      <Controls showInteractive={false} />
-      <MiniMap pannable zoomable />
+      {/* Controls and minimap sit on the right, clear of the table-detail card that
+          floats (and expands) down the left edge. */}
+      <Controls showInteractive={false} position="bottom-right" />
+      <MiniMap pannable zoomable position="top-right" style={{ width: 140, height: 100 }} />
     </ReactFlow>
   )
 }

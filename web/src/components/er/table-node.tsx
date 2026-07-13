@@ -25,8 +25,8 @@ export function TableNode({ data }: NodeProps<TableFlowNode>) {
   return (
     <div className="w-60 overflow-hidden rounded-md border bg-card shadow-sm">
       <Handle type="target" position={Position.Left} className="!size-2 !bg-brand" />
-      <div className="flex items-center gap-1.5 border-b bg-muted/60 px-2.5 py-2">
-        <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+      <div className="flex items-center gap-1.5 border-b border-brand/25 bg-brand/15 px-2.5 py-2">
+        <Icon className="size-3.5 shrink-0 text-brand" />
         <span className="truncate text-sm font-medium" title={object.name}>
           {object.name}
         </span>
