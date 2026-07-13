@@ -9,9 +9,11 @@ Methods are added to a port alongside the feature that first needs them, so an
 interface never runs ahead of a real use case.
 """
 
+from collections.abc import Sequence
 from typing import Protocol
 
 from shirube.domain.connection import ConnectionParams, ConnectionProfile
+from shirube.domain.schema import SchemaGraph
 
 
 class ProfileRepository(Protocol):
@@ -39,7 +41,22 @@ class ProfileRepository(Protocol):
 
 
 class SchemaInspector(Protocol):
-    """Introspects a database into domain metadata (feat/schema-introspection)."""
+    """Introspects a database into domain metadata."""
+
+    def inspect(self, params: ConnectionParams, schemas: Sequence[str]) -> SchemaGraph:
+        """Read objects and their relationships from the target database.
+
+        Args:
+            params: How to connect.
+            schemas: Schemas to include; empty means all non-system schemas.
+
+        Returns:
+            The schema as a graph of objects and foreign-key relationships.
+
+        Raises:
+            ConnectionFailedError: if the database cannot be reached or read.
+        """
+        ...
 
 
 class DatabaseConnector(Protocol):
