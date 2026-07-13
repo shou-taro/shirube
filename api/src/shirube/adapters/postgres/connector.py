@@ -60,7 +60,7 @@ class PostgresConnector:
 
     For now this only validates that a database can be reached (feat/db-connection);
     schema introspection and querying arrive with later features. Every probe runs in a
-    read-only transaction with a statement timeout, matching Shirube's safety model —
+    read-only transaction with a statement timeout, matching shirube's safety model —
     the tool should never be able to change a user's database.
     """
 

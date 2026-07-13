@@ -16,19 +16,19 @@ APP_NAME = "shirube"
 
 
 class Settings(BaseSettings):
-    """Runtime settings for the local Shirube server.
+    """Runtime settings for the local shirube server.
 
     Values are sourced, in order of precedence, from ``SHIRUBE_*`` environment
     variables, a local ``.env`` file, then the defaults below.
 
     Attributes:
         host: Interface the server binds to. Defaults to loopback so the server is
-            never exposed on the network — Shirube is a single-user local tool, which
+            never exposed on the network — shirube is a single-user local tool, which
             is what lets the MVP skip authentication entirely.
         port: TCP port to listen on (see the note on the default value below).
         open_browser: Whether to open the browser automatically on start-up. Disabled
             in tests and when running headless.
-        data_dir: Directory for Shirube's own state (the SQLite database). Defaults to
+        data_dir: Directory for shirube's own state (the SQLite database). Defaults to
             the platform's per-user data directory via ``platformdirs``.
     """
 

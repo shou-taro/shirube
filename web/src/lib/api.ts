@@ -1,5 +1,5 @@
 /**
- * Typed client for the Shirube backend API.
+ * Typed client for the shirube backend API.
  *
  * In development these requests are proxied to the backend by the Vite dev server
  * (see `vite.config.ts`); in a packaged build the backend serves the SPA, so they hit

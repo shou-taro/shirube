@@ -1,8 +1,8 @@
-# Shirube
+# shirube
 
-**しるべ** — a guide, a signpost.
+**標べ** (*shirube*) — a guide, a signpost.
 
-**AI-native database explorer.** Shirube helps developers navigate and understand
+**AI-native database explorer.** shirube helps developers navigate and understand
 relational databases through visual exploration and AI guidance, rather than by
 writing SQL by hand.
 
@@ -21,7 +21,7 @@ behind each design decision.
 - Ask an AI navigator where data lives and how tables connect.
 - Read-only and safe by design.
 
-Shirube is **not** a SQL IDE or a database administration tool. It is a tool for
+shirube is **not** a SQL IDE or a database administration tool. It is a tool for
 *understanding* a database — for developers joining an existing project with hundreds
 of tables and little documentation.
 
@@ -64,7 +64,7 @@ cd web && pnpm lint && pnpm build
 
 ## Licence
 
-Shirube is licensed under the
+shirube is licensed under the
 [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
 
 As sole copyright holder, the project may additionally be offered under a commercial

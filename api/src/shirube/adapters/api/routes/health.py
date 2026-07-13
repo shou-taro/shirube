@@ -13,7 +13,7 @@ class HealthResponse(BaseModel):
 
     Attributes:
         status: Always ``"ok"`` when the server can answer.
-        version: The running Shirube version, handy for confirming what is deployed.
+        version: The running shirube version, handy for confirming what is deployed.
     """
 
     status: str

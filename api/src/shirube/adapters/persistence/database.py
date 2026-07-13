@@ -1,6 +1,6 @@
-"""SQLAlchemy engine and session factory for Shirube's local app state.
+"""SQLAlchemy engine and session factory for shirube's local app state.
 
-"App state" is Shirube's own data — connection profiles, saved layouts, manual
+"App state" is shirube's own data — connection profiles, saved layouts, manual
 relationships, chat history — kept in a local SQLite file. It is entirely separate from
 the databases a user connects to and explores.
 
@@ -18,7 +18,7 @@ from shirube.config import get_settings
 
 
 class Base(DeclarativeBase):
-    """Declarative base for Shirube's local app-state tables."""
+    """Declarative base for shirube's local app-state tables."""
 
 
 @lru_cache

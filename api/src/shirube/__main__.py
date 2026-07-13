@@ -18,7 +18,7 @@ def _open_browser(url: str) -> None:
 
 
 def main() -> None:
-    """Launch the Shirube server and open the browser.
+    """Launch the shirube server and open the browser.
 
     Binds to the configured host and port (loopback by default) and blocks while
     uvicorn runs. The browser launch is deferred by a short timer so it fires just
