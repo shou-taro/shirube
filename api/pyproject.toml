@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-settings>=2.4",
     "platformdirs>=4.2",
     "keyring>=25.7.0",
+    "psycopg[binary]>=3.3.4",
 ]
 
 [project.scripts]

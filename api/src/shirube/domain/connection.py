@@ -49,3 +49,28 @@ class ConnectionProfile:
     username: str
     sslmode: SslMode = SslMode.PREFER
     schemas: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True, slots=True)
+class ConnectionParams:
+    """The full set of values needed to open a connection, including the password.
+
+    Transient: assembled to attempt or test a connection and never persisted, since it
+    carries the secret. A :class:`ConnectionProfile` plus its keychain password produce
+    one of these.
+
+    Attributes:
+        host: Database host.
+        port: Database port.
+        database: Database name.
+        username: Role to connect as.
+        password: The role's password (may be empty for password-less auth).
+        sslmode: SSL negotiation mode.
+    """
+
+    host: str
+    port: int
+    database: str
+    username: str
+    password: str
+    sslmode: SslMode = SslMode.PREFER
