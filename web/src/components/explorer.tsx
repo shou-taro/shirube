@@ -146,7 +146,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               detailExpanded && 'bottom-3',
             )}
           >
-            <div className="flex h-9 shrink-0 items-center border-b pl-3 pr-1.5 text-xs font-medium text-muted-foreground">
+            <div className="flex h-9 shrink-0 items-center border-b bg-muted pl-3 pr-1.5 text-xs font-medium text-muted-foreground">
               <span className="flex-1">{t('panes.detail')}</span>
               <Button
                 variant="ghost"
@@ -182,7 +182,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           )}
         >
           <aside className="flex h-full w-72 flex-col border-l bg-card">
-            <div className="flex h-9 shrink-0 items-center gap-1.5 border-b px-3 text-xs font-medium text-muted-foreground">
+            <div className="flex h-9 shrink-0 items-center gap-1.5 border-b bg-muted px-3 text-xs font-medium text-muted-foreground">
               <Sparkles className="size-3.5 text-brand" />
               <span>{t('panes.chat')}</span>
             </div>
