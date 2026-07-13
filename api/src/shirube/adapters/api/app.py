@@ -49,7 +49,7 @@ def create_app() -> FastAPI:
     Returns:
         The configured application instance.
     """
-    app = FastAPI(title="Shirube", version=__version__, lifespan=lifespan)
+    app = FastAPI(title="shirube", version=__version__, lifespan=lifespan)
     register_exception_handlers(app)
     app.include_router(health.router, prefix="/api")
     app.include_router(profiles.router, prefix="/api")

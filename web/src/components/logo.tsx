@@ -1,10 +1,10 @@
 import { cn } from '@/lib/utils'
 
 /**
- * The Shirube logo mark.
+ * The shirube logo mark.
  *
  * A small ER-style node graph with one node highlighted in the brand colour — the
- * "you are here" waypoint that captures Shirube's idea of navigating a database like a
+ * "you are here" waypoint that captures shirube's idea of navigating a database like a
  * map. The outlined nodes and edges follow `currentColor` so the mark inherits the
  * surrounding text colour and adapts to light and dark themes; only the focus node is
  * fixed to the brand token.
@@ -20,7 +20,7 @@ export function Logo({ className }: { className?: string }) {
       strokeWidth={2}
       className={cn('size-6', className)}
       role="img"
-      aria-label="Shirube"
+      aria-label="shirube"
     >
       {/* Edges first, so the node fills sit on top and hide the joins. */}
       <line x1="12" y1="16" x2="31" y2="11.5" />

@@ -1,6 +1,6 @@
 # Design Decisions
 
-This document records the key design decisions taken while shaping Shirube, together
+This document records the key design decisions taken while shaping shirube, together
 with the reasoning behind each one. The *why* matters as much as the *what*: it lets
 future contributors (and future us) understand the trade-offs rather than re-litigate
 them.
@@ -18,12 +18,12 @@ means intentionally postponed to a later phase.
   that starts a local server and opens the browser. Docker Compose is a secondary
   option for isolation and for bundling a sample database.
 - **Why single command over Docker-only:** the target database is often on
-  `localhost`. A containerised Shirube would need `host.docker.internal` and extra
+  `localhost`. A containerised shirube would need `host.docker.internal` and extra
   networking, creating a "first connection always fails" papercut. A single local
   command connects to a local *or* remote database with no networking friction — it is
   the superset that always works.
 - The server binds to `127.0.0.1` only, so the MVP needs no authentication layer.
-- A bundled sample database (via Docker) lets newcomers try Shirube instantly.
+- A bundled sample database (via Docker) lets newcomers try shirube instantly.
 - **Self-hosted / team server** is deferred to Phase 3; centralising everyone's
   credentials on a server would *reduce* trust, and it drags in multi-user auth that
   would bloat the MVP.
@@ -33,8 +33,8 @@ means intentionally postponed to a later phase.
 **Status:** Accepted
 
 - The frontend is a Vite-built React SPA. In distribution, FastAPI serves the
-  pre-built static files, so Shirube is a single process on a single origin.
-- **Why not Next.js:** Shirube needs none of Next's strengths (SSR/SSG, SEO, server
+  pre-built static files, so shirube is a single process on a single origin.
+- **Why not Next.js:** shirube needs none of Next's strengths (SSR/SSG, SEO, server
   components) — it is a localhost, single-user, interactive-canvas app, exactly what
   SPAs do best. Next would add a second backend alongside FastAPI and require a Node
   runtime in a Python-distributed tool. Static-export Next would just be a heavier SPA.
@@ -77,8 +77,8 @@ layers:
 **Status:** Mixed (SSL accepted; SSH tunnel out of scope; IAM deferred)
 
 - **SSL/TLS is in the MVP** (sslmode, CA certificate path) — cloud databases need it.
-- **SSH tunnel / bastion is out of Shirube's responsibility.** Users establish their
-  own tunnel (`ssh -L …`) and point Shirube at `localhost`. Building tunnelling in
+- **SSH tunnel / bastion is out of shirube's responsibility.** Users establish their
+  own tunnel (`ssh -L …`) and point shirube at `localhost`. Building tunnelling in
   brings key/passphrase/multi-hop complexity that pulls effort away from the core
   value; the OS already does this well.
 - **Cloud IAM auth** (e.g. RDS IAM) is deferred to a later phase.
@@ -89,7 +89,7 @@ layers:
 
 - The ER diagram draws edges from **declared foreign keys**.
 - Because the target databases (legacy, poorly documented) often lack FK constraints,
-  users can **manually add relationships**. These are stored in Shirube's local config
+  users can **manually add relationships**. These are stored in shirube's local config
   — the database is never modified — and are rendered distinctly from FK-derived edges
   so a manual/guessed link is never mistaken for a declared one.
 - **Rule-based naming inference is dropped from the roadmap.** For the target
@@ -104,10 +104,10 @@ layers:
 **Status:** Accepted
 
 - Rendering hundreds of tables at once breaks both performance and readability, so
-  Shirube **never draws the whole schema by default**.
+  shirube **never draws the whole schema by default**.
 - The interaction is always **search + neighbourhood expansion**: pick a table, render
   it and its 1–2 hop neighbours, and expand further on click — like panning a map.
-- On first connection (before any search) Shirube centres on the **most-connected
+- On first connection (before any search) shirube centres on the **most-connected
   table** (the schema's "backbone"), which directly addresses "I don't know where to
   start."
 - A **"show everything / fit to view"** affordance covers small databases where seeing
@@ -147,7 +147,7 @@ Edges carry different meanings and must be visually distinct:
 **Status:** Accepted
 
 "Click a table to reveal its neighbours" and "click a partition parent to reveal its
-children" are the *same* operation. Shirube builds **one** generic expand/collapse
+children" are the *same* operation. shirube builds **one** generic expand/collapse
 primitive (with auto-layout) and reuses it for neighbourhood navigation and partition
 expansion, rather than a special-purpose partition feature.
 
@@ -198,7 +198,7 @@ expansion, rather than a special-purpose partition feature.
 **Status:** Accepted (send-preview deferred)
 
 - **Data values never leave the machine** (a consequence of decisions 12–13).
-- Shirube ships **no default external provider**. The user explicitly configures a
+- shirube ships **no default external provider**. The user explicitly configures a
   provider at setup — an OpenAI-compatible API *or* local Ollama — and that choice is
   the consent. Only the schema metadata relevant to a question is sent, and only to the
   chosen provider.
@@ -254,7 +254,7 @@ The MVP is built in two milestones:
 
 **Status:** Accepted
 
-- Shirube stores its own state in a single **SQLite** file in the OS config directory
+- shirube stores its own state in a single **SQLite** file in the OS config directory
   (resolved via `platformdirs`). Secrets — database passwords and AI API keys — live in
   the **OS keychain**, never in the SQLite file.
 - Stored: connection profiles (non-secret fields), AI provider settings, ER node
@@ -291,11 +291,11 @@ The MVP is built in two milestones:
 **Status:** Accepted
 
 - **First launch** (no profiles) opens the connection form directly; **subsequent
-  launches** open the saved-profiles list. Shirube **never auto-connects on launch** —
+  launches** open the saved-profiles list. shirube **never auto-connects on launch** —
   the user always chooses a database (an optional "auto-connect to last profile"
   preference may come later). Avoiding surprise connections keeps it "never dangerous".
 - The **sample database** is delivered via Docker Compose running **Postgres only**
-  (e.g. `pagila`) — Shirube itself is **not containerised** and always runs via `uvx`.
+  (e.g. `pagila`) — shirube itself is **not containerised** and always runs via `uvx`.
   The first-run screen offers a "sample database" connection preset pointing at the
   local sample Postgres, for a near-one-click demo.
 - **Why not a SQLite sample:** the MVP speaks only Postgres, so a SQLite sample would
@@ -353,11 +353,11 @@ The MVP is built in two milestones:
 **Status:** Accepted
 
 - The project is licensed under **AGPL-3.0** — genuinely OSI-approved open source, whose
-  network-copyleft clause deters a competitor from offering a closed, hosted Shirube
+  network-copyleft clause deters a competitor from offering a closed, hosted shirube
   while the "commercial later" plan matures. As sole copyright holder we retain the
   option to **dual-licence** (a commercial licence for organisations that cannot accept
   AGPL).
-- Because Shirube is a **standalone, locally-run tool** rather than a library embedded
+- Because shirube is a **standalone, locally-run tool** rather than a library embedded
   in other software, AGPL's adoption friction is limited: internal local use does not
   trigger source disclosure.
 - **Follow-up:** to preserve the ability to relicence/dual-licence once external

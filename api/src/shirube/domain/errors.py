@@ -2,7 +2,7 @@
 
 
 class ShirubeError(Exception):
-    """Base class for expected, user-facing Shirube errors.
+    """Base class for expected, user-facing shirube errors.
 
     Raising a subclass signals a condition we anticipate — bad input, a missing
     resource, a refused connection — rather than a bug. The API layer catches these and

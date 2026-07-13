@@ -6,7 +6,7 @@
  */
 const en = {
   app: {
-    name: 'Shirube',
+    name: 'shirube',
   },
   connection: {
     savedConnections: 'Saved connections',
