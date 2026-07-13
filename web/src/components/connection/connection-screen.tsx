@@ -3,8 +3,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ConnectionForm } from '@/components/connection/connection-form'
+import { HeroBackdrop } from '@/components/connection/hero-backdrop'
 import { ProfilesList } from '@/components/connection/profiles-list'
-import { Waves } from '@/components/connection/waves'
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { deleteProfile, listProfiles, type Profile } from '@/lib/api'
@@ -48,7 +48,7 @@ export function ConnectionScreen({ onConnected }: ConnectionScreenProps) {
         {/* Branded hero: the product's face on first run. Hidden on narrow screens,
             where the content column takes the full width. */}
         <aside className="brand-hero relative hidden flex-col justify-between overflow-hidden p-8 text-brand-foreground md:flex">
-          <Waves />
+          <HeroBackdrop />
           <div className="relative flex items-center gap-3">
             <Logo className="size-9" />
             <span className="text-2xl font-medium tracking-tight">{t('app.name')}</span>
