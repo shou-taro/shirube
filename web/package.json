@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.0.0",
     "@tailwindcss/vite": "^4.3.2",
     "@xyflow/react": "^12.11.2",
     "class-variance-authority": "^0.7.1",
