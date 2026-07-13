@@ -53,7 +53,7 @@ export function ConnectionScreen({ onConnected }: ConnectionScreenProps) {
             <Logo className="size-9" />
             <span className="text-2xl font-medium tracking-tight">{t('app.name')}</span>
           </div>
-          <p className="relative text-sm leading-relaxed text-brand-foreground/80">{t('app.tagline')}</p>
+          <p className="relative text-sm leading-relaxed text-brand-foreground">{t('app.tagline')}</p>
         </aside>
 
         {/* Content: the saved-connections list or the connection form. */}
