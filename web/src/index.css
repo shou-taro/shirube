@@ -24,7 +24,7 @@
   --ring: oklch(0.708 0 0);
   --brand: #a78bfa;
   /* A pastel lilac for soft filled controls (the primary button). */
-  --brand-soft: #ccbdfb;
+  --brand-soft: #b7a2f8;
   /* A deep readable ink for text on the lilac fills. */
   --brand-foreground: #2b2154;
 }
@@ -49,7 +49,7 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --brand: #b9a7fb;
-  --brand-soft: #ccbdfb;
+  --brand-soft: #b7a2f8;
   --brand-foreground: #2b2154;
 }
 
