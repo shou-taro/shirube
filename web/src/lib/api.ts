@@ -54,6 +54,44 @@ export interface ConnectionTestParams {
   sslmode: SslMode
 }
 
+/** The kind of schema object shown on the ER map. */
+export type ObjectKind = 'table' | 'view' | 'materialized_view'
+
+/** A column of a table or view. */
+export interface Column {
+  name: string
+  data_type: string
+  nullable: boolean
+  is_primary_key: boolean
+}
+
+/** A table, view or materialized view — one node on the map. */
+export interface SchemaObject {
+  /** Stable `schema.name` identifier. */
+  id: string
+  schema: string
+  name: string
+  kind: ObjectKind
+  columns: Column[]
+}
+
+/** A foreign-key relationship — one edge on the map. */
+export interface Relationship {
+  constraint_name: string
+  /** `schema.name` id of the referencing object. */
+  source: string
+  source_columns: string[]
+  /** `schema.name` id of the referenced object. */
+  target: string
+  target_columns: string[]
+}
+
+/** The introspected schema: objects (nodes) and relationships (edges). */
+export interface SchemaGraph {
+  objects: SchemaObject[]
+  relationships: Relationship[]
+}
+
 async function errorDetail(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { detail?: string }
@@ -113,4 +151,9 @@ export function testConnection(params: ConnectionTestParams): Promise<void> {
 /** Test a saved profile's connection, using its stored password. */
 export function testProfileConnection(id: string): Promise<void> {
   return apiFetch<void>(`/profiles/${id}/test`, { method: 'POST' })
+}
+
+/** Introspect a saved profile's database and return its schema as a graph. */
+export function fetchSchema(id: string): Promise<SchemaGraph> {
+  return apiFetch<SchemaGraph>(`/profiles/${id}/schema`)
 }
