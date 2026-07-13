@@ -46,16 +46,12 @@ export function ConnectionScreen({ onConnected }: ConnectionScreenProps) {
       <div className="grid w-full max-w-3xl overflow-hidden rounded-2xl border bg-card shadow-sm md:grid-cols-[16rem_1fr]">
         {/* Branded hero: the product's face on first run. Hidden on narrow screens,
             where the content column takes the full width. */}
-        <aside className="hidden flex-col justify-between bg-brand-panel p-8 text-white md:flex">
-          <div className="flex flex-col gap-3">
+        <aside className="brand-hero hidden flex-col justify-between p-8 text-brand-foreground md:flex">
+          <div className="flex items-center gap-2.5">
             <Logo className="size-8" />
-            <div>
-              <div className="text-lg font-medium leading-none">{t('app.name')}</div>
-              {/* The Japanese written form — 標べ, "a guide, a signpost". */}
-              <div className="mt-1.5 text-sm text-white/70">標べ</div>
-            </div>
+            <span className="text-lg font-medium">{t('app.name')}</span>
           </div>
-          <p className="text-sm leading-relaxed text-white/80">{t('app.tagline')}</p>
+          <p className="text-sm leading-relaxed text-brand-foreground/75">{t('app.tagline')}</p>
         </aside>
 
         {/* Content: the saved-connections list or the connection form. */}

@@ -23,10 +23,8 @@
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --brand: #a78bfa;
-  /* A deep readable ink for text on the (mid-tone) lilac fills, and a richer violet
-     for the branded hero panel where white text sits on top. */
+  /* A deep readable ink for text on the (mid-tone) lilac fills. */
   --brand-foreground: #2b2154;
-  --brand-panel: #5b4fce;
 }
 
 .dark {
@@ -50,7 +48,6 @@
   --ring: oklch(0.556 0 0);
   --brand: #b9a7fb;
   --brand-foreground: #2b2154;
-  --brand-panel: #5b4fce;
 }
 
 @theme inline {
@@ -74,7 +71,6 @@
   --color-ring: var(--ring);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
-  --color-brand-panel: var(--brand-panel);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -90,4 +86,16 @@
     background-color: var(--background);
     color: var(--foreground);
   }
+}
+
+/* A soft, marbled lilac wash for the connection screen's brand panel. Several
+   pastel radial blends overlap to give an organic, cloud-like depth rather than a
+   single hard gradient seam; deep-purple ink sits legibly on top of every stop. */
+.brand-hero {
+  background-color: #c4b5fd;
+  background-image:
+    radial-gradient(at 18% 12%, #f2effe 0, transparent 55%),
+    radial-gradient(at 88% 18%, #a78bfa 0, transparent 52%),
+    radial-gradient(at 22% 88%, #c8aef7 0, transparent 55%),
+    radial-gradient(at 82% 80%, #ddd6fe 0, transparent 50%);
 }
