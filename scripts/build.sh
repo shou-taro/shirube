@@ -7,8 +7,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "Building the SPA..."
 cd "$root/web"
-npm ci
-npm run build
+pnpm install --frozen-lockfile
+pnpm run build
 
 echo "Bundling the SPA into the API package..."
 rm -rf "$root/api/src/shirube/static"
