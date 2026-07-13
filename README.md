@@ -1,6 +1,6 @@
 # shirube
 
-**しるべ** — a guide, a signpost.
+**標べ** (*shirube*) — a guide, a signpost.
 
 **AI-native database explorer.** shirube helps developers navigate and understand
 relational databases through visual exploration and AI guidance, rather than by
