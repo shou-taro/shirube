@@ -54,11 +54,14 @@ const en = {
   },
   panes: {
     detail: 'Table detail',
+    detailEmpty: 'Select a table to see its columns and relationships.',
     map: 'ER map',
     chat: 'AI navigator',
+    chatIntro: 'Ask about your tables, columns and how they connect.',
   },
   chat: {
     inputPlaceholder: 'Ask the navigator…',
+    send: 'Send',
   },
   health: {
     connected: 'API {{version}}',
