@@ -5,7 +5,7 @@ import {
   Database,
   Loader2,
   PanelRightClose,
-  RefreshCw,
+  PanelRightOpen,
   Search,
   Settings,
   Sparkles,
@@ -66,8 +66,14 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           <Logo className="size-5" />
           {t('app.name')}
         </span>
-        <span className="h-5 w-px bg-border" />
-        {/* The connected profile; clicking it returns to the connection screen. */}
+
+        {/* Search — a placeholder for now; wired up with the search feature. */}
+        <span className="mx-auto flex h-8 w-full max-w-md items-center gap-2 rounded-lg border bg-muted/40 px-2.5 text-sm text-muted-foreground">
+          <Search className="size-3.5 shrink-0" />
+          <span className="truncate">{t('search.placeholder')}</span>
+        </span>
+
+        {/* Connection info; clicking it returns to the connection screen. */}
         <button
           type="button"
           onClick={onDisconnect}
@@ -78,22 +84,19 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           <span className="text-sm font-medium">{profile.name}</span>
           <span className="text-xs text-muted-foreground">{profile.database}</span>
         </button>
-
-        {/* Search — a placeholder for now; wired up with the search feature. */}
-        <span className="mx-auto flex h-8 w-full max-w-md items-center gap-2 rounded-lg border bg-muted/40 px-2.5 text-sm text-muted-foreground">
-          <Search className="size-3.5 shrink-0" />
-          <span className="truncate">{t('search.placeholder')}</span>
-        </span>
-
+        <span className="h-5 w-px bg-border" />
         <Button
           variant="ghost"
           size="icon"
-          aria-label={t('schema.reload')}
-          title={t('schema.reload')}
-          onClick={loadSchema}
-          disabled={schema.status === 'loading'}
+          aria-label={navigatorOpen ? t('panes.collapse') : t('panes.expand')}
+          title={t('panes.chat')}
+          onClick={() => setNavigatorOpen((open) => !open)}
         >
-          <RefreshCw className={cn('size-4', schema.status === 'loading' && 'animate-spin')} />
+          {navigatorOpen ? (
+            <PanelRightClose className="size-4" />
+          ) : (
+            <PanelRightOpen className="size-4" />
+          )}
         </Button>
         <Button variant="ghost" size="icon" aria-label="Settings" title="Settings">
           <Settings className="size-4" />
@@ -156,41 +159,20 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               {t('panes.detailEmpty')}
             </div>
           </div>
-
-          {/* When the navigator is collapsed, a floating button reopens it — no docked
-              rail, so the map keeps the full width. */}
-          {!navigatorOpen ? (
-            <div className="absolute right-3 top-3 z-10">
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-card shadow-md"
-                onClick={() => setNavigatorOpen(true)}
-                aria-label={t('panes.expand')}
-                title={t('panes.chat')}
-              >
-                <Sparkles className="size-4 text-brand" />
-              </Button>
-            </div>
-          ) : null}
         </div>
 
         {/* Right pane: the AI navigator (Milestone 2) — docked so chat gets the full
-            height; collapsing it hands the width back to the map. */}
-        {navigatorOpen ? (
-          <aside className="flex w-72 shrink-0 flex-col border-l bg-card">
-            <div className="flex h-9 items-center gap-1.5 border-b pl-3 pr-1.5 text-xs font-medium text-muted-foreground">
+            height; it slides open and closed, toggled from the top bar. */}
+        <div
+          className={cn(
+            'shrink-0 overflow-hidden transition-[width] duration-200 ease-out',
+            navigatorOpen ? 'w-72' : 'w-0',
+          )}
+        >
+          <aside className="flex h-full w-72 flex-col border-l bg-card">
+            <div className="flex h-9 shrink-0 items-center gap-1.5 border-b px-3 text-xs font-medium text-muted-foreground">
               <Sparkles className="size-3.5 text-brand" />
-              <span className="flex-1">{t('panes.chat')}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6"
-                onClick={() => setNavigatorOpen(false)}
-                aria-label={t('panes.collapse')}
-              >
-                <PanelRightClose className="size-3.5" />
-              </Button>
+              <span>{t('panes.chat')}</span>
             </div>
             <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
               {t('panes.chatIntro')}
@@ -212,7 +194,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               </div>
             </div>
           </aside>
-        ) : null}
+        </div>
       </div>
     </div>
   )
