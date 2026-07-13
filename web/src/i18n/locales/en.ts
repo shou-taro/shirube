@@ -45,6 +45,7 @@ const en = {
     loading: 'Reading the schema…',
     error: 'Could not read the schema.',
     retry: 'Try again',
+    reload: 'Reload schema',
     empty: 'No tables or views found in this database.',
     objectKind: {
       table: 'Table',

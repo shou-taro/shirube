@@ -30,7 +30,7 @@ export function ErDiagram({ graph }: { graph: SchemaGraph }) {
     >
       <Background />
       <Controls showInteractive={false} />
-      <MiniMap pannable zoomable />
+      <MiniMap pannable zoomable style={{ width: 140, height: 100 }} />
     </ReactFlow>
   )
 }

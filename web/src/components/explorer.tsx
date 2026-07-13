@@ -16,14 +16,8 @@ import { useTranslation } from 'react-i18next'
 import { ErDiagram } from '@/components/er/er-diagram'
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
-import { fetchHealth, fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
+import { fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
 import { cn } from '@/lib/utils'
-
-/** Outcome of the start-up backend health check, used to render the status indicator. */
-type HealthState =
-  | { status: 'checking' }
-  | { status: 'ok'; version: string }
-  | { status: 'error' }
 
 /** The schema load for the connected profile. */
 type SchemaState =
@@ -45,16 +39,9 @@ interface ExplorerProps {
  */
 export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const { t } = useTranslation()
-  const [health, setHealth] = useState<HealthState>({ status: 'checking' })
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
   const [detailExpanded, setDetailExpanded] = useState(false)
   const [navigatorOpen, setNavigatorOpen] = useState(true)
-
-  useEffect(() => {
-    fetchHealth()
-      .then((response) => setHealth({ status: 'ok', version: response.version }))
-      .catch(() => setHealth({ status: 'error' }))
-  }, [])
 
   const loadSchema = useCallback(() => {
     setSchema({ status: 'loading' })
@@ -71,13 +58,6 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   useEffect(() => {
     loadSchema()
   }, [loadSchema])
-
-  const healthLabel =
-    health.status === 'ok'
-      ? t('health.connected', { version: health.version })
-      : health.status === 'error'
-        ? t('health.error')
-        : t('health.checking')
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -105,33 +85,17 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           <span className="truncate">{t('search.placeholder')}</span>
         </span>
 
-        <span
-          title={healthLabel}
-          className="flex items-center"
-          role="img"
-          aria-label={healthLabel}
-        >
-          <span
-            className={cn(
-              'size-2 rounded-full',
-              health.status === 'ok'
-                ? 'bg-green-500'
-                : health.status === 'error'
-                  ? 'bg-red-500'
-                  : 'bg-amber-500',
-            )}
-          />
-        </span>
         <Button
           variant="ghost"
           size="icon"
-          aria-label={t('schema.retry')}
+          aria-label={t('schema.reload')}
+          title={t('schema.reload')}
           onClick={loadSchema}
           disabled={schema.status === 'loading'}
         >
           <RefreshCw className={cn('size-4', schema.status === 'loading' && 'animate-spin')} />
         </Button>
-        <Button variant="ghost" size="icon" aria-label="Settings">
+        <Button variant="ghost" size="icon" aria-label="Settings" title="Settings">
           <Settings className="size-4" />
         </Button>
       </header>
@@ -192,10 +156,27 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               {t('panes.detailEmpty')}
             </div>
           </div>
+
+          {/* When the navigator is collapsed, a floating button reopens it — no docked
+              rail, so the map keeps the full width. */}
+          {!navigatorOpen ? (
+            <div className="absolute right-3 top-3 z-10">
+              <Button
+                variant="outline"
+                size="icon"
+                className="bg-card shadow-md"
+                onClick={() => setNavigatorOpen(true)}
+                aria-label={t('panes.expand')}
+                title={t('panes.chat')}
+              >
+                <Sparkles className="size-4 text-brand" />
+              </Button>
+            </div>
+          ) : null}
         </div>
 
         {/* Right pane: the AI navigator (Milestone 2) — docked so chat gets the full
-            height, collapsible to a slim rail. */}
+            height; collapsing it hands the width back to the map. */}
         {navigatorOpen ? (
           <aside className="flex w-72 shrink-0 flex-col border-l bg-card">
             <div className="flex h-9 items-center gap-1.5 border-b pl-3 pr-1.5 text-xs font-medium text-muted-foreground">
@@ -231,19 +212,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               </div>
             </div>
           </aside>
-        ) : (
-          <div className="shrink-0 border-l bg-card p-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setNavigatorOpen(true)}
-              aria-label={t('panes.expand')}
-              title={t('panes.chat')}
-            >
-              <Sparkles className="size-4 text-brand" />
-            </Button>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   )
