@@ -47,7 +47,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const { t } = useTranslation()
   const [health, setHealth] = useState<HealthState>({ status: 'checking' })
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
-  const [detailOpen, setDetailOpen] = useState(true)
+  const [detailExpanded, setDetailExpanded] = useState(false)
   const [navigatorOpen, setNavigatorOpen] = useState(true)
 
   useEffect(() => {
@@ -138,10 +138,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
 
       <div className="flex min-h-0 flex-1">
         {/* Centre: the ER map canvas, with the table-detail card floating over it. */}
-        <div
-          className="relative min-w-0 flex-1"
-          style={{ background: 'linear-gradient(155deg, #f6f3fd 0%, #ece6fb 100%)' }}
-        >
+        <div className="relative min-w-0 flex-1 bg-background">
           {schema.status === 'loading' ? (
             <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
@@ -162,25 +159,38 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             <ErDiagram graph={schema.graph} />
           )}
 
-          {/* Floating table-detail card, minimisable to just its title bar. */}
-          <div className="absolute left-3 top-3 z-10 w-64 overflow-hidden rounded-xl border bg-card shadow-md">
-            <div className="flex h-9 items-center border-b pl-3 pr-1.5 text-xs font-medium text-muted-foreground">
+          {/* Floating table-detail card: compact by default, expandable downwards to
+              give a selected table's detail room to breathe. */}
+          <div
+            className={cn(
+              'absolute left-3 top-3 z-10 flex w-64 flex-col overflow-hidden rounded-xl border bg-card shadow-md',
+              detailExpanded && 'bottom-3',
+            )}
+          >
+            <div className="flex h-9 shrink-0 items-center border-b pl-3 pr-1.5 text-xs font-medium text-muted-foreground">
               <span className="flex-1">{t('panes.detail')}</span>
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-6"
-                onClick={() => setDetailOpen((open) => !open)}
-                aria-label={detailOpen ? t('panes.collapse') : t('panes.expand')}
+                onClick={() => setDetailExpanded((expanded) => !expanded)}
+                aria-label={detailExpanded ? t('panes.collapse') : t('panes.expand')}
               >
-                {detailOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                {detailExpanded ? (
+                  <ChevronUp className="size-3.5" />
+                ) : (
+                  <ChevronDown className="size-3.5" />
+                )}
               </Button>
             </div>
-            {detailOpen ? (
-              <div className="p-6 text-center text-xs text-muted-foreground">
-                {t('panes.detailEmpty')}
-              </div>
-            ) : null}
+            <div
+              className={cn(
+                'p-6 text-center text-xs text-muted-foreground',
+                detailExpanded && 'flex flex-1 items-center justify-center overflow-y-auto',
+              )}
+            >
+              {t('panes.detailEmpty')}
+            </div>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow } from '@xyflow/react'
+import { Background, Controls, MiniMap, ReactFlow } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useMemo } from 'react'
 
@@ -28,9 +28,9 @@ export function ErDiagram({ graph }: { graph: SchemaGraph }) {
       minZoom={0.1}
       proOptions={{ hideAttribution: true }}
     >
-      <Background variant={BackgroundVariant.Dots} gap={22} size={1.6} color="#ccbef0" />
+      <Background />
       <Controls showInteractive={false} />
-      <MiniMap pannable zoomable nodeColor="#c4b5fd" maskColor="rgba(167, 139, 250, 0.12)" />
+      <MiniMap pannable zoomable />
     </ReactFlow>
   )
 }
