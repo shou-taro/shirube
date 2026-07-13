@@ -41,6 +41,17 @@ const en = {
   search: {
     placeholder: 'Search tables and columns…',
   },
+  schema: {
+    loading: 'Reading the schema…',
+    error: 'Could not read the schema.',
+    retry: 'Try again',
+    empty: 'No tables or views found in this database.',
+    objectKind: {
+      table: 'Table',
+      view: 'View',
+      materialized_view: 'Materialized view',
+    },
+  },
   panes: {
     detail: 'Table detail',
     map: 'ER map',
