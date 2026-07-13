@@ -6,6 +6,7 @@ import {
   Loader2,
   PanelRightClose,
   PanelRightOpen,
+  RefreshCw,
   Search,
   Settings,
   Sparkles,
@@ -73,7 +74,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           <span className="truncate">{t('search.placeholder')}</span>
         </span>
 
-        {/* Connection info; clicking it returns to the connection screen. */}
+        {/* Connection cluster: the connection and a reload for its schema. */}
         <button
           type="button"
           onClick={onDisconnect}
@@ -84,7 +85,21 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           <span className="text-sm font-medium">{profile.name}</span>
           <span className="text-xs text-muted-foreground">{profile.database}</span>
         </button>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t('schema.reload')}
+          title={t('schema.reload')}
+          onClick={loadSchema}
+          disabled={schema.status === 'loading'}
+        >
+          <RefreshCw className={cn('size-4', schema.status === 'loading' && 'animate-spin')} />
+        </Button>
         <span className="h-5 w-px bg-border" />
+        <Button variant="ghost" size="icon" aria-label="Settings" title="Settings">
+          <Settings className="size-4" />
+        </Button>
+        {/* Navigator toggle, pinned to the right edge above the panel it controls. */}
         <Button
           variant="ghost"
           size="icon"
@@ -97,9 +112,6 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           ) : (
             <PanelRightOpen className="size-4" />
           )}
-        </Button>
-        <Button variant="ghost" size="icon" aria-label="Settings" title="Settings">
-          <Settings className="size-4" />
         </Button>
       </header>
 
