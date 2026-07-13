@@ -1,4 +1,15 @@
-import { ArrowUp, Database, Loader2, RefreshCw, Search, Settings, Sparkles } from 'lucide-react'
+import {
+  ArrowUp,
+  Database,
+  Loader2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  RefreshCw,
+  Search,
+  Settings,
+  Sparkles,
+} from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -36,6 +47,8 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const { t } = useTranslation()
   const [health, setHealth] = useState<HealthState>({ status: 'checking' })
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
+  const [detailOpen, setDetailOpen] = useState(true)
+  const [navigatorOpen, setNavigatorOpen] = useState(true)
 
   useEffect(() => {
     fetchHealth()
@@ -123,20 +136,42 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
         </Button>
       </header>
 
-      {/* The workspace is one continuous canvas; the side panes float above it as
-          cards, keeping the ER map the hero. */}
       <div className="flex min-h-0 flex-1 bg-muted/30">
-        {/* Left pane: the selected table's detail. */}
-        <aside className="w-64 shrink-0 p-2">
-          <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
-            <div className="flex h-9 items-center border-b px-3 text-xs font-medium text-muted-foreground">
-              {t('panes.detail')}
+        {/* Left pane: the selected table's detail — a card floating over the canvas,
+            collapsible to a slim toggle. */}
+        {detailOpen ? (
+          <aside className="w-64 shrink-0 p-2">
+            <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
+              <div className="flex h-9 items-center border-b pl-3 pr-1.5 text-xs font-medium text-muted-foreground">
+                <span className="flex-1">{t('panes.detail')}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6"
+                  onClick={() => setDetailOpen(false)}
+                  aria-label={t('panes.collapse')}
+                >
+                  <PanelLeftClose className="size-3.5" />
+                </Button>
+              </div>
+              <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
+                {t('panes.detailEmpty')}
+              </div>
             </div>
-            <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
-              {t('panes.detailEmpty')}
-            </div>
+          </aside>
+        ) : (
+          <div className="shrink-0 p-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDetailOpen(true)}
+              aria-label={t('panes.expand')}
+              title={t('panes.detail')}
+            >
+              <PanelLeftOpen className="size-4" />
+            </Button>
           </div>
-        </aside>
+        )}
 
         {/* Centre: the ER map — the canvas itself. */}
         <main className="min-w-0 flex-1">
@@ -161,12 +196,22 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           )}
         </main>
 
-        {/* Right pane: the AI navigator (Milestone 2). */}
-        <aside className="w-72 shrink-0 p-2">
-          <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
-            <div className="flex h-9 items-center gap-1.5 border-b px-3 text-xs font-medium text-muted-foreground">
+        {/* Right pane: the AI navigator (Milestone 2) — docked so chat gets the full
+            height, collapsible to a slim rail. */}
+        {navigatorOpen ? (
+          <aside className="flex w-72 shrink-0 flex-col border-l bg-card">
+            <div className="flex h-9 items-center gap-1.5 border-b pl-3 pr-1.5 text-xs font-medium text-muted-foreground">
               <Sparkles className="size-3.5 text-brand" />
-              {t('panes.chat')}
+              <span className="flex-1">{t('panes.chat')}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                onClick={() => setNavigatorOpen(false)}
+                aria-label={t('panes.collapse')}
+              >
+                <PanelRightClose className="size-3.5" />
+              </Button>
             </div>
             <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
               {t('panes.chatIntro')}
@@ -187,8 +232,20 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
                 </Button>
               </div>
             </div>
+          </aside>
+        ) : (
+          <div className="shrink-0 border-l bg-card p-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setNavigatorOpen(true)}
+              aria-label={t('panes.expand')}
+              title={t('panes.chat')}
+            >
+              <Sparkles className="size-4 text-brand" />
+            </Button>
           </div>
-        </aside>
+        )}
       </div>
     </div>
   )
