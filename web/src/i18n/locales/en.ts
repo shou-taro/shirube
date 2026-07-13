@@ -7,6 +7,7 @@
 const en = {
   app: {
     name: 'shirube',
+    tagline: 'Navigate and understand your database with AI.',
   },
   connection: {
     savedConnections: 'Saved connections',
@@ -24,6 +25,7 @@ const en = {
       sslmode: 'SSL mode',
       schemas: 'Schemas',
     },
+    optionsLabel: 'Security and scope',
     schemasHint: 'Comma-separated; leave empty for all',
     passwordKeepHint: 'Leave blank to keep the saved password',
     test: 'Test connection',
