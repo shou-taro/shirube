@@ -45,6 +45,7 @@ const en = {
     loading: 'Reading the schema…',
     error: 'Could not read the schema.',
     retry: 'Try again',
+    reload: 'Reload schema',
     empty: 'No tables or views found in this database.',
     objectKind: {
       table: 'Table',
@@ -54,11 +55,16 @@ const en = {
   },
   panes: {
     detail: 'Table detail',
+    detailEmpty: 'Select a table to see its columns and relationships.',
     map: 'ER map',
     chat: 'AI navigator',
+    chatIntro: 'Ask about your tables, columns and how they connect.',
+    collapse: 'Collapse',
+    expand: 'Expand',
   },
   chat: {
     inputPlaceholder: 'Ask the navigator…',
+    send: 'Send',
   },
   health: {
     connected: 'API {{version}}',
