@@ -92,16 +92,8 @@
   }
 }
 
-/* A marbled lilac wash for the connection screen's brand panel. Overlapping radial
-   blends — bright highlights against deeper violet swirls — give it an organic,
-   stone-like depth. The light stops are kept on the left, behind the logo and
-   tagline, so the deep-purple ink stays legible while the drama sits to the right. */
+/* Fallback fill for the connection screen's brand panel; the marble texture is
+   painted on top by the <Marble> SVG (see connection/marble.tsx). */
 .brand-hero {
-  background-color: #b6a2f8;
-  background-image:
-    radial-gradient(72% 62% at 6% 4%, #f7f3ff 0, transparent 58%),
-    radial-gradient(60% 60% at 20% 96%, #e6ddfe 0, transparent 60%),
-    radial-gradient(78% 72% at 102% 8%, #7f5cea 0, transparent 56%),
-    radial-gradient(70% 68% at 98% 100%, #8a67ef 0, transparent 56%),
-    radial-gradient(42% 50% at 84% 50%, #9a7bf3 0, transparent 52%);
+  background-color: #a98cf5;
 }
