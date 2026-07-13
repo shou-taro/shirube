@@ -44,6 +44,10 @@ dist-ssr/
 # Bundled SPA (generated into the API package at build time)
 api/src/shirube/static/
 
+# ---- Development database ----
+# pagila SQL fetched by scripts/dev-db.sh; not vendored into the repo.
+dev/pagila/
+
 # Logs
 logs/
 *.log
