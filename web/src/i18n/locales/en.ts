@@ -58,6 +58,8 @@ const en = {
     map: 'ER map',
     chat: 'AI navigator',
     chatIntro: 'Ask about your tables, columns and how they connect.',
+    collapse: 'Collapse',
+    expand: 'Expand',
   },
   chat: {
     inputPlaceholder: 'Ask the navigator…',
