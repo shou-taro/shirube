@@ -1,0 +1,32 @@
+# Local development database for shirube.
+#
+# A throwaway PostgreSQL preloaded with the pagila sample schema (a DVD-rental shop:
+# films, actors, customers, rentals — lots of foreign keys), so schema introspection
+# and the ER map can be built and tested against a realistic database. Not for
+# production; the credentials here are deliberately trivial.
+#
+# Drive it through scripts/dev-db.sh (up | down | reset), which also fetches pagila.
+services:
+  db:
+    image: postgres:17
+    container_name: shirube-dev-db
+    environment:
+      # pagila's schema assigns ownership to a "postgres" role, so connect as that.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pagila
+    ports:
+      - "5432:5432"
+    volumes:
+      - shirube-dev-db:/var/lib/postgresql/data
+      # Postgres runs *.sql here in alphabetical order on first init, so pagila is
+      # numbered schema-then-data. Downloaded by scripts/dev-db.sh (git-ignored).
+      - ./pagila:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pagila"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  shirube-dev-db:
