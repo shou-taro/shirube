@@ -34,8 +34,9 @@ of tables and little documentation.
 
 ## Development
 
-Prerequisites: [uv](https://docs.astral.sh/uv/) and Node.js. The backend lives in
-`api/` (FastAPI, package `shirube`) and the frontend in `web/` (Vite + React).
+Prerequisites: [uv](https://docs.astral.sh/uv/), Node.js, and [pnpm](https://pnpm.io/)
+(e.g. `corepack enable pnpm`). The backend lives in `api/` (FastAPI, package `shirube`)
+and the frontend in `web/` (Vite + React).
 
 Run in development — two processes, with the frontend proxying `/api` to the backend:
 
@@ -44,7 +45,7 @@ Run in development — two processes, with the frontend proxying `/api` to the b
 cd api && uv sync && uv run uvicorn shirube.adapters.api.app:app --reload --port 7472
 
 # terminal 2 — frontend dev server on http://localhost:5173
-cd web && npm install && npm run dev
+cd web && pnpm install && pnpm dev
 ```
 
 Run as a single origin — the backend serves the built SPA on one port:
@@ -58,7 +59,7 @@ Checks:
 
 ```bash
 cd api && uv run ruff check . && uv run mypy -p shirube && uv run pytest
-cd web && npm run lint && npm run build
+cd web && pnpm lint && pnpm build
 ```
 
 ## Licence
