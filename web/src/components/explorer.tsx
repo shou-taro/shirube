@@ -1,4 +1,4 @@
-import { Database, Loader2, RefreshCw, Search, Settings } from 'lucide-react'
+import { ArrowUp, Database, Loader2, RefreshCw, Search, Settings, Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -6,6 +6,7 @@ import { ErDiagram } from '@/components/er/er-diagram'
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { fetchHealth, fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
+import { cn } from '@/lib/utils'
 
 /** Outcome of the start-up backend health check, used to render the status indicator. */
 type HealthState =
@@ -67,26 +68,47 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <header className="flex items-center gap-2 border-b px-3 py-2 text-sm">
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-3">
         <span className="flex items-center gap-1.5 font-medium">
           <Logo className="size-5" />
           {t('app.name')}
         </span>
+        <span className="h-5 w-px bg-border" />
         {/* The connected profile; clicking it returns to the connection screen. */}
         <button
           type="button"
           onClick={onDisconnect}
           title={t('connection.disconnect')}
-          className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-muted-foreground hover:bg-accent"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-accent"
         >
-          <Database className="size-3.5" />
-          {profile.name}
+          <Database className="size-3.5 text-brand" />
+          <span className="text-sm font-medium">{profile.name}</span>
+          <span className="text-xs text-muted-foreground">{profile.database}</span>
         </button>
-        <span className="flex flex-1 items-center gap-1.5 rounded-md border px-2.5 py-1 text-muted-foreground">
-          <Search className="size-3.5" />
-          {t('search.placeholder')}
+
+        {/* Search — a placeholder for now; wired up with the search feature. */}
+        <span className="mx-auto flex h-8 w-full max-w-md items-center gap-2 rounded-lg border bg-muted/40 px-2.5 text-sm text-muted-foreground">
+          <Search className="size-3.5 shrink-0" />
+          <span className="truncate">{t('search.placeholder')}</span>
         </span>
-        <span className="ml-auto text-xs text-muted-foreground">{healthLabel}</span>
+
+        <span
+          title={healthLabel}
+          className="flex items-center"
+          role="img"
+          aria-label={healthLabel}
+        >
+          <span
+            className={cn(
+              'size-2 rounded-full',
+              health.status === 'ok'
+                ? 'bg-green-500'
+                : health.status === 'error'
+                  ? 'bg-red-500'
+                  : 'bg-amber-500',
+            )}
+          />
+        </span>
         <Button
           variant="ghost"
           size="icon"
@@ -94,7 +116,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           onClick={loadSchema}
           disabled={schema.status === 'loading'}
         >
-          <RefreshCw className="size-4" />
+          <RefreshCw className={cn('size-4', schema.status === 'loading' && 'animate-spin')} />
         </Button>
         <Button variant="ghost" size="icon" aria-label="Settings">
           <Settings className="size-4" />
@@ -102,10 +124,18 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="w-56 shrink-0 border-r p-3 text-sm text-muted-foreground">
-          {t('panes.detail')}
+        {/* Left pane: the selected table's detail. */}
+        <aside className="flex w-60 shrink-0 flex-col border-r">
+          <div className="flex h-9 items-center border-b px-3 text-xs font-medium text-muted-foreground">
+            {t('panes.detail')}
+          </div>
+          <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
+            {t('panes.detailEmpty')}
+          </div>
         </aside>
-        <main className="min-w-0 flex-1">
+
+        {/* Centre: the ER map. */}
+        <main className="min-w-0 flex-1 bg-muted/20">
           {schema.status === 'loading' ? (
             <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
@@ -126,11 +156,31 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             <ErDiagram graph={schema.graph} />
           )}
         </main>
-        <aside className="flex w-72 shrink-0 flex-col border-l p-3 text-sm">
-          <div className="text-muted-foreground">{t('panes.chat')}</div>
-          <div className="flex-1" />
-          <div className="rounded-md border px-2.5 py-2 text-muted-foreground">
-            {t('chat.inputPlaceholder')}
+
+        {/* Right pane: the AI navigator (Milestone 2). */}
+        <aside className="flex w-72 shrink-0 flex-col border-l">
+          <div className="flex h-9 items-center gap-1.5 border-b px-3 text-xs font-medium text-muted-foreground">
+            <Sparkles className="size-3.5 text-brand" />
+            {t('panes.chat')}
+          </div>
+          <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
+            {t('panes.chatIntro')}
+          </div>
+          <div className="border-t p-2.5">
+            <div className="flex items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5">
+              <span className="flex-1 truncate text-sm text-muted-foreground">
+                {t('chat.inputPlaceholder')}
+              </span>
+              <Button
+                variant="brand"
+                size="icon"
+                className="size-7"
+                disabled
+                aria-label={t('chat.send')}
+              >
+                <ArrowUp className="size-4" />
+              </Button>
+            </div>
           </div>
         </aside>
       </div>
