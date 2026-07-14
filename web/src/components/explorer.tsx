@@ -74,43 +74,60 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           <span className="truncate">{t('search.placeholder')}</span>
         </span>
 
-        {/* Connection cluster: the connection and a reload for its schema. */}
-        <button
-          type="button"
-          onClick={onDisconnect}
-          title={t('connection.disconnect')}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-accent"
-        >
-          <Database className="size-3.5 text-brand" />
-          <span className="text-sm font-medium">{profile.name}</span>
-          <span className="text-xs text-muted-foreground">{profile.database}</span>
-        </button>
+        {/* Connection: a pill grouping the active connection with a refresh for its
+            schema, so the two read as one unit rather than loose icons. */}
+        <div className="flex items-center rounded-md border bg-background/60">
+          <button
+            type="button"
+            onClick={onDisconnect}
+            title={t('connection.disconnect')}
+            className="flex items-center gap-1.5 rounded-l-md py-1 pl-2.5 pr-2 hover:bg-brand/15"
+          >
+            <Database className="size-3.5 text-brand" />
+            <span className="text-sm font-medium">{profile.name}</span>
+            <span className="text-xs text-muted-foreground">{profile.database}</span>
+          </button>
+          <span className="h-5 w-px bg-border" />
+          <button
+            type="button"
+            onClick={loadSchema}
+            disabled={schema.status === 'loading'}
+            aria-label={t('schema.reload')}
+            title={t('schema.reload')}
+            className="flex items-center rounded-r-md px-2 py-1.5 hover:bg-brand/15 disabled:opacity-50"
+          >
+            <RefreshCw className={cn('size-3.5', schema.status === 'loading' && 'animate-spin')} />
+          </button>
+        </div>
+
         <Button
           variant="ghost"
           size="icon"
-          aria-label={t('schema.reload')}
-          title={t('schema.reload')}
-          onClick={loadSchema}
-          disabled={schema.status === 'loading'}
+          className="hover:bg-brand/15 hover:text-brand"
+          aria-label="Settings"
+          title="Settings"
         >
-          <RefreshCw className={cn('size-4', schema.status === 'loading' && 'animate-spin')} />
-        </Button>
-        <span className="h-5 w-px bg-border" />
-        <Button variant="ghost" size="icon" aria-label="Settings" title="Settings">
           <Settings className="size-4" />
         </Button>
-        {/* Navigator toggle, pinned to the right edge above the panel it controls. */}
+        {/* Navigator toggle: the Sparkles marks the AI pane, the trailing panel icon
+            shows it collapses (open) or expands (closed). Brand-tinted when open, so it
+            stays distinct from the neutral connection pill. */}
         <Button
           variant="ghost"
-          size="icon"
-          aria-label={navigatorOpen ? t('panes.collapse') : t('panes.expand')}
-          title={t('panes.chat')}
+          size="sm"
+          className={cn(
+            'gap-1 hover:bg-brand/15 hover:text-brand',
+            navigatorOpen && 'bg-brand/15 text-brand hover:bg-brand/20',
+          )}
+          aria-pressed={navigatorOpen}
+          title={navigatorOpen ? t('panes.collapse') : t('panes.expand')}
           onClick={() => setNavigatorOpen((open) => !open)}
         >
+          <Sparkles className="size-4 text-brand" />
           {navigatorOpen ? (
-            <PanelRightClose className="size-4" />
+            <PanelRightClose className="size-4 text-muted-foreground" />
           ) : (
-            <PanelRightOpen className="size-4" />
+            <PanelRightOpen className="size-4 text-muted-foreground" />
           )}
         </Button>
       </header>
@@ -142,11 +159,11 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               give a selected table's detail room to breathe. */}
           <div
             className={cn(
-              'absolute left-3 top-3 z-10 flex w-64 flex-col overflow-hidden rounded-xl border bg-card shadow-md',
+              'absolute left-3 top-3 z-10 flex w-64 flex-col overflow-hidden rounded-xl border border-brand/20 bg-card shadow-md',
               detailExpanded && 'bottom-3',
             )}
           >
-            <div className="flex h-9 shrink-0 items-center border-b bg-[#eceaf4] pl-3 pr-1.5 text-xs font-medium text-muted-foreground">
+            <div className="flex h-9 shrink-0 items-center border-b border-brand/20 bg-brand/15 pl-3 pr-1.5 text-xs font-medium text-brand-foreground">
               <span className="flex-1">{t('panes.detail')}</span>
               <Button
                 variant="ghost"
@@ -181,15 +198,12 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             navigatorOpen ? 'w-72' : 'w-0',
           )}
         >
-          <aside className="flex h-full w-72 flex-col border-l bg-card">
-            <div className="flex h-9 shrink-0 items-center gap-1.5 border-b bg-[#eceaf4] px-3 text-xs font-medium text-muted-foreground">
-              <Sparkles className="size-3.5 text-brand" />
-              <span>{t('panes.chat')}</span>
-            </div>
-            <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
+          <aside className="flex h-full w-72 flex-col border-l border-brand/20 bg-brand/10">
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-xs text-muted-foreground">
+              <Sparkles className="size-5 text-brand" />
               {t('panes.chatIntro')}
             </div>
-            <div className="border-t p-2.5">
+            <div className="p-2.5">
               <div className="flex items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5">
                 <span className="flex-1 truncate text-sm text-muted-foreground">
                   {t('chat.inputPlaceholder')}
