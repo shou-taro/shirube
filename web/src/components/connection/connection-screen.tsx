@@ -44,7 +44,7 @@ export function ConnectionScreen({ onConnected }: ConnectionScreenProps) {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
-      <div className="grid w-full max-w-3xl overflow-hidden rounded-2xl border bg-card shadow-sm md:grid-cols-[16rem_1fr]">
+      <div className="grid w-full max-w-2xl overflow-hidden rounded-2xl border bg-card shadow-sm md:grid-cols-[16rem_1fr]">
         {/* Branded hero: the product's face on first run. Hidden on narrow screens,
             where the content column takes the full width. */}
         <aside className="brand-hero relative hidden flex-col justify-between overflow-hidden p-8 text-brand-foreground md:flex">

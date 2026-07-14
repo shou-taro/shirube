@@ -37,6 +37,7 @@ const en = {
     duplicate: 'Duplicate',
     delete: 'Delete',
     cancel: 'Cancel',
+    rowActions: 'More actions',
   },
   search: {
     placeholder: 'Search tables and columns…',
