@@ -5,20 +5,32 @@ import { useMemo } from 'react'
 import type { SchemaGraph } from '@/lib/api'
 
 import { layoutGraph } from './layout'
+import { pickCentre, selectNeighbourhood } from './neighbourhood'
 import { TableNode } from './table-node'
 
 // Registered once at module scope: React Flow warns if this object identity changes
 // between renders.
 const nodeTypes = { table: TableNode }
 
+// A stable empty set for the not-yet-expanded case, so the layout memo is not
+// invalidated by a fresh set on every render.
+const NO_EXPANSIONS: ReadonlySet<string> = new Set()
+
 /**
  * The ER map: schema objects as cards, foreign keys as edges, laid out automatically.
  *
- * The whole schema is drawn for now; centring on a starting table and expanding its
- * neighbourhood comes with later work.
+ * Rather than drawing the whole schema, the map centres on the most-connected table and
+ * shows only its immediate neighbourhood; expanding nodes and moving the centre come
+ * with later work.
  */
 export function ErDiagram({ graph }: { graph: SchemaGraph }) {
-  const { nodes, edges } = useMemo(() => layoutGraph(graph), [graph])
+  const centreId = useMemo(() => pickCentre(graph), [graph])
+  const { nodes, edges } = useMemo(() => {
+    if (centreId === null) {
+      return { nodes: [], edges: [] }
+    }
+    return layoutGraph(selectNeighbourhood(graph, centreId, NO_EXPANSIONS))
+  }, [graph, centreId])
   return (
     <ReactFlow
       nodes={nodes}
