@@ -47,6 +47,8 @@ const en = {
     error: 'Could not read the schema.',
     retry: 'Try again',
     reload: 'Reload schema',
+    showAll: 'Show all tables',
+    focus: 'Focus on neighbourhood',
     empty: 'No tables or views found in this database.',
     objectKind: {
       table: 'Table',
