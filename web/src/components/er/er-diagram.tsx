@@ -47,17 +47,37 @@ function FitOnChange({ signature }: { signature: string }) {
  * shows its immediate neighbourhood. Each node with off-map neighbours can be expanded
  * to reveal them, panning the map outward one hop at a time.
  */
-export function ErDiagram({ graph }: { graph: SchemaGraph }) {
+interface ErDiagramProps {
+  graph: SchemaGraph
+  /** A table chosen via search to centre on; falls back to the backbone when unset. */
+  centreOverride?: string | null
+}
+
+export function ErDiagram({ graph, centreOverride = null }: ErDiagramProps) {
   const { t } = useTranslation()
-  const centreId = useMemo(() => pickCentre(graph), [graph])
   const adjacency = useMemo(() => buildAdjacency(graph), [graph])
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set())
   const [showAll, setShowAll] = useState(false)
+
+  // The override wins when it names a real object; otherwise centre on the backbone.
+  const centreId = useMemo(() => {
+    if (centreOverride !== null && graph.objects.some((object) => object.id === centreOverride)) {
+      return centreOverride
+    }
+    return pickCentre(graph)
+  }, [graph, centreOverride])
 
   // A change of schema or centre starts the neighbourhood afresh.
   useEffect(() => {
     setExpandedIds(new Set())
   }, [centreId])
+
+  // Searching for a table implies focusing on it, so leave the show-everything view.
+  useEffect(() => {
+    if (centreOverride !== null) {
+      setShowAll(false)
+    }
+  }, [centreOverride])
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedIds((previous) => {
