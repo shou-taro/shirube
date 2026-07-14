@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next'
 
 import { ErDiagram } from '@/components/er/er-diagram'
 import { Logo } from '@/components/logo'
+import { SchemaSearch } from '@/components/schema-search'
 import { Button } from '@/components/ui/button'
 import { fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -43,9 +44,12 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
   const [detailExpanded, setDetailExpanded] = useState(false)
   const [navigatorOpen, setNavigatorOpen] = useState(true)
+  // A table chosen via search to centre the ER map on; null lets the map pick the backbone.
+  const [centreOverride, setCentreOverride] = useState<string | null>(null)
 
   const loadSchema = useCallback(() => {
     setSchema({ status: 'loading' })
+    setCentreOverride(null)
     fetchSchema(profile.id)
       .then((graph) => setSchema({ status: 'ready', graph }))
       .catch((error: unknown) =>
@@ -68,11 +72,16 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           {t('app.name')}
         </span>
 
-        {/* Search — a placeholder for now; wired up with the search feature. */}
-        <span className="mx-auto flex h-8 w-full max-w-md items-center gap-2 rounded-lg border bg-background/85 px-2.5 text-sm text-muted-foreground">
-          <Search className="size-3.5 shrink-0" />
-          <span className="truncate">{t('search.placeholder')}</span>
-        </span>
+        {/* Search recentres the map; it needs the schema, so before it loads a plain
+            disabled placeholder holds the slot. */}
+        {schema.status === 'ready' ? (
+          <SchemaSearch objects={schema.graph.objects} onSelect={setCentreOverride} />
+        ) : (
+          <span className="mx-auto flex h-8 w-full max-w-md items-center gap-2 rounded-lg border bg-background/85 px-2.5 text-sm text-muted-foreground">
+            <Search className="size-3.5 shrink-0" />
+            <span className="truncate">{t('search.placeholder')}</span>
+          </span>
+        )}
 
         {/* Connection: a pill grouping the active connection with a refresh for its
             schema, so the two read as one unit rather than loose icons. */}
@@ -152,7 +161,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               {t('schema.empty')}
             </div>
           ) : (
-            <ErDiagram graph={schema.graph} />
+            <ErDiagram graph={schema.graph} centreOverride={centreOverride} />
           )}
 
           {/* Floating table-detail card: compact by default, expandable downwards to

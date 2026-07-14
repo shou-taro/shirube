@@ -41,6 +41,8 @@ const en = {
   },
   search: {
     placeholder: 'Search tables and columns…',
+    noResults: 'No matching tables',
+    inColumn: 'column: {{column}}',
   },
   schema: {
     loading: 'Reading the schema…',
