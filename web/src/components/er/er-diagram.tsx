@@ -77,19 +77,31 @@ export function ErDiagram({ graph, centreOverride = null, resizeKey }: ErDiagram
   const { t } = useTranslation()
   const [centreId, setCentreId] = useState<string | null>(() => pickCentre(graph))
   const [showAll, setShowAll] = useState(false)
+  const [travelling, setTravelling] = useState(false)
 
-  // A fresh schema resets the centre to its backbone.
+  // Travel to a new centre with a brief cross-fade: fade the map out, swap the whole
+  // layout while it is faded (so the jump is hidden), then fade back in as the view
+  // refits — reading as a smooth transition rather than a snap.
+  const travelTo = useCallback((id: string) => {
+    setTravelling(true)
+    window.setTimeout(() => {
+      setCentreId(id)
+      setShowAll(false)
+      requestAnimationFrame(() => setTravelling(false))
+    }, 180)
+  }, [])
+
+  // A fresh schema resets the centre to its backbone (no transition on first load).
   useEffect(() => {
     setCentreId(pickCentre(graph))
   }, [graph])
 
-  // A search selection travels the centre there (and leaves the show-everything view).
+  // A search selection travels the centre there.
   useEffect(() => {
     if (centreOverride !== null && graph.objects.some((object) => object.id === centreOverride)) {
-      setCentreId(centreOverride)
-      setShowAll(false)
+      travelTo(centreOverride)
     }
-  }, [centreOverride, graph])
+  }, [centreOverride, graph, travelTo])
 
   const { nodes, edges } = useMemo(() => {
     // "Show everything" draws the whole schema plainly — no centre, nothing hidden.
@@ -120,9 +132,12 @@ export function ErDiagram({ graph, centreOverride = null, resizeKey }: ErDiagram
   }, [showAll, graph, centreId])
 
   // Clicking a neighbour travels the centre to it; clicking the centre does nothing.
-  const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
-    setCentreId(node.id)
-  }, [])
+  const handleNodeClick = useCallback<NodeMouseHandler>(
+    (_, node) => {
+      travelTo(node.id)
+    },
+    [travelTo],
+  )
 
   return (
     <ReactFlow
@@ -132,6 +147,7 @@ export function ErDiagram({ graph, centreOverride = null, resizeKey }: ErDiagram
       edgeTypes={edgeTypes}
       onNodeClick={handleNodeClick}
       nodesDraggable={false}
+      className={travelling ? 'er-canvas--travelling' : undefined}
       fitView
       fitViewOptions={{ padding: 0.25 }}
       minZoom={0.1}

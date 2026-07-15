@@ -97,3 +97,13 @@
 .brand-hero {
   background-color: #fcd4ea;
 }
+
+/* Travelling to a new centre swaps the whole neighbourhood layout at once. Cross-fade
+   the nodes and edges (the viewport layer) so the change reads as a smooth transition
+   rather than a jump; the controls and minimap stay put. */
+.react-flow__viewport {
+  transition: opacity 180ms ease;
+}
+.er-canvas--travelling .react-flow__viewport {
+  opacity: 0.12;
+}
