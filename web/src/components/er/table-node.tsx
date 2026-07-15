@@ -1,5 +1,5 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react'
-import { Eye, KeyRound, Layers, Table2 } from 'lucide-react'
+import { ChevronUp, Eye, KeyRound, Layers, Table2 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -22,7 +22,10 @@ const KIND_ICON: Record<ObjectKind, ComponentType<{ className?: string }>> = {
  * tables that reference it. A short line and a table-icon count.
  */
 function HiddenStub({ side, count, label }: { side: 'top' | 'bottom'; count: number; label: string }) {
-  const line = <span className="h-4 w-px bg-brand/50" />
+  const line = <span className="h-3.5 w-px bg-brand/50" />
+  // The arrowhead points at the referenced table, matching the edge markers: for a top
+  // stub that is the off-map table above; for a bottom stub it is this node, above.
+  const arrow = <ChevronUp className="size-3 text-brand" />
   const chip = (
     <span className="flex items-center gap-0.5 rounded-full border border-brand/40 bg-card px-1.5 py-0.5 text-[10px] font-medium text-brand shadow-sm">
       <Table2 className="size-2.5 shrink-0" />
@@ -39,11 +42,13 @@ function HiddenStub({ side, count, label }: { side: 'top' | 'bottom'; count: num
     >
       {side === 'top' ? (
         <>
+          {arrow}
           {chip}
           {line}
         </>
       ) : (
         <>
+          {arrow}
           {line}
           {chip}
         </>
