@@ -17,24 +17,37 @@ const KIND_ICON: Record<ObjectKind, ComponentType<{ className?: string }>> = {
 }
 
 /**
- * A stub marking related tables that are off the map on one side: a short line and a
- * table-icon count. The count sits on the side those tables belong to (left = tables
- * that reference this one, right = tables it references), so the side is meaningful.
+ * A stub marking related tables off the map, drawn vertically so it stays clear of the
+ * horizontal foreign-key edges: above the node for tables it references, below for
+ * tables that reference it. A short line and a table-icon count.
  */
-function HiddenStub({ side, count, label }: { side: 'left' | 'right'; count: number; label: string }) {
+function HiddenStub({ side, count, label }: { side: 'top' | 'bottom'; count: number; label: string }) {
+  const line = <span className="h-4 w-px bg-brand/50" />
+  const chip = (
+    <span className="flex items-center gap-0.5 rounded-full border border-brand/40 bg-card px-1.5 py-0.5 text-[10px] font-medium text-brand shadow-sm">
+      <Table2 className="size-2.5 shrink-0" />
+      {count}
+    </span>
+  )
   return (
     <div
       className={cn(
-        'pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center',
-        side === 'left' ? 'right-full flex-row-reverse' : 'left-full',
+        'pointer-events-none absolute left-1/2 flex -translate-x-1/2 flex-col items-center',
+        side === 'top' ? 'bottom-full' : 'top-full',
       )}
       title={label}
     >
-      <span className="h-px w-4 bg-brand/50" />
-      <span className="flex items-center gap-0.5 rounded-full border border-brand/40 bg-card px-1.5 py-0.5 text-[10px] font-medium text-brand shadow-sm">
-        <Table2 className="size-2.5 shrink-0" />
-        {count}
-      </span>
+      {side === 'top' ? (
+        <>
+          {chip}
+          {line}
+        </>
+      ) : (
+        <>
+          {line}
+          {chip}
+        </>
+      )}
     </div>
   )
 }
@@ -49,17 +62,24 @@ function HiddenStub({ side, count, label }: { side: 'left' | 'right'; count: num
  */
 export function TableNode({ data }: NodeProps<TableFlowNode>) {
   const { t } = useTranslation()
-  const { object, isCentre, hiddenCount = 0, stubSide = 'right' } = data
+  const { object, isCentre, hiddenReferenced = 0, hiddenReferencing = 0 } = data
   const Icon = KIND_ICON[object.kind]
   return (
     <div className="relative">
-      {/* A stub for related tables off the map, on the outer side (away from the centre)
-          so it points to the edge — never back into the visible diagram. */}
-      {hiddenCount > 0 && (
+      {/* Vertical stubs for off-map related tables: above for tables this references,
+          below for tables that reference it. Kept clear of the horizontal edges. */}
+      {hiddenReferenced > 0 && (
         <HiddenStub
-          side={stubSide}
-          count={hiddenCount}
-          label={t('schema.hiddenTables', { count: hiddenCount })}
+          side="top"
+          count={hiddenReferenced}
+          label={t('schema.hiddenReferenced', { count: hiddenReferenced })}
+        />
+      )}
+      {hiddenReferencing > 0 && (
+        <HiddenStub
+          side="bottom"
+          count={hiddenReferencing}
+          label={t('schema.hiddenReferencing', { count: hiddenReferencing })}
         />
       )}
       <div

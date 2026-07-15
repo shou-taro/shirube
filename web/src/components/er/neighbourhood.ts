@@ -71,23 +71,33 @@ function isPreferredTieBreak(candidate: SchemaObject, current: SchemaObject): bo
  * @returns A `SchemaGraph` containing only the centre, its neighbours and their edges.
  */
 /**
- * Count an object's neighbours that are off the map. In a one-hop neighbourhood every
- * such neighbour is one step further out than this node, so the caller draws the stub on
- * the node's outer side (away from the centre) — it always points to the edge, never
- * back into the visible diagram.
+ * Count an object's off-map neighbours split by foreign-key direction: tables it
+ * references (its FKs point out to these) and tables that reference it. The horizontal
+ * axis already lays visible edges out left-to-right by this same direction, so these
+ * hidden counts are drawn on the *vertical* axis instead — a stub above and below the
+ * node — which never collides with the visible edges or points at a neighbour.
+ *
+ * @returns Distinct hidden counts: `referenced` (drawn above), `referencing` (below).
  */
-export function hiddenNeighbourCount(
-  adjacency: Adjacency,
+export function hiddenByReference(
+  graph: SchemaGraph,
   id: string,
   visibleIds: ReadonlySet<string>,
-): number {
-  let hidden = 0
-  for (const neighbour of adjacency.get(id) ?? []) {
-    if (!visibleIds.has(neighbour)) {
-      hidden += 1
+): { referenced: number; referencing: number } {
+  const referenced = new Set<string>() // tables `id` references (id -> target), hidden
+  const referencing = new Set<string>() // tables that reference `id` (source -> id), hidden
+  for (const relationship of graph.relationships) {
+    if (relationship.source === relationship.target) {
+      continue
+    }
+    if (relationship.source === id && !visibleIds.has(relationship.target)) {
+      referenced.add(relationship.target)
+    }
+    if (relationship.target === id && !visibleIds.has(relationship.source)) {
+      referencing.add(relationship.source)
     }
   }
-  return hidden
+  return { referenced: referenced.size, referencing: referencing.size }
 }
 
 export function selectNeighbourhood(graph: SchemaGraph, centreId: string): SchemaGraph {
