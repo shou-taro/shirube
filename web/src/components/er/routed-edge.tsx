@@ -6,31 +6,42 @@ interface Point {
   y: number
 }
 
+const CORNER_RADIUS = 16
+
 /**
- * Build a smooth SVG path through the waypoints using a Catmull-Rom spline converted to
- * cubic béziers. The curve passes through every point but rounds the bends, so the
- * dagre-routed edge reads as a flowing line rather than a chain of hard corners.
+ * Build an SVG path through the waypoints, keeping the straight segments straight and
+ * only rounding the bends. Each interior point becomes a short quadratic arc, so the
+ * dagre-routed edge reads smoothly without the wobble a spline through every point would
+ * add.
  */
-function smoothPath(points: Point[]): string {
+function roundedPath(points: Point[]): string {
   if (points.length < 2) {
     return ''
   }
-  if (points.length === 2) {
-    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
-  }
   let path = `M ${points[0].x} ${points[0].y}`
-  for (let i = 0; i < points.length - 1; i += 1) {
-    const p0 = points[i - 1] ?? points[i]
-    const p1 = points[i]
-    const p2 = points[i + 1]
-    const p3 = points[i + 2] ?? p2
-    const c1x = p1.x + (p2.x - p0.x) / 6
-    const c1y = p1.y + (p2.y - p0.y) / 6
-    const c2x = p2.x - (p3.x - p1.x) / 6
-    const c2y = p2.y - (p3.y - p1.y) / 6
-    path += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2.x} ${p2.y}`
+  for (let i = 1; i < points.length - 1; i += 1) {
+    const prev = points[i - 1]
+    const curr = points[i]
+    const next = points[i + 1]
+    const entry = shortenTowards(curr, prev, CORNER_RADIUS)
+    const exit = shortenTowards(curr, next, CORNER_RADIUS)
+    path += ` L ${entry.x} ${entry.y} Q ${curr.x} ${curr.y} ${exit.x} ${exit.y}`
   }
+  const last = points[points.length - 1]
+  path += ` L ${last.x} ${last.y}`
   return path
+}
+
+/** A point `distance` away from `from`, moving towards `to` (clamped to half the segment). */
+function shortenTowards(from: Point, to: Point, distance: number): Point {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  const length = Math.hypot(dx, dy)
+  if (length === 0) {
+    return from
+  }
+  const ratio = Math.min(distance, length / 2) / length
+  return { x: from.x + dx * ratio, y: from.y + dy * ratio }
 }
 
 /**
@@ -54,5 +65,5 @@ export function RoutedEdge({
     ...interior,
     { x: targetX, y: targetY },
   ]
-  return <BaseEdge path={smoothPath(points)} markerEnd={markerEnd} style={style} />
+  return <BaseEdge path={roundedPath(points)} markerEnd={markerEnd} style={style} />
 }
