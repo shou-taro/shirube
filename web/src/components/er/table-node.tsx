@@ -1,6 +1,7 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react'
 import { Eye, KeyRound, Layers, Table2 } from 'lucide-react'
 import type { ComponentType } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/utils'
 import type { ObjectKind } from '@/lib/api'
@@ -24,23 +25,27 @@ const KIND_ICON: Record<ObjectKind, ComponentType<{ className?: string }>> = {
  * clicking one recentres the map on it — so they lift on hover to read as interactive.
  */
 export function TableNode({ data }: NodeProps<TableFlowNode>) {
+  const { t } = useTranslation()
   const { object, isCentre, hiddenCount = 0, stubSide = 'right' } = data
   const Icon = KIND_ICON[object.kind]
   return (
     <div className="relative">
-      {/* Stub for neighbours that are off the map: a short line and a count, on the side
-          away from the centre, so hidden links are not mistaken for "no connection". */}
+      {/* Stub for neighbours that are off the map: a short line and a count of the
+          related tables not shown, on the side away from the centre, so hidden links are
+          not mistaken for "no connection". A table icon marks the number as a table
+          count rather than a direction. */}
       {hiddenCount > 0 && (
         <div
           className={cn(
             'pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center',
             stubSide === 'left' ? 'right-full flex-row-reverse' : 'left-full',
           )}
-          title={`${hiddenCount} more related`}
+          title={t('schema.hiddenTables', { count: hiddenCount })}
         >
           <span className="h-px w-4 bg-brand/50" />
-          <span className="rounded-full border border-brand/40 bg-card px-1.5 py-0.5 text-[10px] font-medium text-brand shadow-sm">
-            +{hiddenCount}
+          <span className="flex items-center gap-0.5 rounded-full border border-brand/40 bg-card px-1.5 py-0.5 text-[10px] font-medium text-brand shadow-sm">
+            <Table2 className="size-2.5 shrink-0" />
+            {hiddenCount}
           </span>
         </div>
       )}
