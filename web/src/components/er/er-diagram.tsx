@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import type { SchemaGraph } from '@/lib/api'
 
 import { layoutGraph, type TableFlowNode } from './layout'
-import { hiddenByDirection, pickCentre, selectNeighbourhood } from './neighbourhood'
+import { buildAdjacency, hiddenNeighbourCount, pickCentre, selectNeighbourhood } from './neighbourhood'
 import { TableNode } from './table-node'
 
 // Registered once at module scope: React Flow warns if this object identity changes
@@ -99,13 +99,20 @@ export function ErDiagram({ graph, centreOverride = null, resizeKey }: ErDiagram
     }
     const subgraph = selectNeighbourhood(graph, centreId)
     const visibleIds = new Set(subgraph.objects.map((object) => object.id))
+    const adjacency = buildAdjacency(graph)
     const laid = layoutGraph(subgraph)
+    const centreX = laid.nodes.find((node) => node.id === centreId)?.position.x ?? 0
     const nodes = laid.nodes.map((node) => {
-      // Split the off-map neighbours by side, so a stub points to where they'd be.
-      const { left, right } = hiddenByDirection(graph, node.id, visibleIds)
+      // A neighbour's off-map tables are one hop further out, so the stub sits on the
+      // node's outer side (away from the centre) and points to the edge.
       return {
         ...node,
-        data: { ...node.data, isCentre: node.id === centreId, hiddenLeft: left, hiddenRight: right },
+        data: {
+          ...node.data,
+          isCentre: node.id === centreId,
+          hiddenCount: hiddenNeighbourCount(adjacency, node.id, visibleIds),
+          stubSide: node.position.x < centreX ? ('left' as const) : ('right' as const),
+        },
       }
     })
     return { nodes, edges: laid.edges }
