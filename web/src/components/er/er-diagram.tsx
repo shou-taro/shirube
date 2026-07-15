@@ -3,6 +3,7 @@ import {
   Controls,
   type Edge,
   MiniMap,
+  type NodeMouseHandler,
   Panel,
   ReactFlow,
   useReactFlow,
@@ -15,12 +16,7 @@ import { useTranslation } from 'react-i18next'
 import type { SchemaGraph } from '@/lib/api'
 
 import { layoutGraph, type TableFlowNode } from './layout'
-import {
-  buildAdjacency,
-  hiddenNeighbourCount,
-  pickCentre,
-  selectNeighbourhood,
-} from './neighbourhood'
+import { pickCentre, selectNeighbourhood } from './neighbourhood'
 import { TableNode } from './table-node'
 
 // Registered once at module scope: React Flow warns if this object identity changes
@@ -28,10 +24,9 @@ import { TableNode } from './table-node'
 const nodeTypes = { table: TableNode }
 
 /**
- * Refit the view when the focus changes — a new centre from search, or toggling the
- * show-everything view. Expanding a node deliberately does *not* refit, so the user's
- * zoom and pan are preserved while they drill in. Lives inside <ReactFlow> to reach its
- * instance.
+ * Refit the view when the focus changes — travelling to a new centre or toggling the
+ * show-everything view — so the fresh set of nodes is framed. Lives inside <ReactFlow>
+ * to reach its instance.
  */
 function FitOnChange({ signature }: { signature: string }) {
   const { fitView } = useReactFlow()
@@ -41,86 +36,66 @@ function FitOnChange({ signature }: { signature: string }) {
   return null
 }
 
-/**
- * The ER map: schema objects as cards, foreign keys as edges, laid out automatically.
- *
- * Rather than drawing the whole schema, the map centres on the most-connected table and
- * shows its immediate neighbourhood. Each node with off-map neighbours can be expanded
- * to reveal them, panning the map outward one hop at a time.
- */
 interface ErDiagramProps {
   graph: SchemaGraph
   /** A table chosen via search to centre on; falls back to the backbone when unset. */
   centreOverride?: string | null
 }
 
+/**
+ * The ER map: schema objects as cards, foreign keys as edges, laid out automatically.
+ *
+ * Rather than drawing the whole schema, the map centres on one table and shows just its
+ * immediate neighbours — like a map zoomed to a place. Clicking a neighbour travels the
+ * centre to it, so the view is always "centre + neighbours" however large the schema is.
+ * A show-everything toggle covers small databases.
+ */
 export function ErDiagram({ graph, centreOverride = null }: ErDiagramProps) {
   const { t } = useTranslation()
-  const adjacency = useMemo(() => buildAdjacency(graph), [graph])
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set())
+  const [centreId, setCentreId] = useState<string | null>(() => pickCentre(graph))
   const [showAll, setShowAll] = useState(false)
 
-  // The override wins when it names a real object; otherwise centre on the backbone.
-  const centreId = useMemo(() => {
+  // A fresh schema resets the centre to its backbone.
+  useEffect(() => {
+    setCentreId(pickCentre(graph))
+  }, [graph])
+
+  // A search selection travels the centre there (and leaves the show-everything view).
+  useEffect(() => {
     if (centreOverride !== null && graph.objects.some((object) => object.id === centreOverride)) {
-      return centreOverride
-    }
-    return pickCentre(graph)
-  }, [graph, centreOverride])
-
-  // A change of schema or centre starts the neighbourhood afresh.
-  useEffect(() => {
-    setExpandedIds(new Set())
-  }, [centreId])
-
-  // Searching for a table implies focusing on it, so leave the show-everything view.
-  useEffect(() => {
-    if (centreOverride !== null) {
+      setCentreId(centreOverride)
       setShowAll(false)
     }
-  }, [centreOverride])
-
-  const toggleExpand = useCallback((id: string) => {
-    setExpandedIds((previous) => {
-      const next = new Set(previous)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }, [])
+  }, [centreOverride, graph])
 
   const { nodes, edges } = useMemo(() => {
-    // "Show everything" draws the whole schema plainly — no centre, no expand affordances.
+    // "Show everything" draws the whole schema plainly — no centre, nothing hidden.
     if (showAll) {
       return layoutGraph(graph)
     }
     if (centreId === null) {
       return { nodes: [] as TableFlowNode[], edges: [] as Edge[] }
     }
-    const subgraph = selectNeighbourhood(graph, centreId, expandedIds)
-    const visibleIds = new Set(subgraph.objects.map((object) => object.id))
-    const laid = layoutGraph(subgraph)
+    const laid = layoutGraph(selectNeighbourhood(graph, centreId))
     const nodes = laid.nodes.map((node) => ({
       ...node,
-      data: {
-        ...node.data,
-        isCentre: node.id === centreId,
-        expanded: expandedIds.has(node.id),
-        hiddenCount: hiddenNeighbourCount(adjacency, node.id, visibleIds),
-        onToggleExpand: toggleExpand,
-      },
+      data: { ...node.data, isCentre: node.id === centreId },
     }))
     return { nodes, edges: laid.edges }
-  }, [showAll, graph, centreId, expandedIds, adjacency, toggleExpand])
+  }, [showAll, graph, centreId])
+
+  // Clicking a neighbour travels the centre to it; clicking the centre does nothing.
+  const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
+    setCentreId(node.id)
+  }, [])
 
   return (
     <ReactFlow
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      onNodeClick={handleNodeClick}
+      nodesDraggable={false}
       fitView
       fitViewOptions={{ padding: 0.2 }}
       minZoom={0.1}

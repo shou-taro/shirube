@@ -1,5 +1,5 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react'
-import { Eye, KeyRound, Layers, Minus, Plus, Table2 } from 'lucide-react'
+import { Eye, KeyRound, Layers, Table2 } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -20,21 +20,19 @@ const KIND_ICON: Record<ObjectKind, ComponentType<{ className?: string }>> = {
  * list of columns. Primary-key columns are flagged, and the type sits to the right.
  * Left and right handles anchor the foreign-key edges.
  *
- * The centre of the neighbourhood is ringed for emphasis. A node with neighbours still
- * off the map carries a "+N" button to reveal them; an expanded node carries a collapse
- * button to hide them again.
+ * The centre of the neighbourhood is ringed for emphasis. Neighbours are clickable —
+ * clicking one recentres the map on it — so they lift on hover to read as interactive.
  */
 export function TableNode({ data }: NodeProps<TableFlowNode>) {
-  const { object, isCentre, expanded, hiddenCount = 0, onToggleExpand } = data
+  const { object, isCentre } = data
   const Icon = KIND_ICON[object.kind]
-  // The centre is always shown with its neighbours, so it needs no toggle; other nodes
-  // can expand (hidden neighbours remain) or collapse (already expanded).
-  const canToggle = onToggleExpand !== undefined && !isCentre && (hiddenCount > 0 || expanded)
   return (
     <div
       className={cn(
-        'w-60 overflow-hidden rounded-md border bg-card shadow-sm',
-        isCentre && 'ring-2 ring-brand ring-offset-1',
+        'w-60 overflow-hidden rounded-md border bg-card shadow-sm transition-shadow',
+        isCentre
+          ? 'ring-2 ring-brand ring-offset-1'
+          : 'cursor-pointer hover:border-brand/50 hover:shadow-md',
       )}
     >
       <Handle type="target" position={Position.Left} className="!size-2 !bg-brand" />
@@ -43,24 +41,6 @@ export function TableNode({ data }: NodeProps<TableFlowNode>) {
         <span className="truncate text-sm font-medium" title={object.name}>
           {object.name}
         </span>
-        {canToggle && (
-          <button
-            type="button"
-            onClick={() => onToggleExpand(object.id)}
-            className="nodrag ml-auto flex shrink-0 items-center gap-0.5 rounded-full bg-brand px-1.5 py-0.5 text-[11px] font-medium text-white hover:bg-brand/85"
-            title={expanded ? 'Collapse' : `Expand ${hiddenCount} more`}
-            aria-label={expanded ? 'Collapse' : `Expand ${hiddenCount} more`}
-          >
-            {expanded ? (
-              <Minus className="size-3" />
-            ) : (
-              <>
-                <Plus className="size-3" />
-                {hiddenCount}
-              </>
-            )}
-          </button>
-        )}
       </div>
       <ul className="py-1">
         {object.columns.map((column) => (
