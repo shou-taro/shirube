@@ -17,11 +17,13 @@ import type { SchemaGraph } from '@/lib/api'
 
 import { layoutGraph, type TableFlowNode } from './layout'
 import { hiddenByReference, pickCentre, selectNeighbourhood } from './neighbourhood'
+import { RoutedEdge } from './routed-edge'
 import { TableNode } from './table-node'
 
-// Registered once at module scope: React Flow warns if this object identity changes
+// Registered once at module scope: React Flow warns if these object identities change
 // between renders.
 const nodeTypes = { table: TableNode }
+const edgeTypes = { routed: RoutedEdge }
 
 /**
  * Refit the view when the focus changes — travelling to a new centre or toggling the
@@ -127,6 +129,7 @@ export function ErDiagram({ graph, centreOverride = null, resizeKey }: ErDiagram
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
       onNodeClick={handleNodeClick}
       nodesDraggable={false}
       fitView
