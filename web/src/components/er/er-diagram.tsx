@@ -10,7 +10,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { Maximize2, Minimize2 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { SchemaGraph } from '@/lib/api'
@@ -31,8 +31,27 @@ const nodeTypes = { table: TableNode }
 function FitOnChange({ signature }: { signature: string }) {
   const { fitView } = useReactFlow()
   useEffect(() => {
-    void fitView({ padding: 0.2, duration: 400 })
+    void fitView({ padding: 0.25, duration: 400 })
   }, [signature, fitView])
+  return null
+}
+
+/**
+ * Refit after the map is resized by a side pane sliding open or shut. The refit is
+ * delayed past the pane's width animation so it frames the final width, and the first
+ * render is skipped (initial framing is handled elsewhere).
+ */
+function RefitAfterResize({ trigger }: { trigger: unknown }) {
+  const { fitView } = useReactFlow()
+  const isFirst = useRef(true)
+  useEffect(() => {
+    if (isFirst.current) {
+      isFirst.current = false
+      return
+    }
+    const timer = setTimeout(() => void fitView({ padding: 0.25, duration: 400 }), 260)
+    return () => clearTimeout(timer)
+  }, [trigger, fitView])
   return null
 }
 
@@ -40,6 +59,8 @@ interface ErDiagramProps {
   graph: SchemaGraph
   /** A table chosen via search to centre on; falls back to the backbone when unset. */
   centreOverride?: string | null
+  /** Changes when a side pane toggles, so the map can refit to the new width. */
+  resizeKey?: unknown
 }
 
 /**
@@ -50,7 +71,7 @@ interface ErDiagramProps {
  * centre to it, so the view is always "centre + neighbours" however large the schema is.
  * A show-everything toggle covers small databases.
  */
-export function ErDiagram({ graph, centreOverride = null }: ErDiagramProps) {
+export function ErDiagram({ graph, centreOverride = null, resizeKey }: ErDiagramProps) {
   const { t } = useTranslation()
   const [centreId, setCentreId] = useState<string | null>(() => pickCentre(graph))
   const [showAll, setShowAll] = useState(false)
@@ -115,11 +136,12 @@ export function ErDiagram({ graph, centreOverride = null }: ErDiagramProps) {
       onNodeClick={handleNodeClick}
       nodesDraggable={false}
       fitView
-      fitViewOptions={{ padding: 0.2 }}
+      fitViewOptions={{ padding: 0.25 }}
       minZoom={0.1}
       proOptions={{ hideAttribution: true }}
     >
       <FitOnChange signature={showAll ? 'all' : centreId ?? ''} />
+      <RefitAfterResize trigger={resizeKey} />
       {/* Show-everything escape hatch for small schemas, kept clear of the detail card
           (top-left) and the controls/minimap (right). */}
       <Panel position="bottom-left">

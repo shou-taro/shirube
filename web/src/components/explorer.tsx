@@ -161,7 +161,11 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               {t('schema.empty')}
             </div>
           ) : (
-            <ErDiagram graph={schema.graph} centreOverride={centreOverride} />
+            <ErDiagram
+              graph={schema.graph}
+              centreOverride={centreOverride}
+              resizeKey={navigatorOpen}
+            />
           )}
 
           {/* Floating table-detail card: compact by default, expandable downwards to
