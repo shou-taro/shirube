@@ -15,10 +15,10 @@ export interface TableNodeData {
   object: SchemaObject
   /** The focal object the neighbourhood is built around; drawn with emphasis. */
   isCentre?: boolean
-  /** How many related tables are off the map, shown as a stub on the outer side. */
-  hiddenCount?: number
-  /** Which side the stub sits on: the outer side, away from the centre. */
-  stubSide?: 'left' | 'right'
+  /** Off-map tables this one references — a stub above the node. */
+  hiddenReferenced?: number
+  /** Off-map tables that reference this one — a stub below the node. */
+  hiddenReferencing?: number
   [key: string]: unknown
 }
 

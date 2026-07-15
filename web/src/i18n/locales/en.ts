@@ -51,8 +51,10 @@ const en = {
     reload: 'Reload schema',
     showAll: 'Show all tables',
     focus: 'Focus on neighbourhood',
-    hiddenTables_one: '{{count}} related table not shown — click to go there',
-    hiddenTables_other: '{{count}} related tables not shown — click to explore',
+    hiddenReferenced_one: 'References {{count}} more table that is off the map',
+    hiddenReferenced_other: 'References {{count}} more tables that are off the map',
+    hiddenReferencing_one: '{{count}} more table references this, off the map',
+    hiddenReferencing_other: '{{count}} more tables reference this, off the map',
     empty: 'No tables or views found in this database.',
     objectKind: {
       table: 'Table',
