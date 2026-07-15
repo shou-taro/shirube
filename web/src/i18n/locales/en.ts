@@ -51,6 +51,8 @@ const en = {
     reload: 'Reload schema',
     showAll: 'Show all tables',
     focus: 'Focus on neighbourhood',
+    hiddenTables_one: '{{count}} related table not shown — click to go there',
+    hiddenTables_other: '{{count}} related tables not shown — click to explore',
     empty: 'No tables or views found in this database.',
     objectKind: {
       table: 'Table',
