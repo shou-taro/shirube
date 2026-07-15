@@ -43,7 +43,9 @@ function nodeHeight(object: SchemaObject): number {
  */
 export function layoutGraph(graph: SchemaGraph): { nodes: TableFlowNode[]; edges: Edge[] } {
   const dagre = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}))
-  dagre.setGraph({ rankdir: 'LR', nodesep: 40, ranksep: 90 })
+  // Wider gaps than a dense diagram would use, so the orthogonal edges have channels to
+  // run through rather than crossing under the cards.
+  dagre.setGraph({ rankdir: 'LR', nodesep: 60, ranksep: 140 })
 
   for (const object of graph.objects) {
     dagre.setNode(object.id, { width: NODE_WIDTH, height: nodeHeight(object) })
@@ -67,6 +69,9 @@ export function layoutGraph(graph: SchemaGraph): { nodes: TableFlowNode[]; edges
     id: `${relationship.source}:${relationship.constraint_name}`,
     source: relationship.source,
     target: relationship.target,
+    // Orthogonal routing reads more clearly than curves that dip under the cards.
+    type: 'smoothstep',
+    pathOptions: { borderRadius: 12 },
     markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#9a92b4' },
     style: { stroke: '#9a92b4', strokeWidth: 1.5 },
   }))
