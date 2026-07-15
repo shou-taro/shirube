@@ -70,6 +70,35 @@ function isPreferredTieBreak(candidate: SchemaObject, current: SchemaObject): bo
  * @param centreId - The focal object; if it is missing from the graph an empty graph is returned.
  * @returns A `SchemaGraph` containing only the centre, its neighbours and their edges.
  */
+/**
+ * Count an object's off-map neighbours split by which side they belong on, matching the
+ * left-to-right layout: tables the object **references** sit to its right, tables that
+ * **reference it** sit to its left. So a hidden count on the right genuinely means
+ * "there are more referenced tables that way", and likewise for the left.
+ *
+ * @returns Distinct hidden neighbour counts for each side.
+ */
+export function hiddenByDirection(
+  graph: SchemaGraph,
+  id: string,
+  visibleIds: ReadonlySet<string>,
+): { left: number; right: number } {
+  const right = new Set<string>() // tables `id` references (drawn right) that are hidden
+  const left = new Set<string>() // tables that reference `id` (drawn left) that are hidden
+  for (const relationship of graph.relationships) {
+    if (relationship.source === relationship.target) {
+      continue
+    }
+    if (relationship.source === id && !visibleIds.has(relationship.target)) {
+      right.add(relationship.target)
+    }
+    if (relationship.target === id && !visibleIds.has(relationship.source)) {
+      left.add(relationship.source)
+    }
+  }
+  return { left: left.size, right: right.size }
+}
+
 export function selectNeighbourhood(graph: SchemaGraph, centreId: string): SchemaGraph {
   const byId = new Map(graph.objects.map((object) => [object.id, object]))
   if (!byId.has(centreId)) {
