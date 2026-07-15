@@ -71,32 +71,23 @@ function isPreferredTieBreak(candidate: SchemaObject, current: SchemaObject): bo
  * @returns A `SchemaGraph` containing only the centre, its neighbours and their edges.
  */
 /**
- * Count an object's off-map neighbours split by which side they belong on, matching the
- * left-to-right layout: tables the object **references** sit to its right, tables that
- * **reference it** sit to its left. So a hidden count on the right genuinely means
- * "there are more referenced tables that way", and likewise for the left.
- *
- * @returns Distinct hidden neighbour counts for each side.
+ * Count an object's neighbours that are off the map. In a one-hop neighbourhood every
+ * such neighbour is one step further out than this node, so the caller draws the stub on
+ * the node's outer side (away from the centre) — it always points to the edge, never
+ * back into the visible diagram.
  */
-export function hiddenByDirection(
-  graph: SchemaGraph,
+export function hiddenNeighbourCount(
+  adjacency: Adjacency,
   id: string,
   visibleIds: ReadonlySet<string>,
-): { left: number; right: number } {
-  const right = new Set<string>() // tables `id` references (drawn right) that are hidden
-  const left = new Set<string>() // tables that reference `id` (drawn left) that are hidden
-  for (const relationship of graph.relationships) {
-    if (relationship.source === relationship.target) {
-      continue
-    }
-    if (relationship.source === id && !visibleIds.has(relationship.target)) {
-      right.add(relationship.target)
-    }
-    if (relationship.target === id && !visibleIds.has(relationship.source)) {
-      left.add(relationship.source)
+): number {
+  let hidden = 0
+  for (const neighbour of adjacency.get(id) ?? []) {
+    if (!visibleIds.has(neighbour)) {
+      hidden += 1
     }
   }
-  return { left: left.size, right: right.size }
+  return hidden
 }
 
 export function selectNeighbourhood(graph: SchemaGraph, centreId: string): SchemaGraph {

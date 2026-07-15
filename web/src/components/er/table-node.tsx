@@ -49,20 +49,17 @@ function HiddenStub({ side, count, label }: { side: 'left' | 'right'; count: num
  */
 export function TableNode({ data }: NodeProps<TableFlowNode>) {
   const { t } = useTranslation()
-  const { object, isCentre, hiddenLeft = 0, hiddenRight = 0 } = data
+  const { object, isCentre, hiddenCount = 0, stubSide = 'right' } = data
   const Icon = KIND_ICON[object.kind]
   return (
     <div className="relative">
-      {/* Stubs for related tables that are off the map, one per side so the side points
-          to where those tables belong (and are not mistaken for "no connection"). */}
-      {hiddenLeft > 0 && (
-        <HiddenStub side="left" count={hiddenLeft} label={t('schema.hiddenTables', { count: hiddenLeft })} />
-      )}
-      {hiddenRight > 0 && (
+      {/* A stub for related tables off the map, on the outer side (away from the centre)
+          so it points to the edge — never back into the visible diagram. */}
+      {hiddenCount > 0 && (
         <HiddenStub
-          side="right"
-          count={hiddenRight}
-          label={t('schema.hiddenTables', { count: hiddenRight })}
+          side={stubSide}
+          count={hiddenCount}
+          label={t('schema.hiddenTables', { count: hiddenCount })}
         />
       )}
       <div
