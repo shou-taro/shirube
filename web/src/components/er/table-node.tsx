@@ -47,7 +47,7 @@ export function TableNode({ data }: NodeProps<TableFlowNode>) {
           <button
             type="button"
             onClick={() => onToggleExpand(object.id)}
-            className="nodrag ml-auto flex shrink-0 items-center gap-0.5 rounded bg-brand/15 px-1 py-0.5 text-[11px] font-medium text-brand hover:bg-brand/25"
+            className="nodrag ml-auto flex shrink-0 items-center gap-0.5 rounded bg-brand-soft px-1 py-0.5 text-[11px] font-medium text-brand-foreground hover:bg-brand"
             title={expanded ? 'Collapse' : `Expand ${hiddenCount} more`}
             aria-label={expanded ? 'Collapse' : `Expand ${hiddenCount} more`}
           >
