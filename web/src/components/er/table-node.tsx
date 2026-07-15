@@ -24,18 +24,35 @@ const KIND_ICON: Record<ObjectKind, ComponentType<{ className?: string }>> = {
  * clicking one recentres the map on it — so they lift on hover to read as interactive.
  */
 export function TableNode({ data }: NodeProps<TableFlowNode>) {
-  const { object, isCentre } = data
+  const { object, isCentre, hiddenCount = 0, stubSide = 'right' } = data
   const Icon = KIND_ICON[object.kind]
   return (
-    <div
-      className={cn(
-        'w-60 overflow-hidden rounded-md border bg-card shadow-sm transition-shadow',
-        isCentre
-          ? 'ring-2 ring-brand ring-offset-1'
-          : 'cursor-pointer hover:border-brand/50 hover:shadow-md',
+    <div className="relative">
+      {/* Stub for neighbours that are off the map: a short line and a count, on the side
+          away from the centre, so hidden links are not mistaken for "no connection". */}
+      {hiddenCount > 0 && (
+        <div
+          className={cn(
+            'pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center',
+            stubSide === 'left' ? 'right-full flex-row-reverse' : 'left-full',
+          )}
+          title={`${hiddenCount} more related`}
+        >
+          <span className="h-px w-4 bg-brand/50" />
+          <span className="rounded-full border border-brand/40 bg-card px-1.5 py-0.5 text-[10px] font-medium text-brand shadow-sm">
+            +{hiddenCount}
+          </span>
+        </div>
       )}
-    >
-      <Handle type="target" position={Position.Left} className="!size-2 !bg-brand" />
+      <div
+        className={cn(
+          'w-60 overflow-hidden rounded-md border bg-card shadow-sm transition-shadow',
+          isCentre
+            ? 'ring-2 ring-brand ring-offset-1'
+            : 'cursor-pointer hover:border-brand/50 hover:shadow-md',
+        )}
+      >
+        <Handle type="target" position={Position.Left} className="!size-2 !bg-brand" />
       <div className="flex items-center gap-1.5 border-b border-brand/25 bg-brand/15 px-2.5 py-2">
         <Icon className="size-3.5 shrink-0 text-brand" />
         <span className="truncate text-sm font-medium" title={object.name}>
@@ -62,7 +79,8 @@ export function TableNode({ data }: NodeProps<TableFlowNode>) {
           </li>
         ))}
       </ul>
-      <Handle type="source" position={Position.Right} className="!size-2 !bg-brand" />
+        <Handle type="source" position={Position.Right} className="!size-2 !bg-brand" />
+      </div>
     </div>
   )
 }

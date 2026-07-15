@@ -15,6 +15,11 @@ export interface TableNodeData {
   object: SchemaObject
   /** The focal object the neighbourhood is built around; drawn with emphasis. */
   isCentre?: boolean
+  /** Neighbours this node has that are off the map — shown as a stub so they are not
+   *  mistaken for "no connection". */
+  hiddenCount?: number
+  /** Which side to draw the stub on: away from the centre. */
+  stubSide?: 'left' | 'right'
   [key: string]: unknown
 }
 
