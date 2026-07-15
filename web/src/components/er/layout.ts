@@ -13,6 +13,12 @@ const BODY_PADDING = 8
 /** Data carried by an ER map node. The index signature satisfies React Flow's typing. */
 export interface TableNodeData {
   object: SchemaObject
+  /** The focal object the neighbourhood is built around; drawn with emphasis. */
+  isCentre?: boolean
+  /** Off-map tables this one references — a stub above the node. */
+  hiddenReferenced?: number
+  /** Off-map tables that reference this one — a stub below the node. */
+  hiddenReferencing?: number
   [key: string]: unknown
 }
 
@@ -35,14 +41,19 @@ function nodeHeight(object: SchemaObject): number {
  * @returns Positioned nodes and edges ready to hand to `<ReactFlow>`.
  */
 export function layoutGraph(graph: SchemaGraph): { nodes: TableFlowNode[]; edges: Edge[] } {
-  const dagre = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}))
-  dagre.setGraph({ rankdir: 'LR', nodesep: 40, ranksep: 90 })
+  // A multigraph so parallel foreign keys between the same pair of tables can each be a
+  // named edge rather than collapsing into one.
+  const dagre = new Dagre.graphlib.Graph({ multigraph: true }).setDefaultEdgeLabel(() => ({}))
+  // Wider gaps than a dense diagram would use, so the orthogonal edges have channels to
+  // run through rather than crossing under the cards.
+  dagre.setGraph({ rankdir: 'LR', nodesep: 60, ranksep: 140 })
 
   for (const object of graph.objects) {
     dagre.setNode(object.id, { width: NODE_WIDTH, height: nodeHeight(object) })
   }
   for (const relationship of graph.relationships) {
-    dagre.setEdge(relationship.source, relationship.target)
+    // Name the edge so parallel foreign keys between the same pair don't collide.
+    dagre.setEdge(relationship.source, relationship.target, {}, relationship.constraint_name)
   }
   Dagre.layout(dagre)
 
@@ -56,13 +67,24 @@ export function layoutGraph(graph: SchemaGraph): { nodes: TableFlowNode[]; edges
     }
   })
 
-  const edges: Edge[] = graph.relationships.map((relationship) => ({
-    id: `${relationship.source}:${relationship.constraint_name}`,
-    source: relationship.source,
-    target: relationship.target,
-    markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#9a92b4' },
-    style: { stroke: '#9a92b4', strokeWidth: 1.5 },
-  }))
+  const edges: Edge[] = graph.relationships.map((relationship) => {
+    // dagre routes edges around the nodes in intermediate ranks; carry its waypoints so
+    // the edge follows that path instead of cutting straight under a card.
+    const routed = dagre.edge({
+      v: relationship.source,
+      w: relationship.target,
+      name: relationship.constraint_name,
+    }) as { points?: { x: number; y: number }[] } | undefined
+    return {
+      id: `${relationship.source}:${relationship.constraint_name}`,
+      source: relationship.source,
+      target: relationship.target,
+      type: 'routed',
+      data: { points: routed?.points ?? [] },
+      markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#9a92b4' },
+      style: { stroke: '#9a92b4', strokeWidth: 1.5 },
+    }
+  })
 
   return { nodes, edges }
 }

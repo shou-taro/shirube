@@ -1,34 +1,172 @@
-import { Background, Controls, MiniMap, ReactFlow } from '@xyflow/react'
+import {
+  Background,
+  Controls,
+  type Edge,
+  MiniMap,
+  type NodeMouseHandler,
+  Panel,
+  ReactFlow,
+  useReactFlow,
+} from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { useMemo } from 'react'
+import { Maximize2, Minimize2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import type { SchemaGraph } from '@/lib/api'
 
-import { layoutGraph } from './layout'
+import { layoutGraph, type TableFlowNode } from './layout'
+import { hiddenByReference, pickCentre, selectNeighbourhood } from './neighbourhood'
+import { RoutedEdge } from './routed-edge'
 import { TableNode } from './table-node'
 
-// Registered once at module scope: React Flow warns if this object identity changes
+// Registered once at module scope: React Flow warns if these object identities change
 // between renders.
 const nodeTypes = { table: TableNode }
+const edgeTypes = { routed: RoutedEdge }
+
+/**
+ * Refit the view when the focus changes — travelling to a new centre or toggling the
+ * show-everything view — so the fresh set of nodes is framed. Lives inside <ReactFlow>
+ * to reach its instance.
+ */
+function FitOnChange({ signature }: { signature: string }) {
+  const { fitView } = useReactFlow()
+  useEffect(() => {
+    void fitView({ padding: 0.25, duration: 400 })
+  }, [signature, fitView])
+  return null
+}
+
+/**
+ * Refit after the map is resized by a side pane sliding open or shut. The refit is
+ * delayed past the pane's width animation so it frames the final width, and the first
+ * render is skipped (initial framing is handled elsewhere).
+ */
+function RefitAfterResize({ trigger }: { trigger: unknown }) {
+  const { fitView } = useReactFlow()
+  const isFirst = useRef(true)
+  useEffect(() => {
+    if (isFirst.current) {
+      isFirst.current = false
+      return
+    }
+    const timer = setTimeout(() => void fitView({ padding: 0.25, duration: 400 }), 260)
+    return () => clearTimeout(timer)
+  }, [trigger, fitView])
+  return null
+}
+
+interface ErDiagramProps {
+  graph: SchemaGraph
+  /** A table chosen via search to centre on; falls back to the backbone when unset. */
+  centreOverride?: string | null
+  /** Changes when a side pane toggles, so the map can refit to the new width. */
+  resizeKey?: unknown
+}
 
 /**
  * The ER map: schema objects as cards, foreign keys as edges, laid out automatically.
  *
- * The whole schema is drawn for now; centring on a starting table and expanding its
- * neighbourhood comes with later work.
+ * Rather than drawing the whole schema, the map centres on one table and shows just its
+ * immediate neighbours — like a map zoomed to a place. Clicking a neighbour travels the
+ * centre to it, so the view is always "centre + neighbours" however large the schema is.
+ * A show-everything toggle covers small databases.
  */
-export function ErDiagram({ graph }: { graph: SchemaGraph }) {
-  const { nodes, edges } = useMemo(() => layoutGraph(graph), [graph])
+export function ErDiagram({ graph, centreOverride = null, resizeKey }: ErDiagramProps) {
+  const { t } = useTranslation()
+  const [centreId, setCentreId] = useState<string | null>(() => pickCentre(graph))
+  const [showAll, setShowAll] = useState(false)
+  const [travelling, setTravelling] = useState(false)
+
+  // Travel to a new centre with a brief cross-fade: fade the map out, swap the whole
+  // layout while it is faded (so the jump is hidden), then fade back in as the view
+  // refits — reading as a smooth transition rather than a snap.
+  const travelTo = useCallback((id: string) => {
+    setTravelling(true)
+    window.setTimeout(() => {
+      setCentreId(id)
+      setShowAll(false)
+      requestAnimationFrame(() => setTravelling(false))
+    }, 180)
+  }, [])
+
+  // A fresh schema resets the centre to its backbone (no transition on first load).
+  useEffect(() => {
+    setCentreId(pickCentre(graph))
+  }, [graph])
+
+  // A search selection travels the centre there.
+  useEffect(() => {
+    if (centreOverride !== null && graph.objects.some((object) => object.id === centreOverride)) {
+      travelTo(centreOverride)
+    }
+  }, [centreOverride, graph, travelTo])
+
+  const { nodes, edges } = useMemo(() => {
+    // "Show everything" draws the whole schema plainly — no centre, nothing hidden.
+    if (showAll) {
+      return layoutGraph(graph)
+    }
+    if (centreId === null) {
+      return { nodes: [] as TableFlowNode[], edges: [] as Edge[] }
+    }
+    const subgraph = selectNeighbourhood(graph, centreId)
+    const visibleIds = new Set(subgraph.objects.map((object) => object.id))
+    const laid = layoutGraph(subgraph)
+    const nodes = laid.nodes.map((node) => {
+      // Off-map neighbours are marked with vertical stubs (above/below), clear of the
+      // horizontal foreign-key edges, split by reference direction.
+      const { referenced, referencing } = hiddenByReference(graph, node.id, visibleIds)
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          isCentre: node.id === centreId,
+          hiddenReferenced: referenced,
+          hiddenReferencing: referencing,
+        },
+      }
+    })
+    return { nodes, edges: laid.edges }
+  }, [showAll, graph, centreId])
+
+  // Clicking a neighbour travels the centre to it; clicking the centre does nothing.
+  const handleNodeClick = useCallback<NodeMouseHandler>(
+    (_, node) => {
+      travelTo(node.id)
+    },
+    [travelTo],
+  )
+
   return (
     <ReactFlow
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
+      onNodeClick={handleNodeClick}
+      nodesDraggable={false}
+      className={travelling ? 'er-canvas--travelling' : undefined}
       fitView
-      fitViewOptions={{ padding: 0.2 }}
+      fitViewOptions={{ padding: 0.25 }}
       minZoom={0.1}
       proOptions={{ hideAttribution: true }}
     >
+      <FitOnChange signature={showAll ? 'all' : centreId ?? ''} />
+      <RefitAfterResize trigger={resizeKey} />
+      {/* Show-everything escape hatch for small schemas, kept clear of the detail card
+          (top-left) and the controls/minimap (right). */}
+      <Panel position="bottom-left">
+        <button
+          type="button"
+          onClick={() => setShowAll((value) => !value)}
+          className="flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1.5 text-xs font-medium shadow-sm hover:bg-brand/10 hover:text-brand"
+        >
+          {showAll ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+          {showAll ? t('schema.focus') : t('schema.showAll')}
+        </button>
+      </Panel>
       <Background />
       {/* Controls and minimap sit on the right, clear of the table-detail card that
           floats (and expands) down the left edge. */}
