@@ -99,14 +99,19 @@ layers:
   relationships, the user confirms", reusing the manual-add mechanism. The AI can also
   verify against real data, which beats a naming heuristic.
 
-## 7. ER home screen: search + neighbourhood expansion
+## 7. ER home screen: search + neighbourhood travel
 
-**Status:** Accepted
+**Status:** Accepted (revised — travel replaces accumulating expansion)
 
 - Rendering hundreds of tables at once breaks both performance and readability, so
   shirube **never draws the whole schema by default**.
-- The interaction is always **search + neighbourhood expansion**: pick a table, render
-  it and its 1–2 hop neighbours, and expand further on click — like panning a map.
+- The map always shows **one centre plus its direct (one-hop) neighbours** — a map
+  zoomed to a place. Navigation is **travel, not accumulation**: clicking a neighbour
+  recentres the map on it (Google-Maps style), and search moves the centre. The view is
+  therefore identical whatever the schema's size.
+- Because only one hop is drawn, a neighbour's own further connections are off the map.
+  Nodes with such hidden connections show a short **stub line (with a count)** so "not
+  connected" is distinguishable from "connected but not shown".
 - On first connection (before any search) shirube centres on the **most-connected
   table** (the schema's "backbone"), which directly addresses "I don't know where to
   start."
@@ -122,8 +127,8 @@ layers:
 - **Nodes (MVP):** tables, views, materialised views.
 - **Foreign tables:** excluded from the MVP; a Phase 2 candidate, not yet committed.
 - **Partitions:** child partitions are hidden by default (parent shown only), so a
-  partition-heavy schema does not flood the map. No bespoke partition feature — the
-  hide/expand behaviour reuses the generic expand/collapse primitive (see below).
+  partition-heavy schema does not flood the map. Revealing them uses the scoped
+  expand/collapse of §10.
 - **Inside the table detail panel, not as nodes:** indexes, constraints (incl. CHECK,
   which often encodes business rules), triggers, enum/custom types, sequences, and
   comments.
@@ -142,14 +147,18 @@ Edges carry different meanings and must be visually distinct:
 2. **View-dependency edges** — view → source tables (data derivation/flow, official).
 3. **Manual edges** — user-added, best-guess links.
 
-## 10. Generic expand/collapse primitive
+## 10. Expand/collapse for partitions
 
-**Status:** Accepted
+**Status:** Accepted (revised)
 
-"Click a table to reveal its neighbours" and "click a partition parent to reveal its
-children" are the *same* operation. shirube builds **one** generic expand/collapse
-primitive (with auto-layout) and reuses it for neighbourhood navigation and partition
-expansion, rather than a special-purpose partition feature.
+Neighbourhood navigation moves by **travel** — clicking a table recentres on it (§7) —
+not by accumulating expanded nodes. A scoped **expand/collapse** is kept for one thing:
+showing or hiding a partitioned table's child partitions behind its parent, so a
+partition-heavy schema does not flood the map.
+
+*(Supersedes the earlier framing of a single expand/collapse primitive shared between
+neighbourhood navigation and partitions; travel navigation replaced neighbourhood
+expansion.)*
 
 ## 11. Table detail panel
 

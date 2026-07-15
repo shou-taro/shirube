@@ -41,12 +41,20 @@ const en = {
   },
   search: {
     placeholder: 'Search tables and columns…',
+    noResults: 'No matching tables',
+    inColumn: 'column: {{column}}',
   },
   schema: {
     loading: 'Reading the schema…',
     error: 'Could not read the schema.',
     retry: 'Try again',
     reload: 'Reload schema',
+    showAll: 'Show all tables',
+    focus: 'Focus on neighbourhood',
+    hiddenReferenced_one: 'References {{count}} more table that is off the map',
+    hiddenReferenced_other: 'References {{count}} more tables that are off the map',
+    hiddenReferencing_one: '{{count}} more table references this, off the map',
+    hiddenReferencing_other: '{{count}} more tables reference this, off the map',
     empty: 'No tables or views found in this database.',
     objectKind: {
       table: 'Table',
