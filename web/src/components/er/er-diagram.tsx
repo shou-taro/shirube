@@ -28,9 +28,10 @@ import { TableNode } from './table-node'
 const nodeTypes = { table: TableNode }
 
 /**
- * Refit the view whenever the visible set changes (a new centre, or an expand/collapse),
- * so freshly revealed nodes come into view. Lives inside <ReactFlow> to reach its
- * instance. `signature` changes exactly when the neighbourhood does.
+ * Refit the view when the focus changes — a new centre from search, or toggling the
+ * show-everything view. Expanding a node deliberately does *not* refit, so the user's
+ * zoom and pan are preserved while they drill in. Lives inside <ReactFlow> to reach its
+ * instance.
  */
 function FitOnChange({ signature }: { signature: string }) {
   const { fitView } = useReactFlow()
@@ -125,7 +126,7 @@ export function ErDiagram({ graph, centreOverride = null }: ErDiagramProps) {
       minZoom={0.1}
       proOptions={{ hideAttribution: true }}
     >
-      <FitOnChange signature={`${showAll ? 'all' : centreId ?? ''}:${nodes.length}`} />
+      <FitOnChange signature={showAll ? 'all' : centreId ?? ''} />
       {/* Show-everything escape hatch for small schemas, kept clear of the detail card
           (top-left) and the controls/minimap (right). */}
       <Panel position="bottom-left">
