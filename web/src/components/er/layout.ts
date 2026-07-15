@@ -15,12 +15,6 @@ export interface TableNodeData {
   object: SchemaObject
   /** The focal object the neighbourhood is built around; drawn with emphasis. */
   isCentre?: boolean
-  /** Whether this node has been expanded to reveal its own neighbours. */
-  expanded?: boolean
-  /** How many of this node's neighbours are not yet on the map. */
-  hiddenCount?: number
-  /** Toggle this node's expansion; omitted when the map is showing everything. */
-  onToggleExpand?: (id: string) => void
   [key: string]: unknown
 }
 

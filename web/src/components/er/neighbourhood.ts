@@ -61,58 +61,27 @@ function isPreferredTieBreak(candidate: SchemaObject, current: SchemaObject): bo
 }
 
 /**
- * The subgraph shown around a centre: the centre and every expanded node, plus their
- * immediate neighbours, with the relationships that run between visible objects.
- *
- * The centre is always expanded, so on first render the map shows the centre and its
- * one-hop neighbourhood. Adding an id to `expandedIds` reveals that node's neighbours in
- * turn — the generic expand/collapse that also drives deeper navigation.
+ * The subgraph shown around a centre: the centre and its immediate (one-hop) neighbours,
+ * with the relationships that run between those visible objects. Navigation is
+ * map-like — clicking a neighbour makes it the new centre — so only ever one hop is
+ * drawn, regardless of how large the whole schema is.
  *
  * @param graph - The full introspected schema.
  * @param centreId - The focal object; if it is missing from the graph an empty graph is returned.
- * @param expandedIds - Visible objects the user has expanded to reveal their neighbours.
- * @returns A `SchemaGraph` containing only the visible objects and their internal edges.
+ * @returns A `SchemaGraph` containing only the centre, its neighbours and their edges.
  */
-export function selectNeighbourhood(
-  graph: SchemaGraph,
-  centreId: string,
-  expandedIds: ReadonlySet<string>,
-): SchemaGraph {
+export function selectNeighbourhood(graph: SchemaGraph, centreId: string): SchemaGraph {
   const byId = new Map(graph.objects.map((object) => [object.id, object]))
   if (!byId.has(centreId)) {
     return { objects: [], relationships: [] }
   }
 
   const adjacency = buildAdjacency(graph)
-  const expanders = new Set<string>([centreId, ...expandedIds])
-  const visible = new Set<string>(expanders)
-  for (const id of expanders) {
-    for (const neighbour of adjacency.get(id) ?? []) {
-      visible.add(neighbour)
-    }
-  }
+  const visible = new Set<string>([centreId, ...(adjacency.get(centreId) ?? [])])
 
   const objects = graph.objects.filter((object) => visible.has(object.id))
   const relationships = graph.relationships.filter(
     (relationship) => visible.has(relationship.source) && visible.has(relationship.target),
   )
   return { objects, relationships }
-}
-
-/**
- * How many of an object's neighbours are not currently visible — the count shown on a
- * node's "expand" affordance. Zero means the node is fully expanded (nothing to reveal).
- */
-export function hiddenNeighbourCount(
-  adjacency: Adjacency,
-  id: string,
-  visibleIds: ReadonlySet<string>,
-): number {
-  let hidden = 0
-  for (const neighbour of adjacency.get(id) ?? []) {
-    if (!visibleIds.has(neighbour)) {
-      hidden += 1
-    }
-  }
-  return hidden
 }
