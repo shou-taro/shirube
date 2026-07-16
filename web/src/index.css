@@ -27,6 +27,8 @@
   --brand-soft: #b7a2f8;
   /* A deep readable ink for text on the lilac fills. */
   --brand-foreground: #2b2154;
+  /* The explorer's top bar: a light lilac wash that reads as branded chrome. */
+  --topbar: #e9e3fb;
 }
 
 .dark {
@@ -51,6 +53,8 @@
   --brand: #b9a7fb;
   --brand-soft: #b7a2f8;
   --brand-foreground: #2b2154;
+  /* A dark lilac-tinted chrome so the top bar stays branded without glaring. */
+  --topbar: #221c33;
 }
 
 @theme inline {
@@ -106,4 +110,14 @@
 }
 .er-canvas--travelling .react-flow__viewport {
   opacity: 0.12;
+}
+
+/* React Flow's controls default to a light button; in dark mode recolour them with the
+   library's own variables so they match the surrounding chrome rather than glaring white. */
+.dark .react-flow {
+  --xy-controls-button-background-color: var(--card);
+  --xy-controls-button-background-color-hover: var(--muted);
+  --xy-controls-button-color: var(--foreground);
+  --xy-controls-button-color-hover: var(--foreground);
+  --xy-controls-button-border-color: var(--border);
 }
