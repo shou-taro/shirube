@@ -25,6 +25,11 @@ import { TableNode } from './table-node'
 const nodeTypes = { table: TableNode }
 const edgeTypes = { routed: RoutedEdge }
 
+// How much breathing room fitView leaves around the diagram, as a fraction of the pane.
+// Kept modest so the neighbourhood fills the canvas rather than floating in whitespace,
+// while still leaving room for the vertical off-map stubs above and below the cards.
+const FIT_PADDING = 0.15
+
 /**
  * Refit the view when the focus changes — travelling to a new centre or toggling the
  * show-everything view — so the fresh set of nodes is framed. Lives inside <ReactFlow>
@@ -33,7 +38,7 @@ const edgeTypes = { routed: RoutedEdge }
 function FitOnChange({ signature }: { signature: string }) {
   const { fitView } = useReactFlow()
   useEffect(() => {
-    void fitView({ padding: 0.25, duration: 400 })
+    void fitView({ padding: FIT_PADDING, duration: 400 })
   }, [signature, fitView])
   return null
 }
@@ -51,7 +56,7 @@ function RefitAfterResize({ trigger }: { trigger: unknown }) {
       isFirst.current = false
       return
     }
-    const timer = setTimeout(() => void fitView({ padding: 0.25, duration: 400 }), 260)
+    const timer = setTimeout(() => void fitView({ padding: FIT_PADDING, duration: 400 }), 260)
     return () => clearTimeout(timer)
   }, [trigger, fitView])
   return null
@@ -162,7 +167,7 @@ export function ErDiagram({
       nodesDraggable={false}
       className={travelling ? 'er-canvas--travelling' : undefined}
       fitView
-      fitViewOptions={{ padding: 0.25 }}
+      fitViewOptions={{ padding: FIT_PADDING }}
       minZoom={0.1}
       proOptions={{ hideAttribution: true }}
     >
