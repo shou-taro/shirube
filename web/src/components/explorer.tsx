@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { ErDiagram } from '@/components/er/er-diagram'
 import { Logo } from '@/components/logo'
 import { SchemaSearch } from '@/components/schema-search'
+import { TableDetail } from '@/components/table-detail'
 import { Button } from '@/components/ui/button'
 import { fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -46,6 +47,14 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const [navigatorOpen, setNavigatorOpen] = useState(true)
   // A table chosen via search to centre the ER map on; null lets the map pick the backbone.
   const [centreOverride, setCentreOverride] = useState<string | null>(null)
+  // The id of the map's current centre, reported by the ER map; drives the detail card.
+  const [centreId, setCentreId] = useState<string | null>(null)
+
+  // The centre table itself, resolved from the loaded schema.
+  const centreObject =
+    schema.status === 'ready'
+      ? (schema.graph.objects.find((object) => object.id === centreId) ?? null)
+      : null
 
   const loadSchema = useCallback(() => {
     setSchema({ status: 'loading' })
@@ -164,6 +173,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             <ErDiagram
               graph={schema.graph}
               centreOverride={centreOverride}
+              onCentreChange={setCentreId}
               resizeKey={navigatorOpen}
             />
           )}
@@ -176,8 +186,20 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               detailExpanded && 'bottom-3',
             )}
           >
-            <div className="flex h-9 shrink-0 items-center border-b border-brand/20 bg-brand/15 pl-3 pr-1.5 text-xs font-medium text-brand-foreground">
-              <span className="flex-1">{t('panes.detail')}</span>
+            <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 bg-brand/15 pl-3 pr-1.5 text-xs font-medium text-brand-foreground">
+              {centreObject ? (
+                <>
+                  <span className="truncate" title={centreObject.name}>
+                    {centreObject.name}
+                  </span>
+                  <span className="truncate text-[11px] font-normal text-brand-foreground/60">
+                    {centreObject.schema}
+                  </span>
+                </>
+              ) : (
+                <span className="flex-1">{t('panes.detail')}</span>
+              )}
+              <span className="flex-1" />
               <Button
                 variant="ghost"
                 size="icon"
@@ -192,14 +214,25 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
                 )}
               </Button>
             </div>
-            <div
-              className={cn(
-                'p-6 text-center text-xs text-muted-foreground',
-                detailExpanded && 'flex flex-1 items-center justify-center overflow-y-auto',
-              )}
-            >
-              {t('panes.detailEmpty')}
-            </div>
+            {centreObject ? (
+              <div
+                className={cn(
+                  'overflow-y-auto',
+                  detailExpanded ? 'flex-1' : 'max-h-[45vh]',
+                )}
+              >
+                <TableDetail object={centreObject} />
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  'p-6 text-center text-xs text-muted-foreground',
+                  detailExpanded && 'flex flex-1 items-center justify-center overflow-y-auto',
+                )}
+              >
+                {t('panes.detailEmpty')}
+              </div>
+            )}
           </div>
         </div>
 
