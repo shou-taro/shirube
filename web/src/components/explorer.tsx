@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ErDiagram } from '@/components/er/er-diagram'
+import { KindBadge } from '@/components/kind-badge'
 import { Logo } from '@/components/logo'
 import { SchemaSearch } from '@/components/schema-search'
 import { TableDetail } from '@/components/table-detail'
@@ -188,10 +189,11 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 bg-brand/15 px-3 text-xs font-medium text-brand-foreground">
               {centreObject ? (
                 <>
-                  <span className="truncate" title={centreObject.name}>
+                  <span className="min-w-0 truncate" title={centreObject.name}>
                     {centreObject.name}
                   </span>
-                  <span className="shrink-0 text-[11px] font-normal text-brand-foreground/60">
+                  <KindBadge kind={centreObject.kind} />
+                  <span className="ml-auto shrink-0 text-[11px] font-normal text-brand-foreground/60">
                     {centreObject.schema}
                   </span>
                 </>
