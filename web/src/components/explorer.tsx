@@ -1,7 +1,5 @@
 import {
   ArrowUp,
-  ChevronDown,
-  ChevronUp,
   Database,
   Loader2,
   PanelRightClose,
@@ -17,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { ErDiagram } from '@/components/er/er-diagram'
 import { Logo } from '@/components/logo'
 import { SchemaSearch } from '@/components/schema-search'
+import { TableDetail } from '@/components/table-detail'
 import { Button } from '@/components/ui/button'
 import { fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -42,10 +41,16 @@ interface ExplorerProps {
 export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const { t } = useTranslation()
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
-  const [detailExpanded, setDetailExpanded] = useState(false)
   const [navigatorOpen, setNavigatorOpen] = useState(true)
   // A table chosen via search to centre the ER map on; null lets the map pick the backbone.
   const [centreOverride, setCentreOverride] = useState<string | null>(null)
+  // The id of the map's current centre, reported by the ER map; drives the detail card.
+  const [centreId, setCentreId] = useState<string | null>(null)
+
+  // The loaded schema (when ready) and the centre table resolved from it.
+  const readySchema = schema.status === 'ready' ? schema : null
+  const centreObject =
+    readySchema?.graph.objects.find((object) => object.id === centreId) ?? null
 
   const loadSchema = useCallback(() => {
     setSchema({ status: 'loading' })
@@ -63,6 +68,14 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   useEffect(() => {
     loadSchema()
   }, [loadSchema])
+
+  // Clear the search/navigation override once the map has arrived at it, so selecting the
+  // same table again later still re-triggers a travel (a repeated value would not).
+  useEffect(() => {
+    if (centreOverride !== null && centreId === centreOverride) {
+      setCentreOverride(null)
+    }
+  }, [centreId, centreOverride])
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -164,42 +177,41 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             <ErDiagram
               graph={schema.graph}
               centreOverride={centreOverride}
+              onCentreChange={setCentreId}
               resizeKey={navigatorOpen}
             />
           )}
 
-          {/* Floating table-detail card: compact by default, expandable downwards to
-              give a selected table's detail room to breathe. */}
-          <div
-            className={cn(
-              'absolute left-3 top-3 z-10 flex w-64 flex-col overflow-hidden rounded-xl border border-brand/20 bg-card shadow-md',
-              detailExpanded && 'bottom-3',
-            )}
-          >
-            <div className="flex h-9 shrink-0 items-center border-b border-brand/20 bg-brand/15 pl-3 pr-1.5 text-xs font-medium text-brand-foreground">
-              <span className="flex-1">{t('panes.detail')}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6"
-                onClick={() => setDetailExpanded((expanded) => !expanded)}
-                aria-label={detailExpanded ? t('panes.collapse') : t('panes.expand')}
-              >
-                {detailExpanded ? (
-                  <ChevronUp className="size-3.5" />
-                ) : (
-                  <ChevronDown className="size-3.5" />
-                )}
-              </Button>
-            </div>
-            <div
-              className={cn(
-                'p-6 text-center text-xs text-muted-foreground',
-                detailExpanded && 'flex flex-1 items-center justify-center overflow-y-auto',
+          {/* Floating table-detail card: hugs its content and caps at the pane height,
+              scrolling within. Each section inside collapses on its own. */}
+          <div className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-64 flex-col overflow-hidden rounded-xl border border-brand/20 bg-card shadow-md">
+            <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 bg-brand/15 px-3 text-xs font-medium text-brand-foreground">
+              {centreObject ? (
+                <>
+                  <span className="truncate" title={centreObject.name}>
+                    {centreObject.name}
+                  </span>
+                  <span className="shrink-0 text-[11px] font-normal text-brand-foreground/60">
+                    {centreObject.schema}
+                  </span>
+                </>
+              ) : (
+                <span>{t('panes.detail')}</span>
               )}
-            >
-              {t('panes.detailEmpty')}
             </div>
+            {readySchema && centreObject ? (
+              <div className="min-h-0 overflow-y-auto">
+                <TableDetail
+                  object={centreObject}
+                  graph={readySchema.graph}
+                  onNavigate={setCentreOverride}
+                />
+              </div>
+            ) : (
+              <div className="p-6 text-center text-xs text-muted-foreground">
+                {t('panes.detailEmpty')}
+              </div>
+            )}
           </div>
         </div>
 
