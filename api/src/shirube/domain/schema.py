@@ -20,6 +20,18 @@ class ObjectKind(StrEnum):
     MATERIALIZED_VIEW = "materialized_view"
 
 
+class RelationshipKind(StrEnum):
+    """What connects two objects on the map.
+
+    A foreign key ties a referencing table to the one it points at; a view dependency
+    ties a view (or materialized view) to a relation it reads from. Both are drawn as
+    directed edges, source → target, but they are styled apart.
+    """
+
+    FOREIGN_KEY = "foreign_key"
+    VIEW_DEPENDENCY = "view_dependency"
+
+
 @dataclass(frozen=True, slots=True)
 class Column:
     """A single column of a table or view.
@@ -61,14 +73,21 @@ class SchemaObject:
 
 @dataclass(frozen=True, slots=True)
 class Relationship:
-    """A foreign-key relationship between two objects — one edge on the map.
+    """A directed relationship between two objects — one edge on the map.
+
+    Covers both foreign keys and view dependencies (see :class:`RelationshipKind`).
+    ``source_columns`` and ``target_columns`` describe a foreign key's joined columns and
+    are empty for a view dependency, which has no columns of its own.
 
     Attributes:
-        constraint_name: The foreign-key constraint's name.
-        source: ``schema.name`` id of the referencing object.
-        source_columns: The referencing columns, in key order.
+        constraint_name: The foreign-key constraint's name, or a synthesised ``source →
+            target`` identifier for a view dependency. Unique per edge either way.
+        source: ``schema.name`` id of the referencing object (the view, for a dependency).
+        source_columns: The referencing columns, in key order (empty for a dependency).
         target: ``schema.name`` id of the referenced object.
-        target_columns: The referenced columns, matching ``source_columns`` by position.
+        target_columns: The referenced columns, matching ``source_columns`` by position
+            (empty for a dependency).
+        kind: Whether this is a foreign key or a view dependency.
     """
 
     constraint_name: str
@@ -76,6 +95,7 @@ class Relationship:
     source_columns: tuple[str, ...]
     target: str
     target_columns: tuple[str, ...]
+    kind: RelationshipKind = RelationshipKind.FOREIGN_KEY
 
 
 @dataclass(frozen=True, slots=True)

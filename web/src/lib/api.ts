@@ -75,15 +75,20 @@ export interface SchemaObject {
   columns: Column[]
 }
 
-/** A foreign-key relationship — one edge on the map. */
+/** What an edge represents: a foreign key, or a view reading a relation. */
+export type RelationshipKind = 'foreign_key' | 'view_dependency'
+
+/** A relationship — one edge on the map. Foreign keys carry joined columns; view
+ *  dependencies have none. */
 export interface Relationship {
   constraint_name: string
-  /** `schema.name` id of the referencing object. */
+  /** `schema.name` id of the referencing object (the view, for a dependency). */
   source: string
   source_columns: string[]
   /** `schema.name` id of the referenced object. */
   target: string
   target_columns: string[]
+  kind: RelationshipKind
 }
 
 /** The introspected schema: objects (nodes) and relationships (edges). */
