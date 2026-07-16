@@ -69,6 +69,8 @@ interface ErDiagramProps {
   /** Notified with the current centre's id whenever it changes, so the surrounding
    *  workspace can show that table's detail. Null before a centre is picked. */
   onCentreChange?: (id: string | null) => void
+  /** Open showing the whole schema rather than a neighbourhood (a startup preference). */
+  defaultShowAll?: boolean
   /** Changes when a side pane toggles, so the map can refit to the new width. */
   resizeKey?: unknown
 }
@@ -85,11 +87,12 @@ export function ErDiagram({
   graph,
   centreOverride = null,
   onCentreChange,
+  defaultShowAll = false,
   resizeKey,
 }: ErDiagramProps) {
   const { t } = useTranslation()
   const [centreId, setCentreId] = useState<string | null>(() => pickCentre(graph))
-  const [showAll, setShowAll] = useState(false)
+  const [showAll, setShowAll] = useState(defaultShowAll)
   const [travelling, setTravelling] = useState(false)
 
   // Travel to a new centre with a brief cross-fade: fade the map out, swap the whole
