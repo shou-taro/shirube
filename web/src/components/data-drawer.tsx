@@ -294,7 +294,11 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
                           : t('data.sortDesc')
                         : t('data.sortNone')
                     }
-                    className="sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap border-b border-r border-border bg-secondary px-2.5 py-1.5 text-left font-semibold text-foreground last:border-r-0 hover:bg-brand/15"
+                    // Stuck 1px above the scrollport so no sub-pixel seam opens at the top
+                    // on HiDPI scrolling; will-change promotes the header to its own layer
+                    // so it scrolls in sync with the body instead of repainting a frame
+                    // late (which flashes the row moving beneath it).
+                    className="sticky -top-px z-10 cursor-pointer select-none whitespace-nowrap border-b border-r border-border bg-secondary px-2.5 py-1.5 text-left font-semibold text-foreground [will-change:transform] last:border-r-0 hover:bg-brand/15"
                   >
                     <span className="inline-flex items-center gap-1">
                       {column}
