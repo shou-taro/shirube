@@ -115,9 +115,7 @@ def build_select(
     if query.sort is not None:
         if query.sort.column not in known:
             raise InvalidQueryError(f"Unknown column '{query.sort.column}'")
-        direction = (
-            sql.SQL("ASC") if query.sort.direction is SortDirection.ASC else sql.SQL("DESC")
-        )
+        direction = sql.SQL("ASC") if query.sort.direction is SortDirection.ASC else sql.SQL("DESC")
         statement += sql.SQL(" ORDER BY {} ").format(sql.Identifier(query.sort.column)) + direction
     statement += sql.SQL(" LIMIT {} OFFSET {}").format(sql.Placeholder(), sql.Placeholder())
     # Ask for one more than the limit; its presence is how has_more is decided.
@@ -185,13 +183,12 @@ class PostgresDataReader:
                 cursor.execute(statement, statement_params)
                 fetched = cursor.fetchall()
                 # SELECT * fixes the display order and names (dropped/system columns are
-                # already excluded), so read them straight off the cursor.
-                result_columns = tuple(description.name for description in cursor.description)
+                # already excluded), so read them straight off the cursor. A SELECT always
+                # populates ``description``; the ``or ()`` only quiets its Optional typing.
+                result_columns = tuple(column.name for column in cursor.description or ())
 
         has_more = len(fetched) > query.limit
-        page_rows = tuple(
-            tuple(_cell(value) for value in row) for row in fetched[: query.limit]
-        )
+        page_rows = tuple(tuple(_cell(value) for value in row) for row in fetched[: query.limit])
         return RowPage(
             columns=result_columns,
             rows=page_rows,
