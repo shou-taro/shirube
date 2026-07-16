@@ -12,7 +12,14 @@ from shirube.adapters.api.app import create_app
 from shirube.adapters.api.dependencies import get_schema_inspector, get_secret_store
 from shirube.adapters.postgres.schema_inspector import build_graph
 from shirube.domain.connection import ConnectionParams
-from shirube.domain.schema import Column, ObjectKind, Relationship, SchemaGraph, SchemaObject
+from shirube.domain.schema import (
+    Column,
+    ObjectKind,
+    Relationship,
+    RelationshipKind,
+    SchemaGraph,
+    SchemaObject,
+)
 
 _PROFILE = {
     "name": "shop",
@@ -97,6 +104,41 @@ def test_build_graph_drops_relationships_to_unknown_objects() -> None:
     assert kept.source == "public.orders"
     assert kept.target == "public.users"
     assert kept.source_columns == ("user_id",)
+    assert kept.kind is RelationshipKind.FOREIGN_KEY
+
+
+def test_build_graph_adds_view_dependencies_with_known_endpoints() -> None:
+    object_rows = [
+        {"schema": "public", "name": "users", "kind": "r"},
+        {"schema": "public", "name": "active_users", "kind": "v"},
+    ]
+    dependency_rows = [
+        # The view reads a loaded table — kept as a view dependency.
+        {
+            "view_schema": "public",
+            "view_name": "active_users",
+            "ref_schema": "public",
+            "ref_name": "users",
+        },
+        # Reads a table outside the loaded set — dropped, like a foreign key would be.
+        {
+            "view_schema": "public",
+            "view_name": "active_users",
+            "ref_schema": "other",
+            "ref_name": "audit",
+        },
+    ]
+
+    graph = build_graph(object_rows, [], [], dependency_rows)
+
+    assert len(graph.relationships) == 1
+    dependency = graph.relationships[0]
+    assert dependency.kind is RelationshipKind.VIEW_DEPENDENCY
+    assert dependency.source == "public.active_users"
+    assert dependency.target == "public.users"
+    # A view dependency carries no columns of its own.
+    assert dependency.source_columns == ()
+    assert dependency.target_columns == ()
 
 
 # --- endpoint ------------------------------------------------------------------------
