@@ -99,10 +99,6 @@ const en = {
     defaultViewHint: 'How the map opens on a new connection',
     about: 'About',
     version: 'Version',
-    forgetConnection: 'Forget saved connection',
-    forgetConnectionHint: 'Stop reopening the last connection on launch',
-    forget: 'Forget',
-    forgotten: 'Forgotten',
   },
   health: {
     connected: 'API {{version}}',

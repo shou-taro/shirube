@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { fetchHealth } from '@/lib/api'
 import { useSettings } from '@/lib/settings'
-import { ACTIVE_PROFILE_KEY } from '@/lib/storage'
 import { cn } from '@/lib/utils'
 
 /** A labelled block within the dialog. */
@@ -106,7 +105,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const { t } = useTranslation()
   const { settings, update } = useSettings()
   const [version, setVersion] = useState<string | null>(null)
-  const [forgotten, setForgotten] = useState(false)
 
   // Close on Escape while open.
   useEffect(() => {
@@ -122,12 +120,11 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [open, onClose])
 
-  // Read the running version when the dialog opens; reset the transient "forgotten" note.
+  // Read the running version when the dialog opens.
   useEffect(() => {
     if (!open) {
       return
     }
-    setForgotten(false)
     fetchHealth()
       .then((health) => setVersion(health.version))
       .catch(() => setVersion(null))
@@ -135,11 +132,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
   if (!open) {
     return null
-  }
-
-  function forgetConnection(): void {
-    localStorage.removeItem(ACTIVE_PROFILE_KEY)
-    setForgotten(true)
   }
 
   return (
@@ -201,11 +193,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         <Section title={t('settings.about')}>
           <Row label={t('settings.version')}>
             <span className="text-sm text-muted-foreground">{version ?? '—'}</span>
-          </Row>
-          <Row label={t('settings.forgetConnection')} hint={t('settings.forgetConnectionHint')}>
-            <Button variant="outline" size="sm" onClick={forgetConnection} disabled={forgotten}>
-              {forgotten ? t('settings.forgotten') : t('settings.forget')}
-            </Button>
           </Row>
         </Section>
       </div>
