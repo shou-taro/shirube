@@ -277,8 +277,11 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
             {t('data.empty')}
           </div>
         ) : (
-          <table className="w-full border-collapse text-xs">
-            <thead className="sticky top-0 z-10 bg-secondary">
+          <table className="w-full border-separate border-spacing-0 text-xs">
+            {/* border-separate (not collapse) keeps the sticky header opaque as rows
+                scroll under it — collapsed borders let a sliver of the next row bleed
+                through the seam. Vertical cell borders give the grid its column look. */}
+            <thead>
               <tr>
                 {page.columns.map((column) => (
                   <th
@@ -291,7 +294,7 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
                           : t('data.sortDesc')
                         : t('data.sortNone')
                     }
-                    className="cursor-pointer select-none whitespace-nowrap border-b border-border px-2.5 py-1.5 text-left font-semibold text-foreground hover:bg-brand/15"
+                    className="sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap border-b border-r border-border bg-secondary px-2.5 py-1.5 text-left font-semibold text-foreground last:border-r-0 hover:bg-brand/15"
                   >
                     <span className="inline-flex items-center gap-1">
                       {column}
@@ -321,7 +324,7 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
                     <td
                       key={page.columns[columnIndex]}
                       title={value === null ? undefined : String(value)}
-                      className="max-w-96 truncate whitespace-nowrap border-b border-border/60 px-2.5 py-1"
+                      className="max-w-96 truncate whitespace-nowrap border-b border-r border-border/50 px-2.5 py-1 last:border-r-0"
                     >
                       <Cell value={value} nullLabel={t('data.null')} />
                     </td>
