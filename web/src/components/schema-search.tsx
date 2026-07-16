@@ -1,18 +1,18 @@
-import { Eye, Layers, Search, Table2 } from 'lucide-react'
-import type { ComponentType } from 'react'
-import { useMemo, useRef, useState } from 'react'
+import { Search, Table2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { ObjectKind, SchemaObject } from '@/lib/api'
+import { KindBadge } from '@/components/kind-badge'
+import type { SchemaObject } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-const KIND_ICON: Record<ObjectKind, ComponentType<{ className?: string }>> = {
-  table: Table2,
-  view: Eye,
-  materialized_view: Layers,
-}
-
 const MAX_RESULTS = 8
+
+// True on Apple platforms, so the shortcut binds to ⌘ there and Ctrl elsewhere. Read from
+// the platform once; `navigator.platform` is legacy but still the most reliable signal.
+const IS_MAC =
+  typeof navigator !== 'undefined' &&
+  /mac|iphone|ipad|ipod/i.test(navigator.platform || navigator.userAgent)
 
 /** A single search hit: the object to centre on, and why it matched. */
 interface Match {
@@ -70,8 +70,24 @@ export function SchemaSearch({ objects, onSelect }: SchemaSearchProps) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const matches = useMemo(() => findMatches(objects, query), [objects, query])
+
+  // Focus the search from anywhere with the platform shortcut — ⌘K on Apple, Ctrl+K
+  // elsewhere — the modern "jump to search" affordance.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent): void {
+      const chord = IS_MAC ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey
+      if (chord && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        inputRef.current?.focus()
+        inputRef.current?.select()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   function choose(match: Match): void {
     onSelect(match.object.id)
@@ -82,6 +98,7 @@ export function SchemaSearch({ objects, onSelect }: SchemaSearchProps) {
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>): void {
     if (event.key === 'Escape') {
       setOpen(false)
+      inputRef.current?.blur()
       return
     }
     if (matches.length === 0) {
@@ -106,6 +123,7 @@ export function SchemaSearch({ objects, onSelect }: SchemaSearchProps) {
       <div className="flex h-8 items-center gap-2 rounded-lg border bg-background/85 px-2.5 text-sm focus-within:ring-2 focus-within:ring-brand">
         <Search className="size-3.5 shrink-0 text-muted-foreground" />
         <input
+          ref={inputRef}
           type="text"
           value={query}
           placeholder={t('search.placeholder')}
@@ -122,6 +140,12 @@ export function SchemaSearch({ objects, onSelect }: SchemaSearchProps) {
           onKeyDown={handleKeyDown}
           className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
         />
+        {/* The shortcut hint, shown while the field is empty; hidden once typing starts. */}
+        {query === '' && (
+          <kbd className="pointer-events-none shrink-0 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {IS_MAC ? '⌘K' : 'Ctrl K'}
+          </kbd>
+        )}
       </div>
 
       {showResults && (
@@ -137,28 +161,26 @@ export function SchemaSearch({ objects, onSelect }: SchemaSearchProps) {
           {matches.length === 0 ? (
             <li className="px-2.5 py-2 text-sm text-muted-foreground">{t('search.noResults')}</li>
           ) : (
-            matches.map((match, index) => {
-              const Icon = KIND_ICON[match.object.kind]
-              return (
-                <li key={match.object.id}>
-                  <button
-                    type="button"
-                    onClick={() => choose(match)}
-                    onMouseEnter={() => setActive(index)}
-                    className={cn(
-                      'flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm',
-                      index === active && 'bg-brand/10',
-                    )}
-                  >
-                    <Icon className="size-3.5 shrink-0 text-brand" />
-                    <span className="truncate font-medium">{match.object.name}</span>
-                    <span className="ml-auto truncate text-xs text-muted-foreground">
-                      {match.column ? t('search.inColumn', { column: match.column }) : match.object.schema}
-                    </span>
-                  </button>
-                </li>
-              )
-            })
+            matches.map((match, index) => (
+              <li key={match.object.id}>
+                <button
+                  type="button"
+                  onClick={() => choose(match)}
+                  onMouseEnter={() => setActive(index)}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm',
+                    index === active && 'bg-brand/10',
+                  )}
+                >
+                  <Table2 className="size-3.5 shrink-0 text-brand" />
+                  <span className="min-w-0 truncate font-medium">{match.object.name}</span>
+                  <KindBadge kind={match.object.kind} />
+                  <span className="ml-auto shrink-0 truncate text-xs text-muted-foreground">
+                    {match.column ? t('search.inColumn', { column: match.column }) : match.object.schema}
+                  </span>
+                </button>
+              </li>
+            ))
           )}
         </ul>
       )}
