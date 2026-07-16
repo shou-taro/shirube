@@ -1,5 +1,5 @@
-import { X } from 'lucide-react'
-import { type ReactNode, useEffect, useState } from 'react'
+import { Monitor, Moon, Sun, X } from 'lucide-react'
+import { type ComponentType, type ReactNode, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -33,33 +33,38 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   )
 }
 
-/** A small segmented control: one option highlighted, the rest quiet. */
+/** A small segmented control: one option highlighted, the rest quiet. Options may carry
+ *  an icon, shown before the label. */
 function Segmented<T extends string>({
   value,
   options,
   onChange,
 }: {
   value: T
-  options: { value: T; label: string }[]
+  options: { value: T; label: string; icon?: ComponentType<{ className?: string }> }[]
   onChange: (value: T) => void
 }) {
   return (
     <div className="flex rounded-md border bg-background p-0.5">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => onChange(option.value)}
-          className={cn(
-            'rounded px-2.5 py-1 text-xs font-medium',
-            option.value === value
-              ? 'bg-brand text-brand-foreground'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          {option.label}
-        </button>
-      ))}
+      {options.map((option) => {
+        const Icon = option.icon
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={cn(
+              'flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium',
+              option.value === value
+                ? 'bg-brand text-brand-foreground'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {Icon ? <Icon className="size-3.5" /> : null}
+            {option.label}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -165,9 +170,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               value={settings.theme}
               onChange={(theme) => update({ theme })}
               options={[
-                { value: 'light', label: t('settings.themeLight') },
-                { value: 'dark', label: t('settings.themeDark') },
-                { value: 'system', label: t('settings.themeSystem') },
+                { value: 'system', label: t('settings.themeSystem'), icon: Monitor },
+                { value: 'light', label: t('settings.themeLight'), icon: Sun },
+                { value: 'dark', label: t('settings.themeDark'), icon: Moon },
               ]}
             />
           </Row>
