@@ -61,6 +61,9 @@ interface ErDiagramProps {
   graph: SchemaGraph
   /** A table chosen via search to centre on; falls back to the backbone when unset. */
   centreOverride?: string | null
+  /** Notified with the current centre's id whenever it changes, so the surrounding
+   *  workspace can show that table's detail. Null before a centre is picked. */
+  onCentreChange?: (id: string | null) => void
   /** Changes when a side pane toggles, so the map can refit to the new width. */
   resizeKey?: unknown
 }
@@ -73,7 +76,12 @@ interface ErDiagramProps {
  * centre to it, so the view is always "centre + neighbours" however large the schema is.
  * A show-everything toggle covers small databases.
  */
-export function ErDiagram({ graph, centreOverride = null, resizeKey }: ErDiagramProps) {
+export function ErDiagram({
+  graph,
+  centreOverride = null,
+  onCentreChange,
+  resizeKey,
+}: ErDiagramProps) {
   const { t } = useTranslation()
   const [centreId, setCentreId] = useState<string | null>(() => pickCentre(graph))
   const [showAll, setShowAll] = useState(false)
@@ -102,6 +110,11 @@ export function ErDiagram({ graph, centreOverride = null, resizeKey }: ErDiagram
       travelTo(centreOverride)
     }
   }, [centreOverride, graph, travelTo])
+
+  // Report the current centre upward so the workspace can show its detail.
+  useEffect(() => {
+    onCentreChange?.(centreId)
+  }, [centreId, onCentreChange])
 
   const { nodes, edges } = useMemo(() => {
     // "Show everything" draws the whole schema plainly — no centre, nothing hidden.
