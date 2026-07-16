@@ -53,6 +53,8 @@ const en = {
     notNull: 'not null',
     references: 'References',
     referencedBy: 'Referenced by',
+    badgeView: 'View',
+    badgeMatView: 'Mat. view',
     showAll: 'Show all tables',
     focus: 'Focus on neighbourhood',
     hiddenReferenced_one: 'References {{count}} more table that is off the map',

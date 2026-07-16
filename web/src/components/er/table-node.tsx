@@ -1,20 +1,11 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react'
-import { Eye, KeyRound, Layers, Table2 } from 'lucide-react'
-import type { ComponentType } from 'react'
+import { KeyRound, Table2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { KindBadge } from '@/components/kind-badge'
 import { cn } from '@/lib/utils'
-import type { ObjectKind } from '@/lib/api'
 
 import type { TableFlowNode } from './layout'
-
-// One icon per object kind, so tables, views and materialized views read apart at a
-// glance on the map.
-const KIND_ICON: Record<ObjectKind, ComponentType<{ className?: string }>> = {
-  table: Table2,
-  view: Eye,
-  materialized_view: Layers,
-}
 
 /**
  * A stub marking related tables off the map, drawn vertically so it stays clear of the
@@ -72,7 +63,6 @@ function HiddenStub({ side, count, label }: { side: 'top' | 'bottom'; count: num
 export function TableNode({ data }: NodeProps<TableFlowNode>) {
   const { t } = useTranslation()
   const { object, isCentre, hiddenReferenced = 0, hiddenReferencing = 0 } = data
-  const Icon = KIND_ICON[object.kind]
   return (
     <div className="relative">
       {/* Vertical stubs for off-map related tables: above for tables this references,
@@ -101,10 +91,11 @@ export function TableNode({ data }: NodeProps<TableFlowNode>) {
       >
         <Handle type="target" position={Position.Left} className="!size-2 !bg-brand" />
       <div className="flex items-center gap-1.5 border-b border-brand/25 bg-brand/15 px-2.5 py-2">
-        <Icon className="size-3.5 shrink-0 text-brand" />
-        <span className="truncate text-sm font-medium" title={object.name}>
+        <Table2 className="size-3.5 shrink-0 text-brand" />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium" title={object.name}>
           {object.name}
         </span>
+        <KindBadge kind={object.kind} />
       </div>
       <ul className="py-1">
         {object.columns.map((column) => (
