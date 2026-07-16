@@ -50,11 +50,10 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   // The id of the map's current centre, reported by the ER map; drives the detail card.
   const [centreId, setCentreId] = useState<string | null>(null)
 
-  // The centre table itself, resolved from the loaded schema.
+  // The loaded schema (when ready) and the centre table resolved from it.
+  const readySchema = schema.status === 'ready' ? schema : null
   const centreObject =
-    schema.status === 'ready'
-      ? (schema.graph.objects.find((object) => object.id === centreId) ?? null)
-      : null
+    readySchema?.graph.objects.find((object) => object.id === centreId) ?? null
 
   const loadSchema = useCallback(() => {
     setSchema({ status: 'loading' })
@@ -72,6 +71,14 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   useEffect(() => {
     loadSchema()
   }, [loadSchema])
+
+  // Clear the search/navigation override once the map has arrived at it, so selecting the
+  // same table again later still re-triggers a travel (a repeated value would not).
+  useEffect(() => {
+    if (centreOverride !== null && centreId === centreOverride) {
+      setCentreOverride(null)
+    }
+  }, [centreId, centreOverride])
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -214,14 +221,18 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
                 )}
               </Button>
             </div>
-            {centreObject ? (
+            {readySchema && centreObject ? (
               <div
                 className={cn(
                   'overflow-y-auto',
                   detailExpanded ? 'flex-1' : 'max-h-[45vh]',
                 )}
               >
-                <TableDetail object={centreObject} />
+                <TableDetail
+                  object={centreObject}
+                  graph={readySchema.graph}
+                  onNavigate={setCentreOverride}
+                />
               </div>
             ) : (
               <div

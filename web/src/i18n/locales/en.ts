@@ -51,6 +51,8 @@ const en = {
     reload: 'Reload schema',
     columns: 'Columns',
     notNull: 'not null',
+    references: 'References',
+    referencedBy: 'Referenced by',
     showAll: 'Show all tables',
     focus: 'Focus on neighbourhood',
     hiddenReferenced_one: 'References {{count}} more table that is off the map',
