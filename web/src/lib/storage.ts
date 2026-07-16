@@ -1,0 +1,7 @@
+/** Keys for the small amount of state shirube keeps in the browser's localStorage. */
+
+/** The profile id to reconnect to on load (see App). */
+export const ACTIVE_PROFILE_KEY = 'shirube.activeProfileId'
+
+/** The user's saved settings (see settings). */
+export const SETTINGS_KEY = 'shirube.settings'

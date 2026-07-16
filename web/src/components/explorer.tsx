@@ -9,16 +9,18 @@ import {
   Settings,
   Sparkles,
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ErDiagram } from '@/components/er/er-diagram'
 import { KindBadge } from '@/components/kind-badge'
 import { Logo } from '@/components/logo'
 import { SchemaSearch } from '@/components/schema-search'
+import { SettingsDialog } from '@/components/settings-dialog'
 import { TableDetail } from '@/components/table-detail'
 import { Button } from '@/components/ui/button'
 import { fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
+import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
 /** The schema load for the connected profile. */
@@ -41,17 +43,30 @@ interface ExplorerProps {
  */
 export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const { t } = useTranslation()
+  const { settings } = useSettings()
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
   const [navigatorOpen, setNavigatorOpen] = useState(true)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   // A table chosen via search to centre the ER map on; null lets the map pick the backbone.
   const [centreOverride, setCentreOverride] = useState<string | null>(null)
   // The id of the map's current centre, reported by the ER map; drives the detail card.
   const [centreId, setCentreId] = useState<string | null>(null)
 
-  // The loaded schema (when ready) and the centre table resolved from it.
-  const readySchema = schema.status === 'ready' ? schema : null
-  const centreObject =
-    readySchema?.graph.objects.find((object) => object.id === centreId) ?? null
+  // The loaded schema (when ready). View-dependency edges are dropped when the setting is
+  // off, so the map and detail panel fall back to foreign keys only.
+  const readyGraph = schema.status === 'ready' ? schema.graph : null
+  const displayGraph = useMemo(() => {
+    if (readyGraph === null || settings.showViewDependencies) {
+      return readyGraph
+    }
+    return {
+      ...readyGraph,
+      relationships: readyGraph.relationships.filter(
+        (relationship) => relationship.kind !== 'view_dependency',
+      ),
+    }
+  }, [readyGraph, settings.showViewDependencies])
+  const centreObject = displayGraph?.objects.find((object) => object.id === centreId) ?? null
 
   const loadSchema = useCallback(() => {
     setSchema({ status: 'loading' })
@@ -80,7 +95,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-[#e9e3fb] px-3">
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-[var(--topbar)] px-3">
         <span className="flex items-center gap-1.5 font-medium">
           <Logo className="size-5" />
           {t('app.name')}
@@ -127,8 +142,9 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           variant="ghost"
           size="icon"
           className="hover:bg-brand/15 hover:text-brand"
-          aria-label="Settings"
-          title="Settings"
+          aria-label={t('settings.title')}
+          title={t('settings.title')}
+          onClick={() => setSettingsOpen(true)}
         >
           <Settings className="size-4" />
         </Button>
@@ -174,26 +190,27 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
               {t('schema.empty')}
             </div>
-          ) : (
+          ) : displayGraph ? (
             <ErDiagram
-              graph={schema.graph}
+              graph={displayGraph}
               centreOverride={centreOverride}
               onCentreChange={setCentreId}
+              defaultShowAll={settings.defaultView === 'all'}
               resizeKey={navigatorOpen}
             />
-          )}
+          ) : null}
 
           {/* Floating table-detail card: hugs its content and caps at the pane height,
               scrolling within. Each section inside collapses on its own. */}
           <div className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-64 flex-col overflow-hidden rounded-xl border border-brand/20 bg-card shadow-md">
-            <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 bg-brand/15 px-3 text-xs font-medium text-brand-foreground">
+            <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 bg-brand/15 px-3 text-xs font-medium text-foreground">
               {centreObject ? (
                 <>
                   <span className="min-w-0 truncate" title={centreObject.name}>
                     {centreObject.name}
                   </span>
                   <KindBadge kind={centreObject.kind} />
-                  <span className="ml-auto shrink-0 text-[11px] font-normal text-brand-foreground/60">
+                  <span className="ml-auto shrink-0 text-[11px] font-normal text-muted-foreground">
                     {centreObject.schema}
                   </span>
                 </>
@@ -201,11 +218,11 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
                 <span>{t('panes.detail')}</span>
               )}
             </div>
-            {readySchema && centreObject ? (
+            {displayGraph && centreObject ? (
               <div className="min-h-0 overflow-y-auto">
                 <TableDetail
                   object={centreObject}
-                  graph={readySchema.graph}
+                  graph={displayGraph}
                   onNavigate={setCentreOverride}
                 />
               </div>
@@ -249,6 +266,8 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           </aside>
         </div>
       </div>
+
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
