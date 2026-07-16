@@ -2,7 +2,8 @@ import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, KeyRound } from 'luci
 import { type ReactNode, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { Relationship, SchemaGraph, SchemaObject } from '@/lib/api'
+import { KindBadge } from '@/components/kind-badge'
+import type { ObjectKind, Relationship, SchemaGraph, SchemaObject } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 /** Which sections of the panel are open; columns start open, relationships collapsed. */
@@ -58,12 +59,15 @@ function Section({
 function RelatedRow({
   direction,
   name,
+  kind,
   columns,
   dependency = false,
   onNavigate,
 }: {
   direction: 'out' | 'in'
   name: string
+  /** The related object's kind, so views read apart from tables at a glance. */
+  kind: ObjectKind
   columns: string[]
   /** A view dependency rather than a foreign key: dimmed arrow, no columns. */
   dependency?: boolean
@@ -78,9 +82,10 @@ function RelatedRow({
         className="flex w-full items-center gap-2 px-3 py-1 text-left text-xs leading-[18px] hover:bg-brand/10"
       >
         <Arrow className={cn('size-3 shrink-0', dependency ? 'text-muted-foreground' : 'text-brand')} />
-        <span className="truncate font-medium" title={name}>
+        <span className="min-w-0 truncate font-medium" title={name}>
           {name}
         </span>
+        <KindBadge kind={kind} />
         <span className="ml-auto truncate text-[11px] text-muted-foreground" title={columns.join(', ')}>
           {columns.join(', ')}
         </span>
@@ -119,11 +124,11 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
     setOpenSections((current) => ({ ...current, [section]: !current[section] }))
   }
 
-  // A table's short name by id, for labelling the related rows.
-  const nameById = useMemo(() => {
-    const map = new Map<string, string>()
+  // Objects by id, for labelling the related rows with their name and kind.
+  const objectById = useMemo(() => {
+    const map = new Map<string, SchemaObject>()
     for (const candidate of graph.objects) {
-      map.set(candidate.id, candidate.name)
+      map.set(candidate.id, candidate)
     }
     return map
   }, [graph.objects])
@@ -190,7 +195,8 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
               <RelatedRow
                 key={relationship.constraint_name}
                 direction="out"
-                name={nameById.get(relationship.target) ?? relationship.target}
+                name={objectById.get(relationship.target)?.name ?? relationship.target}
+                kind={objectById.get(relationship.target)?.kind ?? 'table'}
                 columns={relationship.source_columns}
                 dependency={relationship.kind === 'view_dependency'}
                 onNavigate={() => onNavigate(relationship.target)}
@@ -212,7 +218,8 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
               <RelatedRow
                 key={relationship.constraint_name}
                 direction="in"
-                name={nameById.get(relationship.source) ?? relationship.source}
+                name={objectById.get(relationship.source)?.name ?? relationship.source}
+                kind={objectById.get(relationship.source)?.kind ?? 'table'}
                 columns={relationship.target_columns}
                 dependency={relationship.kind === 'view_dependency'}
                 onNavigate={() => onNavigate(relationship.source)}
