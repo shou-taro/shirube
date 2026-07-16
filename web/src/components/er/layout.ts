@@ -4,11 +4,14 @@ import { type Edge, MarkerType, type Node } from '@xyflow/react'
 import type { SchemaGraph, SchemaObject } from '@/lib/api'
 
 // A node's on-screen size, needed up front so dagre can lay the graph out without
-// measuring the DOM. Keep these in step with the styling in table-node.tsx.
+// measuring the DOM — and set explicitly on each node so the MiniMap, which skips nodes
+// of unknown size, can draw them. Keep these in step with the styling in table-node.tsx:
+// header 37, one border pair 2, list padding 8 (py-1 top and bottom), each row 22.
 const NODE_WIDTH = 240
-const HEADER_HEIGHT = 41
+const HEADER_HEIGHT = 37
 const ROW_HEIGHT = 22
-const BODY_PADDING = 8
+const BODY_PADDING = 4
+const BORDER = 2
 
 /** Data carried by an ER map node. The index signature satisfies React Flow's typing. */
 export interface TableNodeData {
@@ -26,7 +29,7 @@ export interface TableNodeData {
 export type TableFlowNode = Node<TableNodeData, 'table'>
 
 function nodeHeight(object: SchemaObject): number {
-  return HEADER_HEIGHT + BODY_PADDING * 2 + object.columns.length * ROW_HEIGHT
+  return HEADER_HEIGHT + BORDER + BODY_PADDING * 2 + object.columns.length * ROW_HEIGHT
 }
 
 /**
@@ -59,10 +62,14 @@ export function layoutGraph(graph: SchemaGraph): { nodes: TableFlowNode[]; edges
 
   const nodes: TableFlowNode[] = graph.objects.map((object) => {
     const { x, y } = dagre.node(object.id)
+    const height = nodeHeight(object)
     return {
       id: object.id,
       type: 'table',
-      position: { x: x - NODE_WIDTH / 2, y: y - nodeHeight(object) / 2 },
+      position: { x: x - NODE_WIDTH / 2, y: y - height / 2 },
+      // Explicit dimensions match the card so the MiniMap renders each node.
+      width: NODE_WIDTH,
+      height,
       data: { object },
     }
   })
