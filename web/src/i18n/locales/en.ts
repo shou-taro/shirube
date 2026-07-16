@@ -12,6 +12,7 @@ const en = {
   connection: {
     savedConnections: 'Saved connections',
     newConnection: 'New connection',
+    new: 'New',
     loading: 'Loading connections…',
     disconnect: 'Switch connection',
     copySuffix: 'copy',
@@ -28,7 +29,7 @@ const en = {
     optionsLabel: 'Security and scope',
     schemasHint: 'Comma-separated; leave empty for all',
     passwordKeepHint: 'Leave blank to keep the saved password',
-    test: 'Test connection',
+    test: 'Test',
     testing: 'Testing…',
     testOk: 'Connection successful',
     saveAndConnect: 'Save and connect',
