@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { SchemaGraph } from '@/lib/api'
 
-import { layoutGraph, type TableFlowNode } from './layout'
+import { layoutGraph, type TableFlowNode, type TableNodeData } from './layout'
 import { hiddenByReference, pickCentre, selectNeighbourhood } from './neighbourhood'
 import { RoutedEdge } from './routed-edge'
 import { TableNode } from './table-node'
@@ -184,7 +184,17 @@ export function ErDiagram({
       {/* Controls and minimap sit on the right, clear of the table-detail card that
           floats (and expands) down the left edge. */}
       <Controls showInteractive={false} position="bottom-right" />
-      <MiniMap pannable zoomable position="top-right" style={{ width: 140, height: 100 }} />
+      <MiniMap
+        pannable
+        zoomable
+        position="top-right"
+        className="!rounded-lg !border !border-brand/20 !bg-card"
+        style={{ width: 140, height: 100 }}
+        maskColor="rgba(167, 139, 250, 0.12)"
+        nodeStrokeColor="#a78bfa"
+        nodeColor={(node) => ((node.data as TableNodeData).isCentre ? '#a78bfa' : '#cdbef7')}
+        nodeBorderRadius={3}
+      />
     </ReactFlow>
   )
 }
