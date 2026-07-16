@@ -153,7 +153,7 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
   const canNext = (page?.has_more ?? false) && status !== 'loading'
 
   return (
-    <div className="flex h-[45vh] max-h-[60vh] min-h-48 shrink-0 flex-col border-t border-brand/20 bg-card">
+    <div className="flex h-[32vh] max-h-[44vh] min-h-40 shrink-0 flex-col border-t border-brand/25 bg-card shadow-[0_-6px_20px_-10px_rgba(0,0,0,0.18)]">
       {/* Header: which object, the current row range, paging and close. */}
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-brand/20 bg-brand/10 px-3 text-xs">
         <span className="font-medium text-foreground">{object?.name ?? t('data.title')}</span>
@@ -199,7 +199,7 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
       </div>
 
       {/* Filter bar: AND-combined column conditions, each removable. */}
-      <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-brand/10 px-3 py-1.5">
+      <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-brand/15 bg-brand/[0.04] px-3 py-1.5">
         {filters.map((filter, index) => (
           <div
             // Filters have no stable id; their position is their identity here.
@@ -278,7 +278,7 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
           </div>
         ) : (
           <table className="w-full border-collapse text-xs">
-            <thead className="sticky top-0 z-10 bg-card">
+            <thead className="sticky top-0 z-10 bg-secondary">
               <tr>
                 {page.columns.map((column) => (
                   <th
@@ -291,7 +291,7 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
                           : t('data.sortDesc')
                         : t('data.sortNone')
                     }
-                    className="cursor-pointer select-none whitespace-nowrap border-b border-brand/15 px-2.5 py-1.5 text-left font-semibold hover:bg-brand/10"
+                    className="cursor-pointer select-none whitespace-nowrap border-b border-border px-2.5 py-1.5 text-left font-semibold text-foreground hover:bg-brand/15"
                   >
                     <span className="inline-flex items-center gap-1">
                       {column}
@@ -312,13 +312,16 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
                   // Rows have no key of their own; their position in the page identifies them.
                   // eslint-disable-next-line react/no-array-index-key
                   key={rowIndex}
-                  className={cn('hover:bg-brand/5', rowIndex % 2 === 1 && 'bg-muted/30')}
+                  className={cn(
+                    'hover:bg-brand/10',
+                    rowIndex % 2 === 1 ? 'bg-muted/60' : 'bg-card',
+                  )}
                 >
                   {row.map((value, columnIndex) => (
                     <td
                       key={page.columns[columnIndex]}
                       title={value === null ? undefined : String(value)}
-                      className="max-w-96 truncate whitespace-nowrap border-b border-border/50 px-2.5 py-1"
+                      className="max-w-96 truncate whitespace-nowrap border-b border-border/60 px-2.5 py-1"
                     >
                       <Cell value={value} nullLabel={t('data.null')} />
                     </td>
