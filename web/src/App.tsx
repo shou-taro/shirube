@@ -4,10 +4,9 @@ import { useEffect, useState } from 'react'
 import { ConnectionScreen } from '@/components/connection/connection-screen'
 import { Explorer } from '@/components/explorer'
 import { listProfiles, type Profile } from '@/lib/api'
-
 // Remembers the last connected profile across reloads. Only the id is stored — the
 // password stays in the OS keychain, and the profile is re-validated on load.
-const ACTIVE_PROFILE_KEY = 'shirube.activeProfileId'
+import { ACTIVE_PROFILE_KEY } from '@/lib/storage'
 
 /**
  * Root of the app: show the connection screen until a profile is chosen, then the
