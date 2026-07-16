@@ -1,7 +1,5 @@
 import {
   ArrowUp,
-  ChevronDown,
-  ChevronUp,
   Database,
   Loader2,
   PanelRightClose,
@@ -43,7 +41,6 @@ interface ExplorerProps {
 export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const { t } = useTranslation()
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
-  const [detailExpanded, setDetailExpanded] = useState(false)
   const [navigatorOpen, setNavigatorOpen] = useState(true)
   // A table chosen via search to centre the ER map on; null lets the map pick the backbone.
   const [centreOverride, setCentreOverride] = useState<string | null>(null)
@@ -185,49 +182,25 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             />
           )}
 
-          {/* Floating table-detail card: compact by default, expandable downwards to
-              give a selected table's detail room to breathe. */}
-          <div
-            className={cn(
-              'absolute left-3 top-3 z-10 flex w-64 flex-col overflow-hidden rounded-xl border border-brand/20 bg-card shadow-md',
-              detailExpanded && 'bottom-3',
-            )}
-          >
-            <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 bg-brand/15 pl-3 pr-1.5 text-xs font-medium text-brand-foreground">
+          {/* Floating table-detail card: hugs its content and caps at the pane height,
+              scrolling within. Each section inside collapses on its own. */}
+          <div className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-64 flex-col overflow-hidden rounded-xl border border-brand/20 bg-card shadow-md">
+            <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 bg-brand/15 px-3 text-xs font-medium text-brand-foreground">
               {centreObject ? (
                 <>
                   <span className="truncate" title={centreObject.name}>
                     {centreObject.name}
                   </span>
-                  <span className="truncate text-[11px] font-normal text-brand-foreground/60">
+                  <span className="shrink-0 text-[11px] font-normal text-brand-foreground/60">
                     {centreObject.schema}
                   </span>
                 </>
               ) : (
-                <span className="flex-1">{t('panes.detail')}</span>
+                <span>{t('panes.detail')}</span>
               )}
-              <span className="flex-1" />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6"
-                onClick={() => setDetailExpanded((expanded) => !expanded)}
-                aria-label={detailExpanded ? t('panes.collapse') : t('panes.expand')}
-              >
-                {detailExpanded ? (
-                  <ChevronUp className="size-3.5" />
-                ) : (
-                  <ChevronDown className="size-3.5" />
-                )}
-              </Button>
             </div>
             {readySchema && centreObject ? (
-              <div
-                className={cn(
-                  'overflow-y-auto',
-                  detailExpanded ? 'flex-1' : 'max-h-[45vh]',
-                )}
-              >
+              <div className="min-h-0 overflow-y-auto">
                 <TableDetail
                   object={centreObject}
                   graph={readySchema.graph}
@@ -235,12 +208,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
                 />
               </div>
             ) : (
-              <div
-                className={cn(
-                  'p-6 text-center text-xs text-muted-foreground',
-                  detailExpanded && 'flex flex-1 items-center justify-center overflow-y-auto',
-                )}
-              >
+              <div className="p-6 text-center text-xs text-muted-foreground">
                 {t('panes.detailEmpty')}
               </div>
             )}

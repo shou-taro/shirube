@@ -1,15 +1,52 @@
-import { ArrowLeft, ArrowRight, KeyRound } from 'lucide-react'
-import { useMemo } from 'react'
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, KeyRound } from 'lucide-react'
+import { type ReactNode, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { Relationship, SchemaGraph, SchemaObject } from '@/lib/api'
 
-/** A section heading within the panel, e.g. above the column list. */
-function SectionLabel({ children }: { children: string }) {
+/** Which sections of the panel are open; columns start open, relationships collapsed. */
+interface OpenSections {
+  columns: boolean
+  references: boolean
+  referencedBy: boolean
+}
+
+/**
+ * A collapsible section: a heading with a disclosure chevron and an item count, above its
+ * content when open. Lets the panel show only the parts a table calls for — many columns,
+ * many relationships — without one crowding out the other.
+ */
+function Section({
+  label,
+  count,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string
+  count: number
+  open: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
   return (
-    <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-      {children}
-    </p>
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center gap-1 px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+      >
+        {open ? (
+          <ChevronDown className="size-3 shrink-0" />
+        ) : (
+          <ChevronRight className="size-3 shrink-0" />
+        )}
+        <span>{label}</span>
+        <span className="ml-auto pr-1 font-normal text-muted-foreground/70">{count}</span>
+      </button>
+      {open && <div className="pb-1">{children}</div>}
+    </div>
   )
 }
 
@@ -59,13 +96,24 @@ interface TableDetailProps {
 
 /**
  * The detail of the map's centre table: its columns, then its foreign-key relationships
- * split by direction — tables it references, and tables that reference it. Each related
- * table is clickable to travel there. Fills the floating card in the workspace's
- * top-left; the card owns both the table's name (in its header) and scrolling, so this
- * simply lays the content out top to bottom.
+ * split by direction — tables it references, and tables that reference it. Each section
+ * collapses independently (columns open by default), and each related table is clickable
+ * to travel there. Fills the floating card in the workspace's top-left; the card owns the
+ * table's name (in its header) and scrolling.
  */
 export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
   const { t } = useTranslation()
+  // Open state persists as the centre changes, so a section opened for exploring — say
+  // "referenced by" — stays open while travelling from table to table.
+  const [openSections, setOpenSections] = useState<OpenSections>({
+    columns: true,
+    references: false,
+    referencedBy: false,
+  })
+
+  function toggle(section: keyof OpenSections): void {
+    setOpenSections((current) => ({ ...current, [section]: !current[section] }))
+  }
 
   // A table's short name by id, for labelling the related rows.
   const nameById = useMemo(() => {
@@ -92,40 +140,47 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
   }, [graph.relationships, object.id])
 
   return (
-    <div className="pb-3">
-      <SectionLabel>{t('schema.columns')}</SectionLabel>
-      <ul>
-        {object.columns.map((column) => (
-          <li
-            key={column.name}
-            className="flex items-center gap-2 px-3 py-1 text-xs leading-[18px]"
-          >
-            {column.is_primary_key ? (
-              <KeyRound className="size-3 shrink-0 text-brand" />
-            ) : (
-              <span className="size-3 shrink-0" aria-hidden />
-            )}
-            <span className="truncate" title={column.name}>
-              {column.name}
-            </span>
-            {!column.nullable && (
-              <span className="shrink-0 text-[9px] font-medium uppercase text-muted-foreground/70">
-                {t('schema.notNull')}
-              </span>
-            )}
-            <span
-              className="ml-auto truncate text-muted-foreground"
-              title={column.data_type}
+    <div className="pb-2">
+      <Section
+        label={t('schema.columns')}
+        count={object.columns.length}
+        open={openSections.columns}
+        onToggle={() => toggle('columns')}
+      >
+        <ul>
+          {object.columns.map((column) => (
+            <li
+              key={column.name}
+              className="flex items-center gap-2 px-3 py-1 text-xs leading-[18px]"
             >
-              {column.data_type}
-            </span>
-          </li>
-        ))}
-      </ul>
+              {column.is_primary_key ? (
+                <KeyRound className="size-3 shrink-0 text-brand" />
+              ) : (
+                <span className="size-3 shrink-0" aria-hidden />
+              )}
+              <span className="truncate" title={column.name}>
+                {column.name}
+              </span>
+              {!column.nullable && (
+                <span className="shrink-0 text-[9px] font-medium uppercase text-muted-foreground/70">
+                  {t('schema.notNull')}
+                </span>
+              )}
+              <span className="ml-auto truncate text-muted-foreground" title={column.data_type}>
+                {column.data_type}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Section>
 
       {references.length > 0 && (
-        <>
-          <SectionLabel>{t('schema.references')}</SectionLabel>
+        <Section
+          label={t('schema.references')}
+          count={references.length}
+          open={openSections.references}
+          onToggle={() => toggle('references')}
+        >
           <ul>
             {references.map((relationship) => (
               <RelatedRow
@@ -137,12 +192,16 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
               />
             ))}
           </ul>
-        </>
+        </Section>
       )}
 
       {referencedBy.length > 0 && (
-        <>
-          <SectionLabel>{t('schema.referencedBy')}</SectionLabel>
+        <Section
+          label={t('schema.referencedBy')}
+          count={referencedBy.length}
+          open={openSections.referencedBy}
+          onToggle={() => toggle('referencedBy')}
+        >
           <ul>
             {referencedBy.map((relationship) => (
               <RelatedRow
@@ -154,7 +213,7 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
               />
             ))}
           </ul>
-        </>
+        </Section>
       )}
     </div>
   )
