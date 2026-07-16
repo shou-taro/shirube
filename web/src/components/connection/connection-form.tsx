@@ -206,8 +206,9 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
         <p className="text-sm text-green-600">{t('connection.testOk')}</p>
       ) : null}
 
-      {/* Secondary actions on the left; the primary CTA anchored bottom-right. */}
-      <div className="flex items-center gap-2 pt-2">
+      {/* Secondary actions on the left; the primary CTA anchored bottom-right. Wraps on
+          very narrow widths rather than overflowing the card. */}
+      <div className="flex flex-wrap items-center gap-2 pt-2">
         <Button
           type="button"
           variant="outline"
