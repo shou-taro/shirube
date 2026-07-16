@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from typing import Protocol
 
 from shirube.domain.connection import ConnectionParams, ConnectionProfile
+from shirube.domain.data import RowPage, RowQuery
 from shirube.domain.schema import SchemaGraph
 
 
@@ -54,6 +55,35 @@ class SchemaInspector(Protocol):
             The schema as a graph of objects and foreign-key relationships.
 
         Raises:
+            ConnectionFailedError: if the database cannot be reached or read.
+        """
+        ...
+
+
+class DataReader(Protocol):
+    """Reads a page of rows from a single table or view, read-only."""
+
+    def read_rows(
+        self,
+        params: ConnectionParams,
+        schemas: Sequence[str],
+        object_id: str,
+        query: RowQuery,
+    ) -> RowPage:
+        """Read a filtered, sorted page of an object's rows.
+
+        Args:
+            params: How to connect.
+            schemas: Schemas the object may live in; empty means all non-system schemas.
+            object_id: The ``schema.name`` id of the table or view to read.
+            query: The page to read — limit, offset, sort and filters.
+
+        Returns:
+            The requested page of rows.
+
+        Raises:
+            ObjectNotFoundError: if no such object exists in the allowed schemas.
+            InvalidQueryError: if the query names a column the object does not have.
             ConnectionFailedError: if the database cannot be reached or read.
         """
         ...

@@ -45,3 +45,21 @@ class ConnectionFailedError(ShirubeError):
 
     status_code = 400
     detail = "Could not connect to the database"
+
+
+class ObjectNotFoundError(ShirubeError):
+    """Raised when a requested table or view is not in the connected database."""
+
+    status_code = 404
+    detail = "Table or view not found"
+
+
+class InvalidQueryError(ShirubeError):
+    """Raised when a row query names a column the object does not have.
+
+    Column and operator choices are validated against the object's real columns before
+    any SQL is built, so an unknown column is refused rather than reaching the database.
+    """
+
+    status_code = 400
+    detail = "The query referenced a column that does not exist"
