@@ -97,6 +97,46 @@ export interface SchemaGraph {
   relationships: Relationship[]
 }
 
+/** How a row filter compares a column against a value. `is_null`/`is_not_null` ignore it. */
+export type FilterOperator = 'eq' | 'ne' | 'contains' | 'is_null' | 'is_not_null'
+
+/** Ascending or descending order for a sorted column. */
+export type SortDirection = 'asc' | 'desc'
+
+/** One filter condition on a row query; conditions combine with AND. */
+export interface RowFilter {
+  column: string
+  operator: FilterOperator
+  value?: string
+}
+
+/** How to order a row query. */
+export interface RowSort {
+  column: string
+  direction: SortDirection
+}
+
+/** A request for a page of an object's rows. */
+export interface RowQuery {
+  limit?: number
+  offset?: number
+  sort?: RowSort | null
+  filters?: RowFilter[]
+}
+
+/** A single cell's value, reduced to something JSON can carry. */
+export type CellValue = string | number | boolean | null
+
+/** One page of rows read back from an object. */
+export interface RowPage {
+  columns: string[]
+  rows: CellValue[][]
+  /** Whether a further page exists past this one. */
+  has_more: boolean
+  offset: number
+  limit: number
+}
+
 async function errorDetail(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { detail?: string }
@@ -161,4 +201,16 @@ export function testProfileConnection(id: string): Promise<void> {
 /** Introspect a saved profile's database and return its schema as a graph. */
 export function fetchSchema(id: string): Promise<SchemaGraph> {
   return apiFetch<SchemaGraph>(`/profiles/${id}/schema`)
+}
+
+/** Read a filtered, sorted page of one table or view's rows. */
+export function fetchRows(
+  profileId: string,
+  objectId: string,
+  query: RowQuery,
+): Promise<RowPage> {
+  return apiFetch<RowPage>(`/profiles/${profileId}/objects/${encodeURIComponent(objectId)}/rows`, {
+    method: 'POST',
+    body: JSON.stringify(query),
+  })
 }
