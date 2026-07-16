@@ -12,12 +12,15 @@ from shirube.adapters.keyring.secret_store import KeyringSecretStore
 from shirube.adapters.persistence.database import get_session_factory
 from shirube.adapters.persistence.profile_repository import SqlProfileRepository
 from shirube.adapters.postgres.connector import PostgresConnector
+from shirube.adapters.postgres.data_reader import PostgresDataReader
 from shirube.adapters.postgres.schema_inspector import PostgresSchemaInspector
 from shirube.application.connections import ConnectionService
+from shirube.application.data import DataService
 from shirube.application.profiles import ProfileService
 from shirube.application.schema import SchemaService
 from shirube.ports.repositories import (
     DatabaseConnector,
+    DataReader,
     ProfileRepository,
     SchemaInspector,
     SecretStore,
@@ -44,6 +47,11 @@ def get_schema_inspector() -> SchemaInspector:
     return PostgresSchemaInspector()
 
 
+def get_data_reader() -> DataReader:
+    """Provide the PostgreSQL row-preview reader."""
+    return PostgresDataReader()
+
+
 def get_profile_service(
     repository: Annotated[ProfileRepository, Depends(get_profile_repository)],
     secrets: Annotated[SecretStore, Depends(get_secret_store)],
@@ -68,3 +76,12 @@ def get_schema_service(
 ) -> SchemaService:
     """Compose the schema service from the repository, secret store and inspector."""
     return SchemaService(repository, secrets, inspector)
+
+
+def get_data_service(
+    repository: Annotated[ProfileRepository, Depends(get_profile_repository)],
+    secrets: Annotated[SecretStore, Depends(get_secret_store)],
+    reader: Annotated[DataReader, Depends(get_data_reader)],
+) -> DataService:
+    """Compose the data service from the repository, secret store and row reader."""
+    return DataService(repository, secrets, reader)
