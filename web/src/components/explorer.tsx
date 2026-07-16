@@ -8,10 +8,12 @@ import {
   Search,
   Settings,
   Sparkles,
+  Table2,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { DataDrawer } from '@/components/data-drawer'
 import { ErDiagram } from '@/components/er/er-diagram'
 import { KindBadge } from '@/components/kind-badge'
 import { Logo } from '@/components/logo'
@@ -47,6 +49,8 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
   const [navigatorOpen, setNavigatorOpen] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // Whether the bottom row-preview drawer is showing (for the current centre object).
+  const [dataOpen, setDataOpen] = useState(false)
   // A table chosen via search to centre the ER map on; null lets the map pick the backbone.
   const [centreOverride, setCentreOverride] = useState<string | null>(null)
   // The id of the map's current centre, reported by the ER map; drives the detail card.
@@ -172,8 +176,10 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        {/* Centre: the ER map canvas, with the table-detail card floating over it. */}
-        <div className="relative min-w-0 flex-1 bg-background">
+        {/* Centre: the ER map (top) above the row-preview drawer (bottom); the
+            table-detail card floats over the map. */}
+        <div className="flex min-w-0 flex-1 flex-col bg-background">
+          <div className="relative min-h-0 flex-1">
           {schema.status === 'loading' ? (
             <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
@@ -196,7 +202,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               centreOverride={centreOverride}
               onCentreChange={setCentreId}
               defaultShowAll={settings.defaultView === 'all'}
-              resizeKey={navigatorOpen}
+              resizeKey={`${navigatorOpen}:${dataOpen}`}
             />
           ) : null}
 
@@ -231,7 +237,31 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
                 {t('panes.detailEmpty')}
               </div>
             )}
+            {/* Footer: reveal the current table's rows in the drawer below. */}
+            {centreObject && (
+              <button
+                type="button"
+                onClick={() => setDataOpen((open) => !open)}
+                aria-pressed={dataOpen}
+                className={cn(
+                  'flex shrink-0 items-center justify-center gap-1.5 border-t border-brand/20 px-3 py-2 text-xs font-medium hover:bg-brand/10',
+                  dataOpen && 'bg-brand/15 text-brand',
+                )}
+              >
+                <Table2 className="size-3.5" />
+                {t('data.view')}
+              </button>
+            )}
           </div>
+          </div>
+
+          {/* Bottom: the row-preview drawer for the current centre object. */}
+          <DataDrawer
+            profileId={profile.id}
+            object={centreObject}
+            open={dataOpen}
+            onClose={() => setDataOpen(false)}
+          />
         </div>
 
         {/* Right pane: the AI navigator (Milestone 2) — docked so chat gets the full
