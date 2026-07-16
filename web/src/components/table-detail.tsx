@@ -3,6 +3,7 @@ import { type ReactNode, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { Relationship, SchemaGraph, SchemaObject } from '@/lib/api'
+import { cn } from '@/lib/utils'
 
 /** Which sections of the panel are open; columns start open, relationships collapsed. */
 interface OpenSections {
@@ -58,11 +59,14 @@ function RelatedRow({
   direction,
   name,
   columns,
+  dependency = false,
   onNavigate,
 }: {
   direction: 'out' | 'in'
   name: string
   columns: string[]
+  /** A view dependency rather than a foreign key: dimmed arrow, no columns. */
+  dependency?: boolean
   onNavigate: () => void
 }) {
   const Arrow = direction === 'out' ? ArrowRight : ArrowLeft
@@ -73,7 +77,7 @@ function RelatedRow({
         onClick={onNavigate}
         className="flex w-full items-center gap-2 px-3 py-1 text-left text-xs leading-[18px] hover:bg-brand/10"
       >
-        <Arrow className="size-3 shrink-0 text-brand" />
+        <Arrow className={cn('size-3 shrink-0', dependency ? 'text-muted-foreground' : 'text-brand')} />
         <span className="truncate font-medium" title={name}>
           {name}
         </span>
@@ -188,6 +192,7 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
                 direction="out"
                 name={nameById.get(relationship.target) ?? relationship.target}
                 columns={relationship.source_columns}
+                dependency={relationship.kind === 'view_dependency'}
                 onNavigate={() => onNavigate(relationship.target)}
               />
             ))}
@@ -209,6 +214,7 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
                 direction="in"
                 name={nameById.get(relationship.source) ?? relationship.source}
                 columns={relationship.target_columns}
+                dependency={relationship.kind === 'view_dependency'}
                 onNavigate={() => onNavigate(relationship.source)}
               />
             ))}

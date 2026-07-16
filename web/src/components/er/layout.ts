@@ -82,6 +82,9 @@ export function layoutGraph(graph: SchemaGraph): { nodes: TableFlowNode[]; edges
       w: relationship.target,
       name: relationship.constraint_name,
     }) as { points?: { x: number; y: number }[] } | undefined
+    // A view dependency (a view reading a relation) is drawn dashed to set it apart from
+    // a solid foreign key.
+    const isDependency = relationship.kind === 'view_dependency'
     return {
       id: `${relationship.source}:${relationship.constraint_name}`,
       source: relationship.source,
@@ -89,7 +92,11 @@ export function layoutGraph(graph: SchemaGraph): { nodes: TableFlowNode[]; edges
       type: 'routed',
       data: { points: routed?.points ?? [] },
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#9a92b4' },
-      style: { stroke: '#9a92b4', strokeWidth: 1.5 },
+      style: {
+        stroke: '#9a92b4',
+        strokeWidth: 1.5,
+        ...(isDependency ? { strokeDasharray: '5 4' } : {}),
+      },
     }
   })
 
