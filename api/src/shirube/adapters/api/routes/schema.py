@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from shirube.adapters.api.dependencies import get_schema_service
 from shirube.application.schema import SchemaService
-from shirube.domain.schema import ObjectKind, SchemaGraph, SchemaObject
+from shirube.domain.schema import ObjectKind, RelationshipKind, SchemaGraph, SchemaObject
 
 router = APIRouter(prefix="/profiles", tags=["schema"])
 
@@ -59,13 +59,14 @@ class ObjectRead(BaseModel):
 
 
 class RelationshipRead(BaseModel):
-    """A foreign-key relationship — one edge on the map."""
+    """A relationship — one edge on the map: a foreign key or a view dependency."""
 
     constraint_name: str
     source: str
     source_columns: list[str]
     target: str
     target_columns: list[str]
+    kind: RelationshipKind
 
 
 class SchemaRead(BaseModel):
@@ -86,6 +87,7 @@ class SchemaRead(BaseModel):
                     source_columns=list(relationship.source_columns),
                     target=relationship.target,
                     target_columns=list(relationship.target_columns),
+                    kind=relationship.kind,
                 )
                 for relationship in graph.relationships
             ],
