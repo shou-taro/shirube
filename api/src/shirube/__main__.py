@@ -14,6 +14,11 @@ from shirube.config import get_settings
 from shirube.logging_config import setup_logging
 
 
+def _is_loopback(host: str) -> bool:
+    """Whether ``host`` refers to the local machine only (not the network)."""
+    return host in {"localhost", "::1", "[::1]"} or host.startswith("127.")
+
+
 def _open_browser(url: str) -> None:
     """Open ``url`` in the user's default browser (best effort)."""
     webbrowser.open(url)
@@ -35,6 +40,15 @@ def main() -> None:
         settings.port,
         settings.data_dir,
     )
+    if not _is_loopback(settings.host):
+        # shirube is single-user and unauthenticated by design; binding beyond loopback
+        # exposes an unprotected API on the network, so make an accidental one loud.
+        logger.warning(
+            "shirube is bound to %s, which is not a loopback address — it may be "
+            "reachable from your network. shirube is single-user and unauthenticated; "
+            "bind to 127.0.0.1 unless you intend to expose it.",
+            settings.host,
+        )
     url = f"http://{settings.host}:{settings.port}"
     if settings.open_browser:
         # Defer the launch slightly so the server is ready to answer the first request.

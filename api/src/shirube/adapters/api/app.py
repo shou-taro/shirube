@@ -13,11 +13,13 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from shirube import __version__
 from shirube.adapters.api.errors import register_exception_handlers
 from shirube.adapters.api.routes import connections, data, health, profiles, schema
 from shirube.adapters.persistence.bootstrap import bootstrap_database
+from shirube.config import get_settings
 
 # The built SPA, copied here by scripts/build.sh and bundled into the wheel. It is
 # absent during development (git-ignored), where Vite serves the UI instead — hence the
@@ -25,6 +27,22 @@ from shirube.adapters.persistence.bootstrap import bootstrap_database
 STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
 
 _logger = logging.getLogger("shirube.request")
+
+# A conservative Content-Security-Policy for the bundled SPA. Everything is same-origin
+# (scripts, styles, the API), so only 'self' is allowed; inline styles are permitted
+# because React Flow sets element style attributes, and data: covers the inline SVG
+# favicon and logo. frame-ancestors 'none' blocks the page being framed (clickjacking).
+_CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; "
+    "font-src 'self' data:; "
+    "connect-src 'self'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'"
+)
 
 
 @asynccontextmanager
@@ -56,6 +74,24 @@ def create_app() -> FastAPI:
     app = FastAPI(title="shirube", version=__version__, lifespan=lifespan)
 
     @app.middleware("http")
+    async def _security_headers(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        """Add defence-in-depth security headers to every response.
+
+        Cheap hardening for a locally served app: stop MIME sniffing, forbid framing
+        (clickjacking), withhold the referrer, and constrain resource loading to the
+        same origin via a Content-Security-Policy.
+        """
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Content-Security-Policy"] = _CONTENT_SECURITY_POLICY
+        return response
+
+    @app.middleware("http")
     async def _log_requests(
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
@@ -85,6 +121,15 @@ def create_app() -> FastAPI:
             elapsed_ms,
         )
         return response
+
+    # Reject requests whose Host header is not a name we serve, added last so it runs
+    # outermost — a bad host is refused before any handler or logging runs. This is the
+    # core DNS-rebinding defence: it stops a page on another origin from reaching this
+    # local API by pointing its own hostname at 127.0.0.1. The bind host is always
+    # allowed alongside the configured names.
+    settings = get_settings()
+    allowed_hosts = list(dict.fromkeys([*settings.allowed_hosts, settings.host]))
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
     register_exception_handlers(app)
     app.include_router(health.router, prefix="/api")
