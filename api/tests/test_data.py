@@ -8,6 +8,8 @@ from collections.abc import Sequence
 
 import pytest
 from fastapi.testclient import TestClient
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from shirube.adapters.api.app import create_app
 from shirube.adapters.api.dependencies import get_data_reader, get_secret_store
@@ -100,6 +102,91 @@ def test_build_select_rejects_unknown_sort_column() -> None:
             _COLUMNS,
             RowQuery(limit=100, offset=0, sort=SortOrder("secret", SortDirection.ASC)),
         )
+
+
+# --- build_select property tests (Hypothesis) ----------------------------------------
+#
+# The builder faces a wide, hostile input space, so instead of a few chosen cases these
+# throw many at it and assert the two invariants that keep it safe: any unknown column is
+# rejected, and a filter value never reaches the SQL text — proven by the statement being
+# identical when only the values differ.
+
+# The structure of one generated case: the column whitelist, the (column, operator) pairs
+# for filters, an optional (column, direction) sort, and the page bounds.
+_Case = tuple[
+    list[str],
+    list[tuple[str, FilterOperator]],
+    tuple[str, SortDirection] | None,
+    int,
+    int,
+]
+
+# Deliberately awkward identifiers alongside arbitrary printable text, so both curated
+# nasties and random noise are exercised.
+_NASTY_IDENTIFIERS = ['"', ";", "--", "DROP TABLE x", "a b", "select", "%(x)s", "{}", "café", "id'"]
+_identifiers = st.one_of(
+    st.sampled_from(_NASTY_IDENTIFIERS),
+    st.text(st.characters(min_codepoint=32, max_codepoint=126), min_size=1, max_size=8),
+)
+_VALUELESS = (FilterOperator.IS_NULL, FilterOperator.IS_NOT_NULL)
+
+
+@st.composite
+def _cases(draw: st.DrawFn) -> _Case:
+    """Draw a column whitelist and a query that may reference columns outside it."""
+    columns = draw(st.lists(_identifiers, min_size=1, max_size=5, unique=True))
+    referenceable = st.one_of(st.sampled_from(columns), _identifiers)
+    filters = draw(
+        st.lists(st.tuples(referenceable, st.sampled_from(list(FilterOperator))), max_size=4)
+    )
+    sort = draw(
+        st.one_of(st.none(), st.tuples(referenceable, st.sampled_from(list(SortDirection))))
+    )
+    limit = draw(st.integers(min_value=1, max_value=1000))
+    offset = draw(st.integers(min_value=0, max_value=1000))
+    return columns, filters, sort, limit, offset
+
+
+def _query(case: _Case, value: str) -> RowQuery:
+    """Build a RowQuery from a case, using one value for every value-bearing filter."""
+    _, filters, sort, limit, offset = case
+    return RowQuery(
+        limit=limit,
+        offset=offset,
+        sort=SortOrder(sort[0], sort[1]) if sort is not None else None,
+        filters=tuple(
+            ColumnFilter(column, operator, None if operator in _VALUELESS else value)
+            for column, operator in filters
+        ),
+    )
+
+
+@settings(max_examples=400, deadline=None)
+@given(_cases())
+def test_build_select_is_injection_safe(case: _Case) -> None:
+    columns, filters, sort, limit, offset = case
+    known = set(columns)
+    references_unknown = any(column not in known for column, _ in filters) or (
+        sort is not None and sort[0] not in known
+    )
+
+    if references_unknown:
+        with pytest.raises(InvalidQueryError):
+            build_select("public", "t", columns, _query(case, "alpha"))
+        return
+
+    statement_a, params_a = build_select("public", "t", columns, _query(case, "ALPHA_VALUE"))
+    statement_b, _ = build_select("public", "t", columns, _query(case, 'B;--"DROP'))
+
+    # Values are bound, never inlined: the SQL text is identical when only values change.
+    assert statement_a.as_string(None) == statement_b.as_string(None)
+    # Each value reaches the parameter list (wrapped for CONTAINS), then the page bounds.
+    expected_values = [
+        "%ALPHA_VALUE%" if operator is FilterOperator.CONTAINS else "ALPHA_VALUE"
+        for _, operator in filters
+        if operator not in _VALUELESS
+    ]
+    assert params_a == [*expected_values, limit + 1, offset]
 
 
 # --- endpoint ------------------------------------------------------------------------
