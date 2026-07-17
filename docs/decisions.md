@@ -1,7 +1,7 @@
 # Design decisions
 
-Why shirube is built the way it is. The point of this record is the *why* — so a
-contributor (or a later you) can understand a trade-off instead of re-opening it.
+Why shirube is built the way it is. The point of this record is the *why* — so that
+future contributors and maintainers can understand a trade-off instead of re-opening it.
 
 It has two parts:
 
@@ -158,11 +158,11 @@ built), **Active** (an ongoing practice).
 
 - First launch (no profiles) opens the connection form; otherwise the saved-profiles
   list. shirube reconnects to the **last-used profile on reload**, so a refresh doesn't
-  drop you back to the connection screen — but it never connects to a *new* database
-  without you choosing it. A sample database (pagila) is available for development via
-  `scripts/dev-db.sh`.
+  drop the user back to the connection screen — but it never connects to a *new* database
+  without the user choosing it. A sample database (pagila) is available for development
+  via `scripts/dev-db.sh`.
 - *(Revised: originally "never auto-connects on launch"; restoring the last profile on
-  reload proved worth it, and it is scoped to the profile you last chose.)*
+  reload proved worth it, and it is scoped to the profile the user last chose.)*
 
 ### Multiple schemas on one map
 
@@ -213,9 +213,9 @@ built), **Active** (an ongoing practice).
 **Committed.**
 
 - AGPL-3.0 — genuine OSI open source whose network-copyleft deters a closed, hosted
-  competitor while a "commercial later" plan matures; as sole copyright holder we keep the
-  **dual-licence** option. As a standalone local tool, AGPL friction is limited (local use
-  triggers no source disclosure).
+  competitor while a "commercial later" plan matures; the sole copyright holder retains
+  the option to **dual-licence**. As a standalone local tool, AGPL friction is limited
+  (local use triggers no source disclosure).
 - **Follow-up:** adopt a CLA/DCO before accepting outside contributions to preserve
   relicensing, and add per-file notices as source is written.
 
