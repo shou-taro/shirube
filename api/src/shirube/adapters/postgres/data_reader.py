@@ -54,7 +54,7 @@ _RESOLVE_OBJECT_SQL = f"""
       AND n.nspname || '.' || c.relname = %(object_id)s
       AND {_schema_filter("n")}
     ORDER BY a.attnum
-"""
+"""  # nosec B608
 
 
 def build_select(
