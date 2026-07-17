@@ -43,7 +43,7 @@ The goal was never *"don't write SQL."* It's **"don't get lost."** shirube helps
 - How are these two tables related? Where does this foreign key lead?
 - Which table should I even start from?
 
-It is just as useful the classic way — dropping into a project with hundreds of
+It's just as useful in the classic case — dropping into a project with hundreds of
 undocumented tables and needing to find your footing fast. shirube is **not** a SQL IDE
 or a database administration console; it is a tool for *understanding* a database.
 
