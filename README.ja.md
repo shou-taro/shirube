@@ -72,6 +72,18 @@ uvx shirube
 
 > shirube は、渡された認証情報でそのまま接続します。必要なのは `CONNECT` と `SELECT` の権限を持つ読み取り専用ロールだけで、それ以上の権限は与えないことをおすすめします。
 
+### サンプルデータベースで試す
+
+手元に試せる PostgreSQL が無い場合は、サンプルデータベース（[pagila](https://github.com/devrimgunduz/pagila)）で動きを確かめられます。**Docker** と、このリポジトリのクローンが必要です。
+
+```bash
+git clone https://github.com/shou-taro/shirube.git
+cd shirube
+./scripts/dev-db.sh up
+```
+
+`postgresql://postgres:postgres@127.0.0.1:5432/pagila` が起動します。shirube でこの接続を追加すれば、そのまま探索を始められます。
+
 ## ロードマップ
 
 shirube の開発は 3 つの段階で進みます。
