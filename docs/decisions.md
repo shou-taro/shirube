@@ -107,8 +107,8 @@ layers:
   shirube **never draws the whole schema by default**.
 - The map always shows **one centre plus its direct (one-hop) neighbours** — a map
   zoomed to a place. Navigation is **travel, not accumulation**: clicking a neighbour
-  recentres the map on it (Google-Maps style), and search moves the centre. The view is
-  therefore identical whatever the schema's size.
+  recentres the map on it (like moving a map to a new place), and search moves the
+  centre. The view is therefore identical whatever the schema's size.
 - Because only one hop is drawn, a neighbour's own further connections are off the map.
   Nodes with such hidden connections show a short **stub line (with a count)** so "not
   connected" is distinguishable from "connected but not shown".
@@ -162,7 +162,7 @@ expansion.)*
 
 ## 11. Table detail panel
 
-**Status:** Accepted
+**Status:** Accepted (data preview revised — see below)
 
 - **Layout:** a left side panel, keeping the map in the centre and the AI chat on the
   right — a three-pane layout (detail | map | chat). The map is never hidden, so the
@@ -170,11 +170,14 @@ expansion.)*
 - **Contents:** columns (name, type, nullability, default, PK/FK, comment, enum
   values); relationships (both directions, each navigable — clicking moves the map);
   constraints, indexes, triggers; the table comment; an estimated row count.
-- **Sample data:** a small number of rows is loaded automatically when the panel
-  opens (forced `LIMIT`, no `ORDER BY` so it returns instantly even on large tables,
-  guarded by `statement_timeout`). More rows / paging are loaded on demand. Showing a
-  user their own data is not a privacy concern — they already have access; sending data
-  to an external AI is a separate matter (see decision 13).
+- **Data preview:** a table or view's rows open **on demand in a drawer beneath the
+  map** (a "View data" action on the detail panel), rather than loading automatically in
+  the side panel — this keeps the ER map the focus. The drawer reads rows read-only
+  (forced `LIMIT`, guarded by `statement_timeout`) with click-to-sort columns, simple
+  AND-combined column filters, and paging. Showing a user their own data is not a privacy
+  concern — they already have access; sending data to an external AI is a separate matter
+  (see decision 13). *(Revised: originally a small sample auto-loaded inside the detail
+  panel; it became an on-demand bottom drawer with sorting/filtering/paging.)*
 - **Views / materialised views:** the definition SQL is de-emphasised — dependencies
   and output columns are shown first, the raw SQL sits in a collapsed, scrollable,
   syntax-highlighted block, and the AI can summarise a long definition in plain
@@ -223,7 +226,8 @@ expansion.)*
 - **MVP:** table names in an AI answer are clickable and move/highlight the map, so the
   AI and the map feel like one navigator.
 - **Early enhancement:** the AI draws a *path* on the ER diagram (e.g. Customer →
-  Orders → Payments) — the "route planner" that embodies *Google Maps for databases*.
+  Orders → Payments) — the "route planner" that embodies *navigating a database like a
+  map*.
 
 ## 16. Search stays deterministic; concepts are the AI's job
 
@@ -235,18 +239,23 @@ expansion.)*
   the AI's job, so an embedding index would duplicate that. It can later enrich the
   AI's look-up tools.
 
-## 17. Build order: foundation first, release with AI
+## 17. Build order: foundation first, then the AI navigator
 
-**Status:** Accepted
+**Status:** Accepted (revised — the foundation ships as a public beta)
 
-The MVP is built in two milestones:
+shirube is built in two milestones:
 
-- **Milestone 1 — Foundation (internal):** connection → schema inspection → neighbourhood
-  ER → table detail → search → relationship navigation. The whole architectural backbone,
-  no AI. Usable for dogfooding, but not released.
-- **Milestone 2 — AI navigator (public release):** add the AI navigator on top of
-  Milestone 1's schema look-up tools, then release. The public product is therefore
-  AI-native from day one, while the foundation is proven before the AI is layered on.
+- **Milestone 1 — Foundation:** connection → schema inspection → neighbourhood ER →
+  table detail → data preview → search → relationship navigation. The whole
+  architectural backbone, no AI. **Released as a public beta (`0.1.0b1`)** so the
+  explorer core is validated against real databases before the AI is layered on.
+- **Milestone 2 — AI navigator:** add the AI navigator on top of Milestone 1's schema
+  look-up tools. This is the feature shirube is ultimately built around, and the next
+  milestone after the beta.
+
+*(Revised: Milestone 1 was originally kept internal, with the first public release
+waiting for the AI in Milestone 2. Releasing the foundation as a beta gets real-world
+feedback sooner and de-risks the AI work before it is layered on.)*
 
 ## 18. Branching: GitHub Flow
 
@@ -372,3 +381,20 @@ The MVP is built in two milestones:
 - **Follow-up:** to preserve the ability to relicence/dual-licence once external
   contributors arrive, adopt a CLA or DCO before accepting outside contributions.
   Per-file AGPL notices are to be added as source is written.
+
+## 27. Diagnostic logging: local, metadata-only
+
+**Status:** Accepted
+
+- shirube runs on the user's own machine, so a failure leaves no server-side trace to
+  inspect. A `shirube` logger writes to the console and a **rotating file beside the
+  app-state database** (`data_dir/shirube.log`), at `INFO` by default and raisable to
+  `DEBUG` via `SHIRUBE_LOG_LEVEL`.
+- **Logged:** a startup line; each request's method, path, status and duration; the
+  underlying cause behind a translated error (e.g. the raw driver error behind "could
+  not connect", which the user-facing message hides); and the traceback of any
+  unexpected exception.
+- **Never logged:** the *contents* a query touched — no filter values, no row data, no
+  passwords. Only metadata. The read-only, local-first privacy posture (decisions 4 and
+  14) must hold in the log too, since a released tool runs against real, possibly
+  sensitive databases.
