@@ -32,6 +32,10 @@ class Settings(BaseSettings):
             the platform's per-user data directory via ``platformdirs``.
         log_level: Minimum level written to the console and the log file. Raise to
             ``DEBUG`` (``SHIRUBE_LOG_LEVEL=DEBUG``) when diagnosing a problem.
+        allowed_hosts: Host header values the server will answer to. Restricting this to
+            loopback names defends against DNS-rebinding attacks, where a malicious web
+            page rebinds its domain to ``127.0.0.1`` to reach this local API through the
+            user's browser. The bind ``host`` is always allowed in addition to these.
     """
 
     model_config = SettingsConfigDict(env_prefix="SHIRUBE_", env_file=".env", extra="ignore")
@@ -43,6 +47,7 @@ class Settings(BaseSettings):
     open_browser: bool = True
     data_dir: Path = Field(default_factory=lambda: Path(user_data_dir(APP_NAME)))
     log_level: str = "INFO"
+    allowed_hosts: list[str] = Field(default_factory=lambda: ["127.0.0.1", "localhost"])
 
     @property
     def database_path(self) -> Path:
