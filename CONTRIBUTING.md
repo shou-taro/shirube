@@ -59,6 +59,15 @@ SHIRUBE_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/pagila \
   uv run --directory api pytest -m integration
 ```
 
+### In VS Code
+
+Both test suites run from the editor's **Testing** panel. The workspace recommends the
+extensions that power it (see `.vscode/extensions.json`): the Python extension runs
+pytest (already configured in `.vscode/settings.json` against `api/`), and the Vitest
+extension discovers the frontend tests from `web/vite.config.ts`. Accept the
+"install recommended extensions" prompt and both appear in the Testing panel to run or
+debug individually.
+
 ## Testing
 
 How the test suite is layered — and, in particular, which guarantees are covered by
