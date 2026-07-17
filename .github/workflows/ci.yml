@@ -55,6 +55,24 @@ jobs:
         env:
           SHIRUBE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
 
+  # Supply-chain and static security checks. A vulnerable dependency or a flagged
+  # code pattern fails CI — non-negotiable for a tool that handles database credentials.
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.14"
+      - run: uv sync
+      # SAST: flag insecure code patterns.
+      - run: uv run bandit -r src -q
+      # Dependency audit: fail on a known-vulnerable package.
+      - run: uv run pip-audit
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -73,3 +91,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
       - run: pnpm run build
+      # Dependency audit: fail on a high-severity advisory in the JS dependencies.
+      - run: pnpm audit --audit-level=high
