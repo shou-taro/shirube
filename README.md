@@ -93,6 +93,21 @@ PostgreSQL database and you're exploring — the database can be local or remote
 > shirube connects with whatever credentials you give it; a read-only role with
 > `CONNECT` and `SELECT` is all it needs, and all it should have.
 
+### Try it with a sample database
+
+No PostgreSQL to hand? You can take shirube for a spin against a sample database
+([pagila](https://github.com/devrimgunduz/pagila)). This needs **Docker** and a clone of
+this repository.
+
+```bash
+git clone https://github.com/shou-taro/shirube.git
+cd shirube
+./scripts/dev-db.sh up
+```
+
+That brings up `postgresql://postgres:postgres@127.0.0.1:5432/pagila`. Add it as a
+connection in shirube and start exploring.
+
 ## Roadmap
 
 shirube's development runs in three phases.
