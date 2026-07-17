@@ -1,400 +1,286 @@
-# Design Decisions
+# Design decisions
 
-This document records the key design decisions taken while shaping shirube, together
-with the reasoning behind each one. The *why* matters as much as the *what*: it lets
-future contributors (and future us) understand the trade-offs rather than re-litigate
-them.
+Why shirube is built the way it is. The point of this record is the *why* — so that
+future contributors and maintainers can understand a trade-off instead of re-opening it.
 
-Each decision notes its status. "Accepted" means settled for the MVP; "Deferred"
-means intentionally postponed to a later phase.
+It has two parts:
 
----
+- **Decided** — settled choices that shape the shipped product.
+- **Tentative** — current thinking on parts **not yet built** (chiefly the AI
+  navigator). Design intent, not commitments; expect it to change once the code exists.
 
-## 1. Local-first, single-command distribution
-
-**Status:** Accepted
-
-- The primary entry point is a single command (`uvx shirube` / `pipx install shirube`)
-  that starts a local server and opens the browser. Docker Compose is a secondary
-  option for isolation and for bundling a sample database.
-- **Why single command over Docker-only:** the target database is often on
-  `localhost`. A containerised shirube would need `host.docker.internal` and extra
-  networking, creating a "first connection always fails" papercut. A single local
-  command connects to a local *or* remote database with no networking friction — it is
-  the superset that always works.
-- The server binds to `127.0.0.1` only, so the MVP needs no authentication layer.
-- A bundled sample database (via Docker) lets newcomers try shirube instantly.
-- **Self-hosted / team server** is deferred to Phase 3; centralising everyone's
-  credentials on a server would *reduce* trust, and it drags in multi-user auth that
-  would bloat the MVP.
-
-## 2. Vite React SPA, not Next.js; FastAPI serves the SPA
-
-**Status:** Accepted
-
-- The frontend is a Vite-built React SPA. In distribution, FastAPI serves the
-  pre-built static files, so shirube is a single process on a single origin.
-- **Why not Next.js:** shirube needs none of Next's strengths (SSR/SSG, SEO, server
-  components) — it is a localhost, single-user, interactive-canvas app, exactly what
-  SPAs do best. Next would add a second backend alongside FastAPI and require a Node
-  runtime in a Python-distributed tool. Static-export Next would just be a heavier SPA.
-- **Migration path:** if a hosted cloud product is built later (Phase 3), that surface
-  can use Next.js. The valuable interactive UI (ER diagram, table viewer, chat) is
-  React and ports across; shadcn/ui and React Flow work in both. So choosing Vite now
-  does not lock us out of Next later.
-
-## 3. Connection input and credential storage
-
-**Status:** Accepted
-
-- Support both a connection URL and individual fields (host / port / database / user /
-  password / sslmode). Multiple named profiles, switchable.
-- **Secret vs non-secret split:** non-secret fields are saved to a local config file
-  as named profiles; passwords are stored in the OS keychain via the `keyring` library
-  (macOS Keychain / Windows Credential Manager / Linux Secret Service). Passwords are
-  never stored in plaintext.
-- On headless Linux where no Secret Service is available, fall back to passing
-  credentials via environment variables / connection URL.
-- **Why keychain:** the target user touches the same database daily; forcing re-entry
-  every session hurts the experience, and `keyring` keeps the added cost small.
-
-## 4. Read-only safety model
-
-**Status:** Accepted
-
-Even sample data and AI look-ups are `SELECT`s. "Never dangerous" is enforced in
-layers:
-
-1. Recommend (and prompt for) connecting with a read-only database role.
-2. No code path in the MVP emits DML/DDL.
-3. Every query runs in a read-only transaction (`SET TRANSACTION READ ONLY`).
-4. A `statement_timeout` guards against runaway queries.
-5. Sample data and result sets carry a forced `LIMIT`.
-6. Multi-statement queries are rejected.
-
-## 5. Remote / team connections
-
-**Status:** Mixed (SSL accepted; SSH tunnel out of scope; IAM deferred)
-
-- **SSL/TLS is in the MVP** (sslmode, CA certificate path) — cloud databases need it.
-- **SSH tunnel / bastion is out of shirube's responsibility.** Users establish their
-  own tunnel (`ssh -L …`) and point shirube at `localhost`. Building tunnelling in
-  brings key/passphrase/multi-hop complexity that pulls effort away from the core
-  value; the OS already does this well.
-- **Cloud IAM auth** (e.g. RDS IAM) is deferred to a later phase.
-
-## 6. Relationship discovery: foreign keys plus manual editing
-
-**Status:** Accepted; rule-based inference dropped
-
-- The ER diagram draws edges from **declared foreign keys**.
-- Because the target databases (legacy, poorly documented) often lack FK constraints,
-  users can **manually add relationships**. These are stored in shirube's local config
-  — the database is never modified — and are rendered distinctly from FK-derived edges
-  so a manual/guessed link is never mistaken for a declared one.
-- **Rule-based naming inference is dropped from the roadmap.** For the target
-  databases its accuracy is unpredictable, and a *wrong* edge is worse than a missing
-  one for a "don't get lost" tool — it actively misleads.
-- **Future:** if inference is ever added, the right form is "the AI proposes candidate
-  relationships, the user confirms", reusing the manual-add mechanism. The AI can also
-  verify against real data, which beats a naming heuristic.
-
-## 7. ER home screen: search + neighbourhood travel
-
-**Status:** Accepted (revised — travel replaces accumulating expansion)
-
-- Rendering hundreds of tables at once breaks both performance and readability, so
-  shirube **never draws the whole schema by default**.
-- The map always shows **one centre plus its direct (one-hop) neighbours** — a map
-  zoomed to a place. Navigation is **travel, not accumulation**: clicking a neighbour
-  recentres the map on it (like moving a map to a new place), and search moves the
-  centre. The view is therefore identical whatever the schema's size.
-- Because only one hop is drawn, a neighbour's own further connections are off the map.
-  Nodes with such hidden connections show a short **stub line (with a count)** so "not
-  connected" is distinguishable from "connected but not shown".
-- On first connection (before any search) shirube centres on the **most-connected
-  table** (the schema's "backbone"), which directly addresses "I don't know where to
-  start."
-- A **"show everything / fit to view"** affordance covers small databases where seeing
-  the whole graph is pleasant.
-- **Domain-cluster overview** (grouping by schema/naming) is deferred as a future
-  higher zoom level.
-
-## 8. Objects shown on the map
-
-**Status:** Accepted
-
-- **Nodes (MVP):** tables, views, materialised views.
-- **Foreign tables:** excluded from the MVP; a Phase 2 candidate, not yet committed.
-- **Partitions:** child partitions are hidden by default (parent shown only), so a
-  partition-heavy schema does not flood the map. Revealing them uses the scoped
-  expand/collapse of §10.
-- **Inside the table detail panel, not as nodes:** indexes, constraints (incl. CHECK,
-  which often encodes business rules), triggers, enum/custom types, sequences, and
-  comments.
-- **Out of scope (not a DBA tool):** roles/permissions, extensions, tablespaces.
-- **Deferred (Phase 2):** functions / stored procedures — high value for
-  understanding, but they do not fit the "node with columns" model and are harder to
-  trace.
-
-## 9. Three kinds of relationship edges
-
-**Status:** Accepted
-
-Edges carry different meanings and must be visually distinct:
-
-1. **Foreign-key edges** — table → table references (declared, official).
-2. **View-dependency edges** — view → source tables (data derivation/flow, official).
-3. **Manual edges** — user-added, best-guess links.
-
-## 10. Expand/collapse for partitions
-
-**Status:** Accepted (revised)
-
-Neighbourhood navigation moves by **travel** — clicking a table recentres on it (§7) —
-not by accumulating expanded nodes. A scoped **expand/collapse** is kept for one thing:
-showing or hiding a partitioned table's child partitions behind its parent, so a
-partition-heavy schema does not flood the map.
-
-*(Supersedes the earlier framing of a single expand/collapse primitive shared between
-neighbourhood navigation and partitions; travel navigation replaced neighbourhood
-expansion.)*
-
-## 11. Table detail panel
-
-**Status:** Accepted (data preview revised — see below)
-
-- **Layout:** a left side panel, keeping the map in the centre and the AI chat on the
-  right — a three-pane layout (detail | map | chat). The map is never hidden, so the
-  user does not lose their place.
-- **Contents:** columns (name, type, nullability, default, PK/FK, comment, enum
-  values); relationships (both directions, each navigable — clicking moves the map);
-  constraints, indexes, triggers; the table comment; an estimated row count.
-- **Data preview:** a table or view's rows open **on demand in a drawer beneath the
-  map** (a "View data" action on the detail panel), rather than loading automatically in
-  the side panel — this keeps the ER map the focus. The drawer reads rows read-only
-  (forced `LIMIT`, guarded by `statement_timeout`) with click-to-sort columns, simple
-  AND-combined column filters, and paging. Showing a user their own data is not a privacy
-  concern — they already have access; sending data to an external AI is a separate matter
-  (see decision 13). *(Revised: originally a small sample auto-loaded inside the detail
-  panel; it became an on-demand bottom drawer with sorting/filtering/paging.)*
-- **Views / materialised views:** the definition SQL is de-emphasised — dependencies
-  and output columns are shown first, the raw SQL sits in a collapsed, scrollable,
-  syntax-highlighted block, and the AI can summarise a long definition in plain
-  language.
-
-## 12. AI accesses metadata only, and never auto-executes
-
-**Status:** Accepted
-
-- In the MVP the AI reasons over **schema metadata only** (names, types, PK/FK,
-  comments, row counts). It proposes; a human clicks to run. The AI never executes SQL
-  automatically. This resolves the tension between "answer where sales is stored" and
-  "never feel dangerous", and keeps data values away from the AI.
-
-## 13. AI retrieves schema via tools (scales to large schemas)
-
-**Status:** Accepted
-
-- The full metadata of hundreds of tables can exceed an LLM's context window (and cost
-  grows with tokens). So the AI is **not** handed the whole schema. Instead it is given
-  **tools** to look things up on demand (search tables, fetch a table's columns, etc.)
-  and pulls in only what a given question needs.
-- **Why:** it scales to thousands of tables; it embodies "the AI navigates the schema
-  like the user navigates the map"; and it minimises what is sent to an external
-  provider.
-- Semantic (embedding-based) retrieval is a future enhancement to the look-up tools.
-
-## 14. External-send privacy policy
-
-**Status:** Accepted (send-preview deferred)
-
-- **Data values never leave the machine** (a consequence of decisions 12–13).
-- shirube ships **no default external provider**. The user explicitly configures a
-  provider at setup — an OpenAI-compatible API *or* local Ollama — and that choice is
-  the consent. Only the schema metadata relevant to a question is sent, and only to the
-  chosen provider.
-- Stated principle: *data values never leave; schema names go only to the provider you
-  choose; use Ollama to stay fully local.*
-- A "preview what will be sent" feature is deferred as a future transparency
-  enhancement.
-
-## 15. AI answers are wired to the map
-
-**Status:** Accepted (path-drawing is an early enhancement)
-
-- **MVP:** table names in an AI answer are clickable and move/highlight the map, so the
-  AI and the map feel like one navigator.
-- **Early enhancement:** the AI draws a *path* on the ER diagram (e.g. Customer →
-  Orders → Payments) — the "route planner" that embodies *navigating a database like a
-  map*.
-
-## 16. Search stays deterministic; concepts are the AI's job
-
-**Status:** Accepted
-
-- Search is fast, case-insensitive substring matching over **table names, column names,
-  and comments** (light fuzzy matching acceptable). Results navigate the map.
-- **Semantic search is not in the MVP** — conceptual look-ups ("where is 売上?") are
-  the AI's job, so an embedding index would duplicate that. It can later enrich the
-  AI's look-up tools.
-
-## 17. Build order: foundation first, then the AI navigator
-
-**Status:** Accepted (revised — the foundation ships as a public beta)
-
-shirube is built in two milestones:
-
-- **Milestone 1 — Foundation:** connection → schema inspection → neighbourhood ER →
-  table detail → data preview → search → relationship navigation. The whole
-  architectural backbone, no AI. **Released as a public beta (`0.1.0b1`)** so the
-  explorer core is validated against real databases before the AI is layered on.
-- **Milestone 2 — AI navigator:** add the AI navigator on top of Milestone 1's schema
-  look-up tools. This is the feature shirube is ultimately built around, and the next
-  milestone after the beta.
-
-*(Revised: Milestone 1 was originally kept internal, with the first public release
-waiting for the AI in Milestone 2. Releasing the foundation as a beta gets real-world
-feedback sooner and de-risks the AI work before it is layered on.)*
-
-## 18. Branching: GitHub Flow
-
-**Status:** Accepted
-
-- `main` is the single long-lived branch, always in a releasable state.
-- Work happens on short-lived feature branches merged via pull request — even solo, to
-  build the habit and run CI per PR. Milestones are tracked with labels/issues, not
-  long-lived branches.
+Status shorthand: **Built** (in the shipped beta), **Committed** (settled, not yet
+built), **Active** (an ongoing practice).
 
 ---
 
-## 19. Local persistence: SQLite, scoped to connection profiles
+## Decided
 
-**Status:** Accepted
+### Local-first, single-command distribution
 
-- shirube stores its own state in a single **SQLite** file in the OS config directory
-  (resolved via `platformdirs`). Secrets — database passwords and AI API keys — live in
-  the **OS keychain**, never in the SQLite file.
-- Stored: connection profiles (non-secret fields), AI provider settings, ER node
-  layout, manual relationships, and later saved views and chat history.
-- **Per-database data (layout, manual relationships, view state) is keyed to the
-  connection profile**, not to a host+port+database identity. Why: with external SSH
-  tunnels every database appears as `localhost:5432`, so an identity-based key would
-  conflate different databases; a user-named profile disambiguates reliably.
-- The ER layout **auto-saves** per profile (with a reset-to-auto-layout action); there
-  is no explicit save step.
-- **Why SQLite over JSON/TOML:** structured, transactional, and robust as the data
-  grows (profiles, layouts, relationships, saved views, chat history). It fits a
-  database tool and reuses SQLAlchemy.
+**Built.**
 
-## 20. Schema introspection: fresh per connect, in-memory cache, drift-tolerant
+- The primary entry point is one command (`uvx shirube`) that starts a local server and
+  opens the browser, connecting to a local *or* remote database with no networking
+  friction. A Docker-only tool stumbles on `host.docker.internal` for the common
+  localhost target; Docker Compose stays a secondary option for a bundled sample DB.
+- The server binds to `127.0.0.1` only. Loopback binding is necessary but **not
+  sufficient** on its own — see *Local web-surface hardening*.
+- Self-hosted / team server is deferred; centralising credentials would reduce trust and
+  drag in multi-user auth.
 
-**Status:** Accepted
+### Vite React SPA; FastAPI serves it
 
-- The schema is **re-introspected on each connect** and held in memory for the session;
-  there is **no persistent schema cache**. Introspection of hundreds of tables is fast,
-  and this avoids cache-invalidation complexity and stale, misleading metadata. A manual
-  "refresh schema" action covers mid-session changes.
-- Metadata is stored as **lightweight structures** queried from
-  `information_schema`/`pg_catalog` on the backend — not full SQLAlchemy ORM reflection
-  — keeping memory and startup light. The browser holds only the currently displayed
-  neighbourhood.
-- **Schema drift on reconnect:** layout entries for tables that no longer exist are
-  silently skipped; manual relationships whose columns/tables no longer match are
-  **kept but flagged "needs attention"** and never drawn as broken edges — the user
-  re-maps or removes them. Renames are treated as drop+add (not auto-followed).
+**Built.**
 
-## 21. Onboarding and the sample database
+- A Vite-built React SPA; in distribution FastAPI serves the pre-built static files, so
+  shirube is one process on one origin.
+- **Not Next.js:** shirube needs none of its strengths (SSR/SEO/server components), and
+  it would add a second backend and a Node runtime to a Python-distributed tool. If a
+  hosted product is built later, its surface can use Next; the interactive UI (React
+  Flow, shadcn/ui) ports across.
 
-**Status:** Accepted
+### Connection input and credential storage
 
-- **First launch** (no profiles) opens the connection form directly; **subsequent
-  launches** open the saved-profiles list. shirube **never auto-connects on launch** —
-  the user always chooses a database (an optional "auto-connect to last profile"
-  preference may come later). Avoiding surprise connections keeps it "never dangerous".
-- The **sample database** is delivered via Docker Compose running **Postgres only**
-  (e.g. `pagila`) — shirube itself is **not containerised** and always runs via `uvx`.
-  The first-run screen offers a "sample database" connection preset pointing at the
-  local sample Postgres, for a near-one-click demo.
-- **Why not a SQLite sample:** the MVP speaks only Postgres, so a SQLite sample would
-  force an off-mission SQLite adapter and would not exercise the real code path.
+**Built.**
 
-## 22. Error UX: translated, localised, non-destructive
+- Named, switchable connection profiles (host / port / database / user / sslmode).
+  Non-secret fields live in the app-state database; **passwords go in the OS keychain**
+  via `keyring`, never in plaintext. Headless Linux without a Secret Service falls back
+  to env / connection URL.
+- **Why keychain:** the user hits the same database daily, so re-entry every session
+  hurts, and `keyring` keeps the cost small.
 
-**Status:** Accepted
+### Read-only safety model
 
-- **Connect-time errors** are translated into plain-language messages with actionable
-  hints (host/tunnel, credentials, database name, sslmode, permissions), shown inline
-  on the form, with the raw driver error available under a "details" expander. A "test
-  connection" action is available before saving.
-- **Mid-session errors** are scoped to the affected area with a retry — a failed sample
-  fetch never tears down the map or the app. **Structure (columns, relationships, from
-  the catalog) is shown even when the data fetch fails** (permission/timeout), so a
-  table can still be understood without reading its rows. Connection loss shows a
-  reconnect banner; the saved layout persists.
+**Built.** "Never dangerous", enforced in layers:
 
-## 23. Multiple databases and schemas
+- Recommend connecting with a read-only database role.
+- No code path emits DML/DDL.
+- Every connection runs as a read-only transaction with a `statement_timeout`.
+- Result sets carry a forced `LIMIT`; queries are parameterised and single-statement.
 
-**Status:** Accepted
+### Local web-surface hardening
 
-- **One connection profile maps to one database** (matching PostgreSQL's
-  one-connection-one-database model and decision 19's keying). Browsing another database
-  on the same server means another profile ("duplicate profile" eases this). An in-app
-  server-level database switcher is deferred.
-- **Schemas** selected at connect time are shown **together on one map**:
-  schema-qualified node names (`schema.table`), visual grouping/colour per schema,
-  cross-schema foreign keys drawn, and a per-schema visibility filter. System schemas
-  are excluded by default.
+**Built.**
 
-## 24. AI chat: per-profile history and token display
+- shirube serves a local HTTP API, so its real exposure is **browser-driven**, not a
+  missing login — a login screen would be theatre for a single-user localhost tool.
+- **Host-header validation** (only loopback names + the bind host) is the core defence
+  against **DNS rebinding**, where a page on another origin points its own hostname at
+  `127.0.0.1` to reach the API through the browser. This is why loopback binding alone is
+  not enough.
+- Plus same-origin **security headers** (CSP, `X-Frame-Options: DENY`, `nosniff`,
+  `Referrer-Policy`) and a loud **warning** if bound to a non-loopback address.
+- A loopback auth token (to fend off *other local processes*) is deferred as a heavier,
+  SPA-touching follow-up.
 
-**Status:** Accepted
+### Remote connections: SSL yes, tunnels no
 
-- A conversation is **scoped to the connection profile** and its history is **persisted
-  in SQLite**, so prior Q&A about a database can be revisited; "new conversation" and
-  "clear" are available.
-- **Token usage** (input/output, per response and cumulative) is shown from the
-  provider's usage data; there is **no built-in currency conversion** (pricing tables go
-  stale and mislead). Ollama shows "local, no API cost". A user-configurable rate for a
-  rough cost estimate may come later.
+**Built (SSL); scoped out (SSH); deferred (IAM).**
 
-## 25. UI language: English base with i18n scaffolding
+- SSL/TLS (sslmode, CA path) is supported — cloud databases need it.
+- SSH tunnels are the user's job (`ssh -L …`, then point shirube at localhost); building
+  tunnelling in brings key/passphrase/multi-hop complexity the OS already handles well.
+- Cloud IAM auth (e.g. RDS IAM) is deferred.
 
-**Status:** Accepted
+### ER home: search + neighbourhood travel
 
-- The UI ships in **English** (the widest OSS reach), but strings go through an **i18n
-  layer** (keys + dictionaries) from the start rather than being hard-coded, so other
-  languages (e.g. Japanese) can be added later by supplying a dictionary.
+**Built.**
 
-## 26. Licence: AGPL-3.0
+- Never draw hundreds of tables at once. The map shows **one centre plus its one-hop
+  neighbours**; navigation is **travel** — click a neighbour to recentre, and search
+  moves the centre — so the view is the same whatever the schema's size.
+- Off-map connections are marked with a **stub line and a count**, so "not connected"
+  differs from "connected but not shown".
+- The first connection centres on the **most-connected table** (the backbone) — the
+  answer to "where do I start?". A "show everything / fit" affordance covers small
+  schemas.
 
-**Status:** Accepted
+### Objects and edges on the map
 
-- The project is licensed under **AGPL-3.0** — genuinely OSI-approved open source, whose
-  network-copyleft clause deters a competitor from offering a closed, hosted shirube
-  while the "commercial later" plan matures. As sole copyright holder we retain the
-  option to **dual-licence** (a commercial licence for organisations that cannot accept
-  AGPL).
-- Because shirube is a **standalone, locally-run tool** rather than a library embedded
-  in other software, AGPL's adoption friction is limited: internal local use does not
-  trigger source disclosure.
-- **Follow-up:** to preserve the ability to relicence/dual-licence once external
-  contributors arrive, adopt a CLA or DCO before accepting outside contributions.
-  Per-file AGPL notices are to be added as source is written.
+**Built (tables/views/matviews; foreign-key and view-dependency edges).**
 
-## 27. Diagnostic logging: local, metadata-only
+- **Nodes:** tables, views, materialised views. Indexes, constraints, triggers, types,
+  sequences and comments belong **in the detail panel, not as nodes**. Out of scope (not
+  a DBA tool): roles, extensions, tablespaces.
+- **Edges** are visually distinct by meaning: **foreign-key** (declared) and
+  **view-dependency** (a view → the relations it reads). A third kind — **manual**
+  user-added links — is committed but not yet built (see Tentative).
+- Relationships are drawn from **declared foreign keys**. **Rule-based name inference is
+  rejected:** on legacy schemas its accuracy is unpredictable, and a *wrong* edge
+  misleads worse than a missing one. If inference ever returns, it should be "the AI
+  proposes, the user confirms", verified against real data.
+- Deferred: hiding child partitions behind their parent; foreign tables;
+  functions/procedures (they don't fit the "node with columns" model).
 
-**Status:** Accepted
+### Table detail and data preview
 
-- shirube runs on the user's own machine, so a failure leaves no server-side trace to
-  inspect. A `shirube` logger writes to the console and a **rotating file beside the
-  app-state database** (`data_dir/shirube.log`), at `INFO` by default and raisable to
-  `DEBUG` via `SHIRUBE_LOG_LEVEL`.
-- **Logged:** a startup line; each request's method, path, status and duration; the
-  underlying cause behind a translated error (e.g. the raw driver error behind "could
-  not connect", which the user-facing message hides); and the traceback of any
-  unexpected exception.
-- **Never logged:** the *contents* a query touched — no filter values, no row data, no
-  passwords. Only metadata. The read-only, local-first privacy posture (decisions 4 and
-  14) must hold in the log too, since a released tool runs against real, possibly
-  sensitive databases.
+**Built.**
+
+- A floating detail card over the map (map in the centre, AI pane on the right) — the map
+  is never hidden. It shows columns (type, primary key, nullability) and relationships in
+  both directions, each click-navigable. (Constraints, indexes, triggers and a row-count
+  estimate are intended additions.)
+- **Data preview** opens on demand in a **drawer beneath the map** (a "View data"
+  action), not auto-loaded — the map stays the focus. Rows are read-only (forced `LIMIT`,
+  `statement_timeout`) with click-to-sort columns, AND-combined column filters, and
+  paging. Showing a user their own data is not a privacy concern; sending values to an AI
+  is (see *AI: external-send privacy*, Tentative).
+- For views, the definition SQL is de-emphasised — dependencies and output columns first.
+
+### Local persistence: SQLite, keyed to profiles
+
+**Built.**
+
+- shirube's own state is a single **SQLite** file in the OS data directory
+  (`platformdirs`); secrets stay in the keychain. Chosen over JSON/TOML for being
+  structured and transactional as the data grows, and it reuses SQLAlchemy.
+- Per-database state (layout, and later manual links / saved views) is keyed to the
+  **profile**, not host+port+database — SSH tunnels make every database look like
+  `localhost:5432`, so a user-named profile disambiguates. The ER layout auto-saves per
+  profile.
+
+### Schema introspection: fresh per connect, drift-tolerant
+
+**Built.**
+
+- Re-introspected on each connect and held in memory for the session — **no persistent
+  schema cache** (introspection is fast; this avoids stale, misleading metadata). A
+  manual "refresh" covers mid-session changes. Read from `pg_catalog` as lightweight
+  structures, not full ORM reflection.
+- On drift: layout for vanished tables is skipped; manual links that no longer match are
+  kept but flagged "needs attention", never drawn as broken edges.
+
+### Reconnect on reload; no surprise connections otherwise
+
+**Built (revised).**
+
+- First launch (no profiles) opens the connection form; otherwise the saved-profiles
+  list. shirube reconnects to the **last-used profile on reload**, so a refresh doesn't
+  drop the user back to the connection screen — but it never connects to a *new* database
+  without the user choosing it. A sample database (pagila) is available for development
+  via `scripts/dev-db.sh`.
+- *(Revised: originally "never auto-connects on launch"; restoring the last profile on
+  reload proved worth it, and it is scoped to the profile the user last chose.)*
+
+### Multiple schemas on one map
+
+**Built.**
+
+- One profile = one database (matches PostgreSQL; browsing another means another
+  profile). Schemas chosen at connect time share one map, with schema-qualified names and
+  cross-schema foreign keys drawn; system schemas are excluded by default.
+
+### Error UX: translated, non-destructive
+
+**Built (connect-time); partial (mid-session).**
+
+- Connect errors become plain-language, actionable messages (host, credentials, database,
+  sslmode, permissions), with a "test connection" before saving; the raw driver error is
+  kept in the log.
+- Mid-session errors are scoped with a retry — a failed data fetch never tears down the
+  map, and structure is shown even when the data fetch fails.
+
+### Search stays deterministic
+
+**Built.**
+
+- Fast, case-insensitive substring matching over table and column names; results navigate
+  the map. Conceptual look-ups ("where is 売上?") are the AI's job, not an embedding index
+  here.
+
+### Diagnostic logging: local, metadata-only
+
+**Built.**
+
+- A `shirube` logger writes to the console and a rotating file beside the app-state
+  database (`data_dir/shirube.log`; `INFO`, raisable via `SHIRUBE_LOG_LEVEL`).
+- Logged: startup; each request's method / path / status / duration; the real cause
+  behind a translated error; and unexpected tracebacks. **Never** filter values, row data
+  or passwords — metadata only, so the read-only / local-first posture holds in the log
+  too.
+
+### UI language: English base with i18n
+
+**Built.**
+
+- Ships in English (widest reach), but every string goes through an i18n layer, so
+  another language (e.g. Japanese) is a dictionary away.
+
+### Licence: AGPL-3.0
+
+**Committed.**
+
+- AGPL-3.0 — genuine OSI open source whose network-copyleft deters a closed, hosted
+  competitor while a "commercial later" plan matures; the sole copyright holder retains
+  the option to **dual-licence**. As a standalone local tool, AGPL friction is limited
+  (local use triggers no source disclosure).
+- **Follow-up:** adopt a CLA/DCO before accepting outside contributions to preserve
+  relicensing, and add per-file notices as source is written.
+
+### Branching: GitHub Flow
+
+**Active.**
+
+- `main` is the single, always-releasable branch; work lands via short-lived PR branches
+  (even solo, to run CI per PR).
+
+---
+
+## Tentative
+
+Design intent for parts **not yet built** — chiefly the AI navigator (Milestone 2).
+Recorded so the thinking isn't lost, but expect it to change once implemented.
+
+### Build order: foundation first, then the AI navigator
+
+- **Milestone 1 — Foundation** (connection, schema, ER, detail, data preview, search,
+  navigation) is **built and released as a public beta (`0.1.0b1`)**.
+- **Milestone 2 — the AI navigator**, the feature shirube is ultimately built around, is
+  next, layered on Milestone 1's schema look-up tools. Releasing the foundation first
+  gets real-world feedback and de-risks the AI work.
+
+### AI: metadata only, never auto-executes
+
+- The AI will reason over **schema metadata only** (names, types, PK/FK, comments,
+  counts) and **propose**; a human clicks to run. It never executes SQL itself —
+  resolving "answer where sales lives" against "never feel dangerous", and keeping data
+  values away from the AI.
+
+### AI: schema via look-up tools
+
+- The AI won't be handed the whole schema (hundreds of tables blow the context window and
+  cost). It gets **tools** to look things up on demand and pulls in only what a question
+  needs — scaling to thousands of tables and minimising what is sent externally. Semantic
+  (embedding-based) retrieval is a later enhancement.
+
+### AI: external-send privacy
+
+- **Data values never leave the machine.** No default provider ships; the user configures
+  one (an OpenAI-compatible API *or* local Ollama), and that choice is the consent. Only
+  question-relevant schema metadata is sent, and only to the chosen provider; Ollama stays
+  fully local. A "preview what will be sent" is a later transparency feature.
+
+### AI answers wired to the map
+
+- Table names in an answer will be clickable and move/highlight the map, so the AI and the
+  map feel like one navigator. Later, the AI draws a **path** across the diagram (e.g.
+  Customer → Orders → Payments) — a route planner.
+
+### AI chat: per-profile history and token display
+
+- Conversations scoped to the profile and persisted in SQLite (revisit prior Q&A;
+  new/clear available). Token usage shown from the provider; no built-in currency
+  conversion (pricing drifts and misleads); Ollama shows "local, no API cost".
+
+### Manual relationship editing
+
+- For legacy schemas lacking FK constraints, let users **add relationships by hand**,
+  stored locally (the database is never modified) and rendered distinctly from declared
+  foreign keys, so a guess is never mistaken for a fact.
+
+### Partition handling
+
+- Hide a partitioned table's child partitions behind its parent (a scoped
+  expand/collapse), so a partition-heavy schema doesn't flood the map.
