@@ -1,66 +1,115 @@
-# shirube
+<p align="center">
+  <img src="docs/images/logo.svg" width="88" alt="shirube" />
+</p>
 
-**標べ** (*shirube*) — a guide, a signpost.
+<h1 align="center">shirube</h1>
 
-**AI-native database explorer.** shirube helps developers navigate and understand
-relational databases through visual exploration and AI guidance, rather than by
-writing SQL by hand.
+<p align="center">
+  <strong>標べ</strong> — a guide, a signpost.<br />
+  Read and understand an unfamiliar database as a map, not a pile of tables.
+</p>
 
-> Navigate and understand your database with AI.
+<p align="center">
+  <a href="https://github.com/shou-taro/shirube/actions/workflows/ci.yml"><img src="https://github.com/shou-taro/shirube/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/status-beta-a78bfa" alt="Status: beta" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue" alt="Licence: AGPL-3.0" /></a>
+  <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+</p>
 
-## Status
+> **Status: Beta.** The explorer core is here and usable today. The AI navigator — the
+> feature shirube is ultimately built around — is the next milestone (see the
+> [roadmap](#roadmap)). shirube is pre-1.0: things may still change.
 
-Early development. The design is being finalised — see [`docs/vision.md`](docs/vision.md)
-and [`docs/decisions.md`](docs/decisions.md) for the product vision and the reasoning
-behind each design decision.
+<p align="center">
+  <img src="docs/images/home.png" alt="shirube exploring a database: an ER diagram with a table's detail and its rows" width="960" />
+</p>
 
-## What it is
+## Built for the AI-coding era
 
-- Starts from an interactive ER diagram, not a SQL editor.
-- Explore tables, columns, sample data and relationships visually.
-- Ask an AI navigator where data lives and how tables connect.
-- Read-only and safe by design.
+You write less SQL by hand than you used to — an AI writes much of it for you. But that
+SQL still runs against **your** schema, and someone still has to understand that schema:
+to prompt the AI well, to check what it gave back, to reason about where the data
+actually lives. That understanding used to come for free while you wrote the queries
+yourself. It doesn't any more.
 
-shirube is **not** a SQL IDE or a database administration tool. It is a tool for
-*understanding* a database — for developers joining an existing project with hundreds
-of tables and little documentation.
+shirube is where that understanding lives. It opens on an interactive ER diagram and
+lets you explore a database like a map — search for a table, focus on it, and follow its
+relationships outward — so you can see how everything connects without reading DDL or
+writing a single query.
 
-## Tech stack
+The goal was never *"don't write SQL."* It's **"don't get lost."** shirube helps answer:
 
-- **Frontend:** React, TypeScript, shadcn/ui, React Flow (Vite)
-- **Backend:** FastAPI, SQLAlchemy
-- **Database:** PostgreSQL (MySQL and SQL Server planned)
-- **AI:** pluggable providers behind a common interface (OpenAI-compatible, Ollama)
+- Where does this data live, and which table owns this column?
+- How are these two tables related? Where does this foreign key lead?
+- Which table should I even start from?
 
-## Development
+It is just as useful the classic way — dropping into a project with hundreds of
+undocumented tables and needing to find your footing fast. shirube is **not** a SQL IDE
+or a database administration console; it is a tool for *understanding* a database.
 
-Prerequisites: [uv](https://docs.astral.sh/uv/), Node.js, and [pnpm](https://pnpm.io/)
-(e.g. `corepack enable pnpm`). The backend lives in `api/` (FastAPI, package `shirube`)
-and the frontend in `web/` (Vite + React).
+## Features
 
-Run in development — two processes, with the frontend proxying `/api` to the backend:
+Everything below works today, in the beta:
+
+- **ER diagram home.** shirube generates the diagram automatically and centres it on the
+  most-connected table. You see a table and its immediate neighbours — not a wall of
+  hundreds — and travel outward one hop at a time.
+- **Table detail.** Columns with their types, primary keys and nullability, plus
+  relationships split into *references* and *referenced by* — including the tables a view
+  reads from.
+- **Relationship navigation.** Click a related table to glide the map over to it, and
+  keep following the connections.
+- **Data preview.** Read a table or view's actual rows in a drawer beneath the map, with
+  click-to-sort columns, simple column filters, and paging.
+- **Instant search.** Press <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> to jump straight to any
+  table or column.
+- **Saved connections.** Manage several PostgreSQL profiles; passwords are kept in your
+  operating system's keychain, never in a config file.
+- **Light and dark themes.**
+
+## Safe by design
+
+shirube is meant never to feel dangerous.
+
+- **Read-only.** Every connection is opened read-only with a statement timeout. shirube
+  cannot modify your database — no writes, no schema changes, ever.
+- **Local-first.** It runs on your machine and binds to `127.0.0.1` only. Your database
+  credentials and data never leave your computer; passwords live in the OS keychain.
+- **Metadata-only logging.** The local log records what is needed to diagnose a problem
+  (errors, request timings) but never the values in your data.
+
+## Getting started
+
+**Requirements:** a reachable PostgreSQL database, and [uv](https://docs.astral.sh/uv/)
+(which provides `uvx`).
 
 ```bash
-# terminal 1 — backend on http://127.0.0.1:7472
-cd api && uv sync && uv run uvicorn shirube.adapters.api.app:app --reload --port 7472
-
-# terminal 2 — frontend dev server on http://localhost:5173
-cd web && pnpm install && pnpm dev
+uvx shirube
 ```
 
-Run as a single origin — the backend serves the built SPA on one port:
+That starts a local server and opens shirube in your browser. Add a connection to your
+PostgreSQL database and you're exploring — the database can be local or remote.
 
-```bash
-./scripts/build.sh                # build the SPA and bundle it into the API package
-uv run --directory api shirube    # serves UI + API on http://127.0.0.1:7472
-```
+> shirube connects with whatever credentials you give it; a read-only role with
+> `CONNECT` and `SELECT` is all it needs, and all it should have.
 
-Checks:
+## Roadmap
 
-```bash
-cd api && uv run ruff check . && uv run mypy -p shirube && uv run pytest
-cd web && pnpm lint && pnpm build
-```
+shirube's development runs in three phases.
+
+- **Now — Explore (beta).** The ER diagram, table detail, relationship navigation, data
+  preview and search described above.
+- **Next — the AI navigator.** Ask, in plain language, where data lives and how tables
+  connect, and let the guide lead you there. The AI is a *navigator*, not a SQL
+  generator, and it never changes anything. This is the headline feature still to land.
+- **Later — Analyse & Manage.** Richer GUI filters and aggregation, saved views,
+  AI-suggested relationships and semantic search; then safe, GUI-driven editing and
+  team / self-hosted features. MySQL and SQL Server will follow PostgreSQL.
+
+## Contributing
+
+Running shirube from source, the project layout and the checks are documented in
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Licence
 
