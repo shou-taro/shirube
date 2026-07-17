@@ -45,7 +45,7 @@ These mirror CI; run them before opening a pull request:
 
 ```bash
 cd api && uv run ruff check . && uv run ruff format --check . && uv run mypy -p shirube && uv run pytest
-cd web && pnpm lint && pnpm build
+cd web && pnpm lint && pnpm test && pnpm build
 ```
 
 Some backend tests are marked `integration` and need a real PostgreSQL — they prove the
