@@ -141,10 +141,41 @@ checks:
 
 ## Test data
 
-- **Integration** — a small, deterministic seed schema, so rows can be asserted exactly
-  and tests stay fast.
-- **End-to-end** — pagila (via `scripts/dev-db.sh`): realistic, with views, materialised
-  views, partitions and foreign keys.
+One sample database is not enough, and the same data does not serve every purpose. Split
+it by intent:
+
+- **End-to-end and manual dogfooding** — pagila (via `scripts/dev-db.sh`): a realistic
+  schema with views, materialised views, partitions and foreign keys.
+- **Integration** — small, purpose-built fixtures, created by running DDL in the test
+  setup (create a temporary schema → insert known rows → yield → drop). Deterministic, so
+  rows and counts can be asserted exactly, and unaffected by pagila changing.
+
+### Schema shapes to cover deliberately
+
+shirube's whole job is making sense of awkward, legacy schemas, so the fixtures must
+*include* awkward schemas — the shapes pagila (a deliberately tidy sample) does not have:
+
+- **No foreign keys** (a legacy schema — an ER map with no edges).
+- **Multiple schemas** with cross-schema foreign keys; system schemas excluded.
+- **Self-referencing** foreign keys (`employee.manager_id`), **composite (multi-column)**
+  foreign keys, and **circular** references (A → B → A).
+- **Views that read other views** (a dependency chain), and materialised views.
+- **Exotic column types** — array, JSON/JSONB, enum, UUID, `bytea`, range, composite — for
+  the introspection type formatting and the data-preview `_cell` serialisation.
+- Rows with **NULLs, very long text and binary**.
+- **Identifiers that need quoting** — mixed case, spaces, reserved words, Unicode — which
+  is both a correctness and a **security** concern (see below).
+- **Empty**, **very wide** (many columns) and **very large** tables (paging and
+  `statement_timeout` behaviour).
+- A table the connecting role **cannot `SELECT`** (the "structure still shown when the
+  data fetch fails" error UX).
+
+### Security fixtures
+
+- A **read-only role** to connect as, so the read-only guarantee can be proven (a write is
+  refused).
+- A schema whose table and column names contain **hostile identifiers** (`"`, `;`, `--`,
+  `DROP`, …), to prove identifier quoting holds.
 
 CI gains a `postgres` service. Integration tests are marked `@pytest.mark.integration` so
 a machine without a database can skip them; e2e runs as a separate job (build → serve →
