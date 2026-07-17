@@ -1,6 +1,6 @@
 [project]
 name = "shirube"
-version = "0.0.0"
+version = "0.1.0b1"
 description = "AI-native database explorer — navigate and understand your database with AI."
 requires-python = ">=3.11"
 license = "AGPL-3.0-or-later"
