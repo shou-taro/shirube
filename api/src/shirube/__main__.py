@@ -9,7 +9,9 @@ import webbrowser
 
 import uvicorn
 
+from shirube import __version__
 from shirube.config import get_settings
+from shirube.logging_config import setup_logging
 
 
 def _open_browser(url: str) -> None:
@@ -25,6 +27,14 @@ def main() -> None:
     after the server starts accepting connections rather than before.
     """
     settings = get_settings()
+    logger = setup_logging()
+    logger.info(
+        "shirube %s starting on http://%s:%s (data: %s)",
+        __version__,
+        settings.host,
+        settings.port,
+        settings.data_dir,
+    )
     url = f"http://{settings.host}:{settings.port}"
     if settings.open_browser:
         # Defer the launch slightly so the server is ready to answer the first request.

@@ -1,9 +1,13 @@
 """Translation of domain errors into HTTP responses."""
 
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from shirube.domain.errors import ShirubeError
+
+_logger = logging.getLogger("shirube.error")
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -11,7 +15,8 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     Maps every :class:`ShirubeError` to a JSON response built from the error's own
     status code and message. Unexpected exceptions are deliberately left to FastAPI's
-    default handler, so genuine bugs surface as 500s rather than being masked.
+    default handler, so genuine bugs surface as 500s rather than being masked (the
+    request middleware logs their traceback).
 
     Args:
         app: The application to attach handlers to.
@@ -19,5 +24,21 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ShirubeError)
     async def _handle_shirube_error(request: Request, exc: ShirubeError) -> JSONResponse:
-        """Render a :class:`ShirubeError` as ``{"detail": ...}`` with its status code."""
+        """Render a :class:`ShirubeError` as ``{"detail": ...}`` with its status code.
+
+        The response carries only the translated, user-safe message, but the log keeps
+        the underlying cause too (e.g. the raw psycopg error behind "could not connect")
+        — which is exactly what is needed to diagnose the failure later.
+        """
+        # ``raise ... from exc`` at the raise site leaves the original on ``__cause__``.
+        cause = f" | cause: {exc.__cause__!r}" if exc.__cause__ is not None else ""
+        _logger.warning(
+            "%s %s -> %s (%d): %s%s",
+            request.method,
+            request.url.path,
+            type(exc).__name__,
+            exc.status_code,
+            exc.detail,
+            cause,
+        )
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
