@@ -48,6 +48,17 @@ cd api && uv run ruff check . && uv run ruff format --check . && uv run mypy -p 
 cd web && pnpm lint && pnpm build
 ```
 
+Some backend tests are marked `integration` and need a real PostgreSQL — they prove the
+SQL and the safety guarantees against a live server, which fakes cannot. They **skip**
+unless `SHIRUBE_TEST_DATABASE_URL` points at a throwaway database (the tests create and
+drop their own schemas). The local sample database works:
+
+```bash
+./scripts/dev-db.sh up
+SHIRUBE_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/pagila \
+  uv run --directory api pytest -m integration
+```
+
 ## Testing
 
 How the test suite is layered — and, in particular, which guarantees are covered by
