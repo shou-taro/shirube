@@ -24,7 +24,7 @@
   <img src="docs/images/home.png" alt="shirube exploring a database: an ER diagram with a table's detail and its rows" width="960" />
 </p>
 
-## 🧭 Built for the AI-coding era
+## 🤖 Built for the AI-coding era
 
 You write less SQL by hand than you used to — an AI writes much of it for you. But that
 SQL still runs against **your** schema, and someone still has to understand that schema:
