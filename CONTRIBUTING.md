@@ -47,3 +47,8 @@ These mirror CI; run them before opening a pull request:
 cd api && uv run ruff check . && uv run ruff format --check . && uv run mypy -p shirube && uv run pytest
 cd web && pnpm lint && pnpm build
 ```
+
+## Testing
+
+How the test suite is layered — and, in particular, which guarantees are covered by
+dedicated security tests — is documented in [`docs/testing.md`](docs/testing.md).
