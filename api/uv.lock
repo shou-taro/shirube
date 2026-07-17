@@ -1008,7 +1008,7 @@ wheels = [
 
 [[package]]
 name = "shirube"
-version = "0.0.0"
+version = "0.1.0b1"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
