@@ -30,6 +30,8 @@ class Settings(BaseSettings):
             in tests and when running headless.
         data_dir: Directory for shirube's own state (the SQLite database). Defaults to
             the platform's per-user data directory via ``platformdirs``.
+        log_level: Minimum level written to the console and the log file. Raise to
+            ``DEBUG`` (``SHIRUBE_LOG_LEVEL=DEBUG``) when diagnosing a problem.
     """
 
     model_config = SettingsConfigDict(env_prefix="SHIRUBE_", env_file=".env", extra="ignore")
@@ -40,11 +42,17 @@ class Settings(BaseSettings):
     port: int = 7472
     open_browser: bool = True
     data_dir: Path = Field(default_factory=lambda: Path(user_data_dir(APP_NAME)))
+    log_level: str = "INFO"
 
     @property
     def database_path(self) -> Path:
         """Absolute path to the app-state SQLite file inside ``data_dir``."""
         return self.data_dir / "shirube.db"
+
+    @property
+    def log_path(self) -> Path:
+        """Absolute path to the diagnostic log file inside ``data_dir``."""
+        return self.data_dir / "shirube.log"
 
     @property
     def database_url(self) -> str:
