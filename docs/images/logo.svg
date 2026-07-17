@@ -1,0 +1,16 @@
+<svg width="96" height="96" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="shirube">
+  <!-- Matches the app favicon: a rounded tile (no visible square corners) with a small
+       ER-style node graph, one node highlighted in the brand lilac — the "you are here"
+       waypoint. Self-contained colours so it renders the same on any background. -->
+  <rect width="48" height="48" rx="11" fill="#17171c" />
+  <g fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round">
+    <line x1="14" y1="18" x2="30.5" y2="13.5" />
+    <line x1="14" y1="18" x2="17.5" y2="34" />
+    <line x1="31" y1="14.5" x2="34" y2="32" />
+    <line x1="17.5" y1="34" x2="34" y2="32" />
+    <circle cx="14" cy="18" r="3.4" fill="#17171c" />
+    <circle cx="17.5" cy="34" r="3.4" fill="#17171c" />
+    <circle cx="34" cy="32" r="3.4" fill="#17171c" />
+  </g>
+  <circle cx="30.5" cy="13.5" r="4.8" fill="#a78bfa" />
+</svg>
