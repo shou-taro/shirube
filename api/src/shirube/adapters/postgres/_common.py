@@ -93,8 +93,15 @@ def read_only_connection(params: ConnectionParams) -> Iterator[psycopg.Connectio
             sslmode=params.sslmode.value,
             connect_timeout=CONNECT_TIMEOUT_SECONDS,
         ) as connection:
+            # Enforce read-only at the *connection* level, before any transaction starts.
+            # Doing it with ``SET default_transaction_read_only = on`` would be too late:
+            # that SET itself opens the transaction the caller then runs in, and a
+            # session default only governs transactions that begin after it — so that
+            # first transaction would stay read-write and a write would slip through.
+            # psycopg's ``connection.read_only`` applies the mode to every transaction on
+            # the connection, so the caller's queries are genuinely read-only.
+            connection.read_only = True
             with connection.cursor() as cursor:
-                cursor.execute("SET SESSION default_transaction_read_only = on")
                 cursor.execute(f"SET statement_timeout = {STATEMENT_TIMEOUT_MS}")
             yield connection
     except psycopg.Error as exc:
