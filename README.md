@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
 </p>
 
-> **Status: Beta.** The explorer core is here and usable today. The AI navigator — the
+> 🚧 **Status: Beta.** The explorer core is here and usable today. The AI navigator — the
 > feature shirube is ultimately built around — is the next milestone (see the
 > [roadmap](#roadmap)). shirube is pre-1.0: things may still change.
 
@@ -24,7 +24,7 @@
   <img src="docs/images/home.png" alt="shirube exploring a database: an ER diagram with a table's detail and its rows" width="960" />
 </p>
 
-## Built for the AI-coding era
+## 🤖 Built for the AI-coding era
 
 You write less SQL by hand than you used to — an AI writes much of it for you. But that
 SQL still runs against **your** schema, and someone still has to understand that schema:
@@ -43,57 +43,82 @@ The goal was never *"don't write SQL."* It's **"don't get lost."** shirube helps
 - How are these two tables related? Where does this foreign key lead?
 - Which table should I even start from?
 
-It is just as useful the classic way — dropping into a project with hundreds of
+It's just as useful in the classic case — dropping into a project with hundreds of
 undocumented tables and needing to find your footing fast. shirube is **not** a SQL IDE
 or a database administration console; it is a tool for *understanding* a database.
 
-## Features
+## ✨ Features
 
 Everything below works today, in the beta:
 
-- **ER diagram home.** shirube generates the diagram automatically and centres it on the
-  most-connected table. You see a table and its immediate neighbours — not a wall of
+- 🗺️ **ER diagram home.** shirube generates the diagram automatically and centres it on
+  the most-connected table. You see a table and its immediate neighbours — not a wall of
   hundreds — and travel outward one hop at a time.
-- **Table detail.** Columns with their types, primary keys and nullability, plus
+- 📋 **Table detail.** Columns with their types, primary keys and nullability, plus
   relationships split into *references* and *referenced by* — including the tables a view
   reads from.
-- **Relationship navigation.** Click a related table to glide the map over to it, and
+- 🔗 **Relationship navigation.** Click a related table to glide the map over to it, and
   keep following the connections.
-- **Data preview.** Read a table or view's actual rows in a drawer beneath the map, with
-  click-to-sort columns, simple column filters, and paging.
-- **Instant search.** Press <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> to jump straight to any
+- 👁️ **Data preview.** Read a table or view's actual rows in a drawer beneath the map,
+  with click-to-sort columns, simple column filters, and paging.
+- ⚡ **Instant search.** Press <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> to jump straight to any
   table or column.
-- **Saved connections.** Manage several PostgreSQL profiles; passwords are kept in your
+- 🔐 **Saved connections.** Manage several PostgreSQL profiles; passwords are kept in your
   operating system's keychain, never in a config file.
-- **Light and dark themes.**
+- 🌗 **Light and dark themes.**
 
-## Safe by design
+## 🛡️ Safe by design
 
 shirube is meant never to feel dangerous.
 
-- **Read-only.** Every connection is opened read-only with a statement timeout. shirube
+- 🔒 **Read-only.** Every connection is opened read-only with a statement timeout. shirube
   cannot modify your database — no writes, no schema changes, ever.
-- **Local-first.** It runs on your machine and binds to `127.0.0.1` only. Your database
+- 💻 **Local-first.** It runs on your machine and binds to `127.0.0.1` only. Your database
   credentials and data never leave your computer; passwords live in the OS keychain.
-- **Metadata-only logging.** The local log records what is needed to diagnose a problem
+- 📝 **Metadata-only logging.** The local log records what is needed to diagnose a problem
   (errors, request timings) but never the values in your data.
 
-## Getting started
+## 🚀 Getting started
 
-**Requirements:** a reachable PostgreSQL database, and [uv](https://docs.astral.sh/uv/)
-(which provides `uvx`).
+**You'll need** a PostgreSQL database to point shirube at, and a way to run a Python
+application without installing it permanently. Most developers already have
+[pipx](https://pipx.pypa.io/); if you prefer [uv](https://docs.astral.sh/uv/), that
+works just as well.
 
 ```bash
-uvx shirube
+pipx run shirube   # with pipx
+# or
+uvx shirube        # with uv
 ```
 
-That starts a local server and opens shirube in your browser. Add a connection to your
-PostgreSQL database and you're exploring — the database can be local or remote.
+Either command starts a small local server and opens shirube in your browser. From
+there:
 
-> shirube connects with whatever credentials you give it; a read-only role with
-> `CONNECT` and `SELECT` is all it needs, and all it should have.
+1. 🔌 Add a connection with your PostgreSQL details.
+2. 🗺️ shirube inspects the schema and opens the ER diagram.
+3. 🔍 Search for a table, or just start following its relationships outward.
 
-## Roadmap
+Your database can be local or remote.
+
+> 💡 shirube connects with whatever credentials you give it. A read-only role with
+> `CONNECT` and `SELECT` is all it needs — and all it should have.
+
+### 🧪 Try it with a sample database
+
+No PostgreSQL to hand? You can take shirube for a spin against a sample database
+([pagila](https://github.com/devrimgunduz/pagila)). This needs **Docker** and a clone of
+this repository.
+
+```bash
+git clone https://github.com/shou-taro/shirube.git
+cd shirube
+./scripts/dev-db.sh up
+```
+
+That brings up `postgresql://postgres:postgres@127.0.0.1:5432/pagila`. Add it as a
+connection in shirube and start exploring.
+
+## 🛣️ Roadmap
 
 shirube's development runs in three phases.
 
@@ -102,16 +127,16 @@ shirube's development runs in three phases.
 - **Next — the AI navigator.** Ask, in plain language, where data lives and how tables
   connect, and let the guide lead you there. The AI is a *navigator*, not a SQL
   generator, and it never changes anything. This is the headline feature still to land.
-- **Later — Analyse & Manage.** Richer GUI filters and aggregation, saved views,
-  AI-suggested relationships and semantic search; then safe, GUI-driven editing and
-  team / self-hosted features. MySQL and SQL Server will follow PostgreSQL.
+- **Later — broadening reach.** More databases beyond PostgreSQL (SQLite and MySQL), a
+  fully localised interface, and maps you can shape yourself — saved layouts and your own
+  relationship links.
 
-## Contributing
+## 🤝 Contributing
 
 Running shirube from source, the project layout and the checks are documented in
 [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-## Licence
+## 📄 Licence
 
 shirube is licensed under the
 [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).

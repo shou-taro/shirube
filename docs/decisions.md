@@ -284,3 +284,11 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
 
 - Hide a partitioned table's child partitions behind its parent (a scoped
   expand/collapse), so a partition-heavy schema doesn't flood the map.
+
+### More database engines
+
+- PostgreSQL is the only supported target for the beta. Broadening to **SQLite**
+  (local, file-based — a natural fit for the local-first, read-only stance) and **MySQL**
+  is planned. This is the database being *explored*, distinct from shirube's own SQLite
+  state file. Each engine needs its own inspection + data-reader adapter behind the
+  existing ports, and the read-only and safety guarantees must hold for every one.
