@@ -52,7 +52,7 @@ _OBJECTS_SQL = f"""
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relkind IN ('r', 'v', 'm') AND {_schema_filter("n")}
     ORDER BY n.nspname, c.relname
-"""
+"""  # nosec B608
 
 _COLUMNS_SQL = f"""
     SELECT n.nspname AS schema,
@@ -73,7 +73,7 @@ _COLUMNS_SQL = f"""
       AND a.attnum > 0 AND NOT a.attisdropped
       AND {_schema_filter("n")}
     ORDER BY n.nspname, c.relname, a.attnum
-"""
+"""  # nosec B608
 
 _RELATIONSHIPS_SQL = f"""
     SELECT con.conname AS constraint_name,
@@ -96,7 +96,7 @@ _RELATIONSHIPS_SQL = f"""
     JOIN pg_catalog.pg_namespace tn ON tn.oid = tc.relnamespace
     WHERE con.contype = 'f' AND {_schema_filter("n")}
     ORDER BY con.conname
-"""
+"""  # nosec B608
 
 # The relations each view (or materialized view) reads from. A view's SELECT lives in a
 # rewrite rule (pg_rewrite), and pg_depend records that rule's dependencies on the
@@ -123,7 +123,7 @@ _VIEW_DEPENDENCIES_SQL = f"""
       AND d.oid <> v.oid
       AND {_schema_filter("vn")}
     ORDER BY view_schema, view_name, ref_schema, ref_name
-"""
+"""  # nosec B608
 
 
 def build_graph(

@@ -128,10 +128,13 @@ whitelist is a high-leverage addition.
 Tests are one pillar; a security-serious project also automates supply-chain and static
 checks:
 
-- **Dependency audit** — `pip-audit` (uv) and `pnpm audit`, so a vulnerable dependency
-  fails CI. Non-negotiable for a tool that handles database credentials.
-- **Static analysis (SAST)** — Bandit for Python security lints; the security rules of
-  oxlint/eslint for the frontend; **CodeQL** once the repository is public (free there).
+- **Dependency audit** *(in place)* — `pip-audit` (uv) and `pnpm audit --audit-level=high`
+  fail CI on a known-vulnerable dependency. Non-negotiable for a tool that handles
+  database credentials.
+- **Static analysis (SAST)** *(in place for Python)* — Bandit runs in CI; B608 (string-built
+  SQL) is suppressed per-line where the only interpolation is a fixed catalogue fragment
+  and user values are psycopg parameters (proven by the injection integration tests). The
+  frontend leans on oxlint; **CodeQL** comes once the repository is public (free there).
 - **Secret scanning** — GitHub secret scanning and/or gitleaks, so credentials can't be
   committed.
 - **Dependabot** — automated dependency-update PRs.
