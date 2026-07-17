@@ -106,8 +106,6 @@ shirube's development runs in three phases.
   AI-suggested relationships and semantic search; then safe, GUI-driven editing and
   team / self-hosted features. MySQL and SQL Server will follow PostgreSQL.
 
-See [`docs/vision.md`](docs/vision.md) for the full product vision.
-
 ## Contributing
 
 Running shirube from source, the project layout and the checks are documented in

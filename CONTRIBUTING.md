@@ -1,8 +1,8 @@
 # Contributing to shirube
 
 Thanks for your interest in shirube. This document covers how to run the project from
-source; see [`docs/vision.md`](docs/vision.md) for the product vision and
-[`docs/decisions.md`](docs/decisions.md) for the reasoning behind each design decision.
+source; see [`docs/decisions.md`](docs/decisions.md) for the reasoning behind each
+design decision.
 
 ## Layout
 
