@@ -10,6 +10,9 @@ import pytest
 def _isolated_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """Point shirube's data directory at a throwaway path for each test."""
     monkeypatch.setenv("SHIRUBE_DATA_DIR", str(tmp_path))
+    # TestClient sends "Host: testserver"; allow it so the host-validation middleware
+    # (see the app factory) does not reject every request under test.
+    monkeypatch.setenv("SHIRUBE_ALLOWED_HOSTS", '["127.0.0.1", "localhost", "testserver"]')
     from shirube.adapters.persistence import database
     from shirube.config import get_settings
 
