@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/shou-taro/shirube/actions/workflows/ci.yml"><img src="https://github.com/shou-taro/shirube/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/v/shirube" alt="PyPI" /></a>
   <img src="https://img.shields.io/badge/status-beta-a78bfa" alt="Status: beta" />
   <a href="https://github.com/shou-taro/shirube/blob/main/LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue" alt="Licence: AGPL-3.0" /></a>
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />

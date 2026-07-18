@@ -5,6 +5,19 @@ description = "Understand your database as a map — built for the AI-coding era
 readme = "README.md"
 requires-python = ">=3.11"
 license = "AGPL-3.0-or-later"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Database :: Front-Ends",
+    "Topic :: Software Development",
+]
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.51.0",
@@ -18,6 +31,12 @@ dependencies = [
 
 [project.scripts]
 shirube = "shirube.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/shou-taro/shirube"
+Repository = "https://github.com/shou-taro/shirube"
+Changelog = "https://github.com/shou-taro/shirube/blob/main/CHANGELOG.md"
+Issues = "https://github.com/shou-taro/shirube/issues"
 
 [dependency-groups]
 dev = [
