@@ -46,8 +46,9 @@ built), **Active** (an ongoing practice).
 
 - Named, switchable connection profiles (host / port / database / user / sslmode).
   Non-secret fields live in the app-state database; **passwords go in the OS keychain**
-  via `keyring`, never in plaintext. Headless Linux without a Secret Service falls back
-  to env / connection URL.
+  via `keyring`, never in plaintext. This needs a working keyring backend; on headless
+  Linux without a Secret Service, install one (e.g. `keyrings.alt`). A fallback to an
+  env var / connection URL for keyring-less setups is **planned, not yet built**.
 - **Why keychain:** the user hits the same database daily, so re-entry every session
   hurts, and `keyring` keeps the cost small.
 
@@ -79,7 +80,9 @@ built), **Active** (an ongoing practice).
 
 **Built (SSL); scoped out (SSH); deferred (IAM).**
 
-- SSL/TLS (sslmode, CA path) is supported — cloud databases need it.
+- SSL/TLS via `sslmode` is supported — cloud databases need it. Choosing a custom CA
+  path (`sslrootcert`) from the UI is **planned, not yet built**; today the system trust
+  store is used, so `verify-ca` / `verify-full` need the CA in a standard location.
 - SSH tunnels are the user's job (`ssh -L …`, then point shirube at localhost); building
   tunnelling in brings key/passphrase/multi-hop complexity the OS already handles well.
 - Cloud IAM auth (e.g. RDS IAM) is deferred.
@@ -138,8 +141,9 @@ built), **Active** (an ongoing practice).
   structured and transactional as the data grows, and it reuses SQLAlchemy.
 - Per-database state (layout, and later manual links / saved views) is keyed to the
   **profile**, not host+port+database — SSH tunnels make every database look like
-  `localhost:5432`, so a user-named profile disambiguates. The ER layout auto-saves per
-  profile.
+  `localhost:5432`, so a user-named profile disambiguates. Persisting that per-profile
+  state, starting with the ER layout, is **planned, not yet built**; today the map is
+  laid out afresh each session.
 
 ### Schema introspection: fresh per connect, drift-tolerant
 
