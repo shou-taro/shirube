@@ -1,21 +1,32 @@
-# shirube
+<p align="center">
+  <img src="https://raw.githubusercontent.com/shou-taro/shirube/main/docs/images/logo.svg" width="88" alt="shirube" />
+</p>
 
-**AI writes the SQL. You still own the schema.**
+<h1 align="center">shirube</h1>
 
-*標べ — a signpost for reading a database as a map.*
+<p align="center">
+  <strong>AI writes the SQL.<br />You still own the schema.</strong><br />
+  <sub>標べ — a signpost for reading a database as a map.</sub>
+</p>
 
-[![CI](https://github.com/shou-taro/shirube/actions/workflows/ci.yml/badge.svg)](https://github.com/shou-taro/shirube/actions/workflows/ci.yml)
-&nbsp;![Status: beta](https://img.shields.io/badge/status-beta-a78bfa)
-&nbsp;[![Licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue)](https://github.com/shou-taro/shirube/blob/main/LICENSE)
-&nbsp;![PostgreSQL](https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white)
+<p align="center">
+  <a href="https://github.com/shou-taro/shirube/actions/workflows/ci.yml"><img src="https://github.com/shou-taro/shirube/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/status-beta-a78bfa" alt="Status: beta" />
+  <a href="https://github.com/shou-taro/shirube/blob/main/LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue" alt="Licence: AGPL-3.0" /></a>
+  <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+</p>
 
 > 🚧 **Status: Beta.** The explorer core is here and usable today. The AI navigator — the
 > feature shirube is ultimately built around — is the next milestone. shirube is pre-1.0:
 > things may still change.
 
-![shirube exploring a database: an ER diagram with a table's detail and its rows](https://raw.githubusercontent.com/shou-taro/shirube/main/docs/images/home.png)
+<p align="center"><em>See the whole database as a map.</em></p>
 
-## Why shirube
+<p align="center">
+  <img src="https://raw.githubusercontent.com/shou-taro/shirube/main/docs/images/home.png" alt="shirube exploring a database: an ER diagram with a table's detail and its rows" width="960" />
+</p>
+
+## 🤖 Why shirube
 
 You write less SQL by hand than you used to — an AI writes much of it for you. But that
 SQL still runs against **your** schema, and someone still has to understand that schema:
@@ -29,7 +40,7 @@ footing fast.
 
 > AI changed how we write SQL. shirube changes how we understand databases.
 
-## What shirube does
+## 🧭 What shirube does
 
 shirube opens on an interactive ER diagram and lets you explore a database like a map:
 search for a table, focus on it, and follow its relationships outward — so you can see
@@ -38,7 +49,7 @@ how everything connects without reading DDL or writing a single query.
 It is **not** another SQL IDE or database administration console — there is no query
 editor, and nothing that ever writes. shirube is a tool for *understanding* a database.
 
-## Features
+## ✨ Features
 
 Everything below works today, in the beta:
 
@@ -54,7 +65,7 @@ Everything below works today, in the beta:
   a config file.
 - 🌗 **Light and dark themes.**
 
-## Safe by design
+## 🛡️ Safe by design
 
 - 🔒 **Read-only** — every connection is opened read-only with a statement timeout. shirube
   cannot modify your database — no writes, no schema changes, ever.
@@ -63,7 +74,7 @@ Everything below works today, in the beta:
 - 📝 **Metadata-only logging** — the local log records errors and request timings, but
   never the values in your data.
 
-## Getting started
+## 🚀 Getting started
 
 You'll need a PostgreSQL database to point shirube at, and a way to run a Python
 application without installing it permanently.
@@ -83,7 +94,7 @@ diagram.
 > 💡 shirube connects with whatever credentials you give it. A read-only role with
 > `CONNECT` and `SELECT` is all it needs — and all it should have.
 
-## Learn more
+## 📚 Learn more
 
 - **Full README, roadmap and the AI-navigator preview** —
   <https://github.com/shou-taro/shirube>
