@@ -258,6 +258,45 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
   next, layered on Milestone 1's schema look-up tools. Releasing the foundation first
   gets real-world feedback and de-risks the AI work.
 
+### AI: model tiers and provider abstraction
+
+- Two ways to bring intelligence to the navigator:
+  1. **Bring your own API key** — a hosted provider the user already pays for (Claude, or
+     any OpenAI-compatible endpoint).
+  2. **Local model** — a model running on the user's own machine (Ollama and other
+     OpenAI-compatible local runners), for full privacy.
+- Both keep shirube's core promise: no shirube backend, calls go straight from the user's
+  machine to their chosen provider or local model, and only question-relevant metadata
+  leaves (a local model leaves nothing).
+- **Two provider adapters** behind one internal interface:
+  - **Anthropic native** — talks to the Claude API directly, so Claude (the recommended
+    default) gets first-class tool use and thinking rather than a lowest-common-denominator
+    shim.
+  - **OpenAI-compatible** — one adapter covers OpenAI, Ollama, and the many local runners
+    and gateways that speak the OpenAI chat-completions shape. Ollama is reached this way;
+    there is no separate Ollama adapter.
+- **No provider ships enabled by default** (as with connections — see *external-send
+  privacy* below); the user picks and configures one, and that choice is the consent. The
+  recommended default *model*, once a provider is chosen, is the latest Claude; a
+  schema-navigator may run well on a cheaper or smaller model, so this is a calibration to
+  revisit, not a fixed cost.
+- Adapters expose only what the navigator needs — a chat turn with tool-calling — so
+  adding an engine later is a new adapter rather than a rewrite.
+
+### AI: provider config and key handling
+
+- The chosen provider is configured **once, app-wide** — one active provider at a time, not
+  a separate one per database profile. Non-secret settings (which adapter, base URL, model
+  name) live in the app-state database alongside the other settings.
+- **API keys are secrets → the OS keychain**, via the same `keyring` path as database
+  passwords (macOS Keychain / Windows Credential Manager), never in a config file or the
+  app-state database. Same platform scope as connection credentials: macOS and Windows for
+  the beta, a Linux fallback planned.
+- **Local models need no key** — Ollama and other local runners take only a base URL (e.g.
+  `http://localhost:11434`), so tier 2 stores nothing secret at all.
+- The provider/key being app-wide (while conversations stay per-profile — see *per-profile
+  history* below) means a key set once works across every database profile.
+
 ### AI: metadata only, never auto-executes
 
 - The AI will reason over **schema metadata only** (names, types, PK/FK, comments,
@@ -272,12 +311,68 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
   needs — scaling to thousands of tables and minimising what is sent externally. Semantic
   (embedding-based) retrieval is a later enhancement.
 
+### AI: the look-up tool set
+
+- A small, fixed set of read-only tools, all metadata-only, over the **already-introspected
+  schema** (built at connect — see *schema introspection* above), so the AI sees exactly
+  what the map sees and no re-query or live database hit is needed:
+  - **`search_objects(query, limit)`** — the entry point ("which table do I start from"):
+    ranked name/column matches, reusing the deterministic search already built. Returns
+    each hit's id, name, kind (table / view / materialised view), schema, and cheap signals
+    (column count, catalogue row-count estimate).
+  - **`get_object(ref)`** — one object's detail: columns (name, type, nullable, primary
+    key, comment) plus relationships split into *references* / *referenced by*, each tagged
+    `foreign_key` or `view_dependency`. This is the map's table detail, for the AI.
+  - **`find_path(from, to)`** — a breadth-first walk over the relationship graph returning
+    the hop sequence between two objects (e.g. Customer → Orders → Payments). One cheap,
+    deterministic call answers "how are these related" instead of many `get_object` hops.
+  - **`list_schemas()`** — cheap orientation on a multi-schema database: schema names with
+    object counts.
+- **What tools return:** metadata only — names, types, keys, nullability, comments,
+  relationship kinds, and count *estimates*. **What they never return: row data or column
+  values.** Row-count *estimates* come from the catalogue, not a scan, and are the only
+  numeric signal exposed. The AI proposes; a human clicks through to the data preview to
+  see actual rows.
+- Tools run **on the local backend**; only their results (question-relevant metadata) enter
+  the conversation and thus the external-send surface. The AI pulls incrementally — one
+  search, then the objects that matter — rather than receiving the schema up front.
+- Cross-object **path finding** is in M2 as the `find_path` tool above (backend BFS over
+  the relationship graph — fast and reliable regardless of schema size). Only the
+  **visual** route — drawing/highlighting the A → B → C path across the ER diagram (see
+  *answers wired to the map*) — is deferred; M2 answers path questions in text with
+  clickable hops.
+- The set assumes a **function-calling-capable model** (see *model tiers*). A no-tool
+  degraded path — packing a bounded, question-relevant metadata slice straight into the
+  prompt for weaker local models — is a later consideration, not part of the first cut.
+
 ### AI: external-send privacy
 
 - **Data values never leave the machine.** No default provider ships; the user configures
-  one (an OpenAI-compatible API *or* local Ollama), and that choice is the consent. Only
-  question-relevant schema metadata is sent, and only to the chosen provider; Ollama stays
-  fully local. A "preview what will be sent" is a later transparency feature.
+  one (Claude, an OpenAI-compatible API, *or* local Ollama — see *model tiers and provider
+  abstraction* above), and that choice is the consent. Only question-relevant schema
+  metadata is sent, and only to the chosen provider; a local model stays fully local. A
+  "preview what will be sent" is a later transparency feature.
+
+### AI: the consent flow
+
+- **Choosing a hosted provider is the consent — but it must be an informed one.** The first
+  time a hosted provider (tier 1) is configured, shirube states plainly, in one place, what
+  it will and won't send: it sends the **question, the running conversation, and
+  question-relevant schema metadata** (table/column names, types, keys, comments,
+  relationship structure, row-count estimates) to that provider; it **never** sends row
+  data or column values. The user acknowledges once, and that is the record of consent.
+- **Local models skip it** — Ollama and other local runners send nothing off the machine,
+  so there is no external recipient to consent to. Tier 2 needs no acknowledgement.
+- **No surprise sends** (mirrors *reconnect on reload; no surprise connections*): nothing
+  goes to a provider until one is configured and acknowledged, and then only when the user
+  actually asks the navigator a question. shirube never pings a provider on its own.
+- **Always-visible destination.** The navigator shows where it is pointed at all times —
+  the provider name, or "local — nothing leaves this machine" — so the user is never unsure
+  who is receiving their schema. Switching to a *different* hosted provider re-triggers the
+  one-time acknowledgement (a new external recipient).
+- The per-turn **"preview exactly what will be sent"** panel stays a later transparency
+  enhancement (see *external-send privacy*); the M2 flow is the upfront explanation plus the
+  persistent destination indicator.
 
 ### AI answers wired to the map
 
@@ -290,6 +385,27 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
 - Conversations scoped to the profile and persisted in SQLite (revisit prior Q&A;
   new/clear available). Token usage shown from the provider; no built-in currency
   conversion (pricing drifts and misleads); Ollama shows "local, no API cost".
+
+### AI: the navigator pane (UI)
+
+- The right pane (`explorer.tsx`'s `<aside>` — today a static placeholder: a centred intro
+  plus a fake composer) becomes the working navigator. It keeps the current shape: docked,
+  slid open/closed from the top-bar Sparkles toggle, lilac pane styling.
+- **Composer.** The placeholder input becomes real and multi-line — Enter sends,
+  Shift+Enter for a newline; the send button enables when there is text and turns into a
+  **stop** control while a request is in flight. When no provider is configured yet, the
+  composer prompts to set one up (a link into provider settings) rather than sitting dead.
+- **Conversation.** The centred intro shows only when the thread is empty; otherwise a
+  scrollable list of turns — the user's question and the AI's streamed answer — scoped and
+  persisted per profile (see *per-profile history*), with new/clear.
+- **Answers wired to the map.** Table names and `find_path` hops render as clickable chips
+  that recentre/highlight the map (see *answers wired to the map*); the visual route overlay
+  stays deferred.
+- **Pane header** carries the always-visible **destination indicator** (provider name, or
+  "local — nothing leaves") from the consent flow, a way into provider settings, and token
+  usage per the *token display* decision (a local model shows "local, no API cost").
+- **Width.** `w-72` suits a placeholder but is tight for real conversation; the pane may
+  widen or become resizable — a detail to settle in build, not a blocker.
 
 ### Manual relationship editing
 
