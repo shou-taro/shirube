@@ -323,6 +323,9 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
   - **`get_object(ref)`** — one object's detail: columns (name, type, nullable, primary
     key, comment) plus relationships split into *references* / *referenced by*, each tagged
     `foreign_key` or `view_dependency`. This is the map's table detail, for the AI.
+  - **`find_path(from, to)`** — a breadth-first walk over the relationship graph returning
+    the hop sequence between two objects (e.g. Customer → Orders → Payments). One cheap,
+    deterministic call answers "how are these related" instead of many `get_object` hops.
   - **`list_schemas()`** — cheap orientation on a multi-schema database: schema names with
     object counts.
 - **What tools return:** metadata only — names, types, keys, nullability, comments,
@@ -333,9 +336,11 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
 - Tools run **on the local backend**; only their results (question-relevant metadata) enter
   the conversation and thus the external-send surface. The AI pulls incrementally — one
   search, then the objects that matter — rather than receiving the schema up front.
-- Cross-object **path finding** (Customer → Orders → Payments) is left to a later route
-  planner (see *answers wired to the map*); M2 gives the AI one-hop neighbours via
-  `get_object` and lets it walk.
+- Cross-object **path finding** is in M2 as the `find_path` tool above (backend BFS over
+  the relationship graph — fast and reliable regardless of schema size). Only the
+  **visual** route — drawing/highlighting the A → B → C path across the ER diagram (see
+  *answers wired to the map*) — is deferred; M2 answers path questions in text with
+  clickable hops.
 - The set assumes a **function-calling-capable model** (see *model tiers*). A no-tool
   degraded path — packing a bounded, question-relevant metadata slice straight into the
   prompt for weaker local models — is a later consideration, not part of the first cut.
