@@ -1,7 +1,8 @@
 [project]
 name = "shirube"
 version = "0.1.0b1"
-description = "AI-native database explorer — navigate and understand your database with AI."
+description = "Understand your database as a map — built for the AI-coding era."
+readme = "README.md"
 requires-python = ">=3.11"
 license = "AGPL-3.0-or-later"
 dependencies = [
@@ -37,6 +38,16 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/shirube"]
 # Include the built SPA (generated, git-ignored) in the wheel for single-origin serving.
+artifacts = ["src/shirube/static/**/*"]
+
+[tool.hatch.build.targets.sdist]
+# Keep the sdist to the sources needed to build the wheel; exclude test caches,
+# the lockfile and other dev cruft that hatchling would otherwise sweep in.
+include = [
+    "src/shirube",
+    "README.md",
+    "pyproject.toml",
+]
 artifacts = ["src/shirube/static/**/*"]
 
 [tool.ruff]
