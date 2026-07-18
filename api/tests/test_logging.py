@@ -1,9 +1,13 @@
 """Tests for diagnostic logging.
 
-The file handler is exercised directly, and the request/error logging is exercised
-through the app with the ``caplog`` fixture standing in for the log's readers.
+Logging is structured: each event is a dict of fields, rendered as a colourised line on
+the console and as one JSON object per line in the file. The file handler is exercised
+directly (asserting the file really holds JSON), and the request/error logging is
+exercised through the app with the ``caplog`` fixture standing in for the log's readers —
+reading the structured fields off each captured record rather than a formatted string.
 """
 
+import json
 import logging
 from collections.abc import Iterator, Sequence
 
@@ -17,6 +21,17 @@ from shirube.domain.connection import ConnectionParams
 from shirube.domain.errors import ConnectionFailedError
 from shirube.domain.schema import SchemaGraph
 from shirube.logging_config import setup_logging
+
+
+def _structured_events(caplog: pytest.LogCaptureFixture) -> list[dict[str, object]]:
+    """Pull the structured event dicts off the records caplog captured.
+
+    A structlog event reaches the standard library as a record whose ``msg`` is the event
+    dict itself (structlog defers the final rendering to a handler formatter), so the
+    fields can be read back straight from the record without parsing a string.
+    """
+    return [record.msg for record in caplog.records if isinstance(record.msg, dict)]
+
 
 _PROFILE = {
     "name": "shop",
@@ -49,15 +64,23 @@ def _restore_shirube_logger() -> Iterator[None]:
 # --- file handler --------------------------------------------------------------------
 
 
-def test_setup_logging_writes_to_the_log_file() -> None:
-    logger = setup_logging()
+def test_setup_logging_writes_json_lines_to_the_log_file() -> None:
+    setup_logging()
     logging.getLogger("shirube.test").warning("hello from the test")
-    for handler in logger.handlers:
+    for handler in logging.getLogger("shirube").handlers:
         handler.flush()
 
     log_path = get_settings().log_path
     assert log_path.exists()
-    assert "hello from the test" in log_path.read_text(encoding="utf-8")
+
+    # Every non-empty line is a self-contained JSON object carrying the event and its
+    # level as fields — this is the machine-readable half of the structured setup.
+    lines = [line for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    records = [json.loads(line) for line in lines]
+    assert any(
+        record.get("event") == "hello from the test" and record.get("level") == "warning"
+        for record in records
+    )
 
 
 # --- request and error logging -------------------------------------------------------
@@ -100,7 +123,26 @@ def test_request_logging_records_method_path_and_status(caplog: pytest.LogCaptur
         response = client.get("/api/health")
 
     assert response.status_code == 200
-    assert "GET /api/health -> 200" in caplog.text
+    events = _structured_events(caplog)
+    assert any(
+        event.get("event") == "request"
+        and event.get("method") == "GET"
+        and event.get("path") == "/api/health"
+        and event.get("status") == 200
+        for event in events
+    )
+
+
+def test_request_logging_binds_a_request_id(caplog: pytest.LogCaptureFixture) -> None:
+    """Each request's log line carries a request_id, echoed back in a response header."""
+    with _client() as client, caplog.at_level(logging.INFO, logger="shirube.request"):
+        response = client.get("/api/health")
+
+    header_id = response.headers["X-Request-ID"]
+    request_events = [e for e in _structured_events(caplog) if e.get("event") == "request"]
+    # The id in the log matches the one handed back to the caller, so a user-reported
+    # request_id can be found in the log.
+    assert any(event.get("request_id") == header_id for event in request_events)
 
 
 def test_shirube_error_logs_the_underlying_cause(caplog: pytest.LogCaptureFixture) -> None:
@@ -109,6 +151,7 @@ def test_shirube_error_logs_the_underlying_cause(caplog: pytest.LogCaptureFixtur
         response = client.get(f"/api/profiles/{created['id']}/schema")
 
     assert response.status_code == 400
+    errors = [e for e in _structured_events(caplog) if e.get("event") == "request_error"]
     # The user-facing detail is logged, and so is the raw cause it was translated from.
-    assert "database unreachable" in caplog.text
-    assert "boom root cause" in caplog.text
+    assert any(event.get("detail") == "database unreachable" for event in errors)
+    assert any("boom root cause" in str(event.get("cause")) for event in errors)

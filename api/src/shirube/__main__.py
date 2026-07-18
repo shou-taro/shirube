@@ -34,20 +34,20 @@ def main() -> None:
     settings = get_settings()
     logger = setup_logging()
     logger.info(
-        "shirube %s starting on http://%s:%s (data: %s)",
-        __version__,
-        settings.host,
-        settings.port,
-        settings.data_dir,
+        "starting",
+        version=__version__,
+        host=settings.host,
+        port=settings.port,
+        data_dir=str(settings.data_dir),
     )
     if not _is_loopback(settings.host):
         # shirube is single-user and unauthenticated by design; binding beyond loopback
         # exposes an unprotected API on the network, so make an accidental one loud.
         logger.warning(
-            "shirube is bound to %s, which is not a loopback address — it may be "
-            "reachable from your network. shirube is single-user and unauthenticated; "
-            "bind to 127.0.0.1 unless you intend to expose it.",
-            settings.host,
+            "bound to a non-loopback address — shirube may be reachable from your "
+            "network. It is single-user and unauthenticated; bind to 127.0.0.1 unless "
+            "you intend to expose it.",
+            host=settings.host,
         )
     url = f"http://{settings.host}:{settings.port}"
     if settings.open_browser:
