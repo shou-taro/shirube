@@ -197,12 +197,22 @@ built), **Active** (an ongoing practice).
   the map. Conceptual look-ups ("where is 売上?") are the AI's job, not an embedding index
   here.
 
-### Diagnostic logging: local, metadata-only
+### Diagnostic logging: local, structured, metadata-only
 
 **Built.**
 
-- A `shirube` logger writes to the console and a rotating file beside the app-state
-  database (`data_dir/shirube.log`; `INFO`, raisable via `SHIRUBE_LOG_LEVEL`).
+- **Structured logging** (`structlog` over the standard library): each event is a set of
+  key/value fields, rendered two ways from one source — a colourised, human-readable line
+  on the **console** and one **JSON object per line** in a rotating file beside the
+  app-state database (`data_dir/shirube.log`; `INFO`, raisable via `SHIRUBE_LOG_LEVEL`).
+  The JSON file stays greppable and tool-friendly without sacrificing console readability.
+- **Layered on stdlib, not replacing it.** structlog builds the event dict and defers
+  emission to a `logging` handler, so rotation, levels, uvicorn's own loggers and the
+  test suite's `caplog` all keep working. This is why the structured events still reach
+  the standard library rather than a separate sink.
+- A per-request **`request_id`** is bound for the request's lifetime and attached to every
+  event it logs, and returned in the `X-Request-ID` response header — so a user-reported
+  request can be traced through the log.
 - Logged: startup; each request's method / path / status / duration; the real cause
   behind a translated error; and unexpected tracebacks. **Never** filter values, row data
   or passwords — metadata only, so the read-only / local-first posture holds in the log
