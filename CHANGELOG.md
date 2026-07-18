@@ -8,6 +8,13 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Changed
+
+- Enriched the PyPI package metadata — project URLs (Homepage, Repository, Changelog,
+  Issues) and trove classifiers — and added a PyPI version badge to the README.
+- PyPI releases are now published automatically from a GitHub release via Trusted
+  Publishing (OIDC), rather than by hand.
+
 ## [0.1.0b1] — 2026-07-17
 
 The first public beta: shirube's explorer core. The AI navigator — the feature shirube
