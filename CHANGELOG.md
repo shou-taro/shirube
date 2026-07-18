@@ -28,8 +28,10 @@ is ultimately built around — is the next milestone and is **not** in this rele
   click-to-sort columns, simple column filters and paging.
 - **Search.** Jump to any table or column with <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd>.
 - **Appearance & settings.** Light and dark themes, and a settings panel.
-- **Diagnostic logging.** A local, metadata-only log beside the app-state database, to
-  make failures diagnosable.
+- **Diagnostic logging.** A local, structured, metadata-only log beside the app-state
+  database, to make failures diagnosable — colourised lines on the console and one JSON
+  object per line in the file, with a per-request `request_id` (also returned in the
+  `X-Request-ID` header).
 
 ### Security
 

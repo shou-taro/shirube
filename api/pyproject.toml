@@ -12,6 +12,7 @@ dependencies = [
     "platformdirs>=4.2",
     "keyring>=25.7.0",
     "psycopg[binary]>=3.3.4",
+    "structlog>=25.1.0",
 ]
 
 [project.scripts]

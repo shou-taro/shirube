@@ -1,13 +1,12 @@
 """Translation of domain errors into HTTP responses."""
 
-import logging
-
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from shirube.domain.errors import ShirubeError
+from shirube.logging_config import get_logger
 
-_logger = logging.getLogger("shirube.error")
+_logger = get_logger("shirube.error")
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -31,14 +30,16 @@ def register_exception_handlers(app: FastAPI) -> None:
         — which is exactly what is needed to diagnose the failure later.
         """
         # ``raise ... from exc`` at the raise site leaves the original on ``__cause__``.
-        cause = f" | cause: {exc.__cause__!r}" if exc.__cause__ is not None else ""
+        # It is logged (as metadata about *why* the request failed) but never returned to
+        # the caller, whose response carries only the translated, user-safe detail.
+        cause = repr(exc.__cause__) if exc.__cause__ is not None else None
         _logger.warning(
-            "%s %s -> %s (%d): %s%s",
-            request.method,
-            request.url.path,
-            type(exc).__name__,
-            exc.status_code,
-            exc.detail,
-            cause,
+            "request_error",
+            method=request.method,
+            path=request.url.path,
+            error=type(exc).__name__,
+            status=exc.status_code,
+            detail=exc.detail,
+            cause=cause,
         )
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})

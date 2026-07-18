@@ -5,12 +5,13 @@ serves the compiled single-page app, so the whole tool runs from one process on 
 origin; in development the Vite dev server serves the UI and proxies API calls here.
 """
 
-import logging
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
+from uuid import uuid4
 
+import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -20,13 +21,14 @@ from shirube.adapters.api.errors import register_exception_handlers
 from shirube.adapters.api.routes import connections, data, health, profiles, schema
 from shirube.adapters.persistence.bootstrap import bootstrap_database
 from shirube.config import get_settings
+from shirube.logging_config import get_logger
 
 # The built SPA, copied here by scripts/build.sh and bundled into the wheel. It is
 # absent during development (git-ignored), where Vite serves the UI instead — hence the
 # existence check in create_app().
 STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
 
-_logger = logging.getLogger("shirube.request")
+_logger = get_logger("shirube.request")
 
 # A conservative Content-Security-Policy for the bundled SPA. Everything is same-origin
 # (scripts, styles, the API), so only 'self' is allowed; inline styles are permitted
@@ -98,29 +100,42 @@ def create_app() -> FastAPI:
     ) -> Response:
         """Log each request's outcome — method, path, status and duration.
 
-        Only metadata is recorded: never the query string, request body or response
-        content, so filter values and row data stay out of the log. An exception that
-        escapes the handlers (a genuine bug) is logged with its traceback and re-raised
-        for FastAPI's default 500.
+        A short ``request_id`` is bound for the lifetime of the request and attached to
+        every event logged while it runs (here and in the error handler), so the lines
+        belonging to one request can be tied together; it is also returned to the caller
+        in the ``X-Request-ID`` header. Only metadata is recorded: never the query string,
+        request body or response content, so filter values and row data stay out of the
+        log. An exception that escapes the handlers (a genuine bug) is logged with its
+        traceback and re-raised for FastAPI's default 500.
         """
+        request_id = uuid4().hex[:12]
+        structlog.contextvars.bind_contextvars(request_id=request_id)
         start = time.perf_counter()
         try:
             response = await call_next(request)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            _logger.info(
+                "request",
+                method=request.method,
+                path=request.url.path,
+                status=response.status_code,
+                duration_ms=round(elapsed_ms),
+            )
+            response.headers["X-Request-ID"] = request_id
+            return response
         except Exception:
             elapsed_ms = (time.perf_counter() - start) * 1000
             _logger.exception(
-                "%s %s failed after %.0f ms", request.method, request.url.path, elapsed_ms
+                "request_failed",
+                method=request.method,
+                path=request.url.path,
+                duration_ms=round(elapsed_ms),
             )
             raise
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        _logger.info(
-            "%s %s -> %d (%.0f ms)",
-            request.method,
-            request.url.path,
-            response.status_code,
-            elapsed_ms,
-        )
-        return response
+        finally:
+            # Always clear the request-scoped context so it never bleeds into the next
+            # request handled on this task.
+            structlog.contextvars.unbind_contextvars("request_id")
 
     # Reject requests whose Host header is not a name we serve, added last so it runs
     # outermost — a bad host is refused before any handler or logging runs. This is the
