@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from urllib.parse import unquote, urlparse
 
@@ -58,6 +58,32 @@ def admin_connection(database_url: str) -> Iterator[psycopg.Connection]:
     """A privileged, autocommit connection used only to build and tear down fixtures."""
     with psycopg.connect(database_url, autocommit=True) as connection:
         yield connection
+
+
+@pytest.fixture
+def params(database_url: str) -> ConnectionParams:
+    """The connection parameters the code under test opens its own connection with."""
+    return _params_from_url(database_url)
+
+
+@pytest.fixture
+def make_schema(admin_connection: psycopg.Connection) -> Iterator[Callable[[], str]]:
+    """A factory that creates uniquely named throwaway schemas and drops them afterwards.
+
+    Returns fresh schema names on demand (a test may want one or two — e.g. to check a
+    cross-schema foreign key), all dropped with CASCADE at teardown.
+    """
+    names: list[str] = []
+
+    def _make() -> str:
+        name = f"shirube_it_{uuid.uuid4().hex}"
+        admin_connection.execute(f'CREATE SCHEMA "{name}"')
+        names.append(name)
+        return name
+
+    yield _make
+    for name in names:
+        admin_connection.execute(f'DROP SCHEMA "{name}" CASCADE')
 
 
 @dataclass(frozen=True)
