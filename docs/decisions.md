@@ -283,6 +283,20 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
 - Adapters expose only what the navigator needs — a chat turn with tool-calling — so
   adding an engine later is a new adapter rather than a rewrite.
 
+### AI: provider config and key handling
+
+- The chosen provider is configured **once, app-wide** — one active provider at a time, not
+  a separate one per database profile. Non-secret settings (which adapter, base URL, model
+  name) live in the app-state database alongside the other settings.
+- **API keys are secrets → the OS keychain**, via the same `keyring` path as database
+  passwords (macOS Keychain / Windows Credential Manager), never in a config file or the
+  app-state database. Same platform scope as connection credentials: macOS and Windows for
+  the beta, a Linux fallback planned.
+- **Local models need no key** — Ollama and other local runners take only a base URL (e.g.
+  `http://localhost:11434`), so tier 2 stores nothing secret at all.
+- The provider/key being app-wide (while conversations stay per-profile — see *per-profile
+  history* below) means a key set once works across every database profile.
+
 ### AI: metadata only, never auto-executes
 
 - The AI will reason over **schema metadata only** (names, types, PK/FK, comments,
