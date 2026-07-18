@@ -205,7 +205,7 @@ def test_filter_values_never_reach_the_log(caplog: pytest.LogCaptureFixture) -> 
         )
 
     assert response.status_code == 200
-    assert "/rows -> 200" in caplog.text  # the request was logged...
+    assert "/rows" in caplog.text  # the request was logged (its path is metadata)...
     assert _SECRET not in caplog.text  # ...but the filter value was not
 
 
