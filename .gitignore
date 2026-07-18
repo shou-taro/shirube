@@ -37,6 +37,8 @@ htmlcov/
 node_modules/
 .pnp
 .pnp.js
+# pnpm's content-addressable store, if it lands inside the repo.
+.pnpm-store/
 web/dist/
 dist-ssr/
 *.local
