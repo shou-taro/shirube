@@ -5,8 +5,8 @@
 <h1 align="center">shirube</h1>
 
 <p align="center">
-  <strong>標べ</strong> — a guide, a signpost.<br />
-  Read and understand an unfamiliar database as a map, not a pile of tables.
+  <strong>AI writes the SQL.<br />You still own the schema.</strong><br />
+  <sub>標べ — a signpost for reading a database as a map.</sub>
 </p>
 
 <p align="center">
@@ -20,11 +20,13 @@
 > feature shirube is ultimately built around — is the next milestone (see the
 > [roadmap](#roadmap)). shirube is pre-1.0: things may still change.
 
+<p align="center"><em>See the whole database as a map.</em></p>
+
 <p align="center">
   <img src="docs/images/home.png" alt="shirube exploring a database: an ER diagram with a table's detail and its rows" width="960" />
 </p>
 
-## 🤖 Built for the AI-coding era
+## 🤖 Why shirube
 
 You write less SQL by hand than you used to — an AI writes much of it for you. But that
 SQL still runs against **your** schema, and someone still has to understand that schema:
@@ -32,20 +34,28 @@ to prompt the AI well, to check what it gave back, to reason about where the dat
 actually lives. That understanding used to come for free while you wrote the queries
 yourself. It doesn't any more.
 
-shirube is where that understanding lives. It opens on an interactive ER diagram and
-lets you explore a database like a map — search for a table, focus on it, and follow its
-relationships outward — so you can see how everything connects without reading DDL or
-writing a single query.
+shirube is where that understanding lives — and it's just as useful in the classic case,
+dropping into a project with hundreds of undocumented tables and needing to find your
+footing fast.
 
-The goal was never *"don't write SQL."* It's **"don't get lost."** shirube helps answer:
+> AI changed how we write SQL. shirube changes how we understand databases.
 
-- Where does this data live, and which table owns this column?
-- How are these two tables related? Where does this foreign key lead?
-- Which table should I even start from?
+## 🧭 What shirube does
 
-It's just as useful in the classic case — dropping into a project with hundreds of
-undocumented tables and needing to find your footing fast. shirube is **not** a SQL IDE
-or a database administration console; it is a tool for *understanding* a database.
+shirube opens on an interactive ER diagram and lets you explore a database like a map:
+search for a table, focus on it, and follow its relationships outward — so you can see
+how everything connects without reading DDL or writing a single query. It answers the
+questions you actually have about a schema:
+
+- **Where does this data live**, and which table owns this column?
+- **How are these two tables related?** Where does this foreign key lead?
+- **Which table should I even start from?**
+
+It is **not** another SQL IDE or database administration console — there is no query
+editor, and nothing that ever writes. shirube is a tool for *understanding* a database.
+
+> The goal was never *"don't write SQL."*
+> It's **"don't get lost."**
 
 ## ✨ Features
 
@@ -66,6 +76,21 @@ Everything below works today, in the beta:
 - 🔐 **Saved connections.** Manage several PostgreSQL profiles; passwords are kept in your
   operating system's keychain, never in a config file.
 - 🌗 **Light and dark themes.**
+
+## 🔮 The AI navigator — coming next
+
+> Not built yet. This is the next milestone (see the [roadmap](#roadmap)).
+
+Today you steer the map yourself. Next, you'll be able to ask in plain language, and
+shirube will lead you there — highlighting the answer directly on the map:
+
+- *"My AI wrote this JOIN through `invoice` — why does it go there?"*
+- *"Where does a customer's email address come from?"*
+- *"How is `invoice` related to `payment`?"*
+- *"Which tables are involved in user authentication?"*
+
+The AI is a **navigator, not a SQL generator**: it reads schema metadata to guide you,
+and it never changes anything.
 
 ## 🛡️ Safe by design
 
@@ -127,9 +152,8 @@ shirube's development runs in three phases.
 
 - **Now — Explore (beta).** The ER diagram, table detail, relationship navigation, data
   preview and search described above.
-- **Next — the AI navigator.** Ask, in plain language, where data lives and how tables
-  connect, and let the guide lead you there. The AI is a *navigator*, not a SQL
-  generator, and it never changes anything. This is the headline feature still to land.
+- **Next — the AI navigator.** Plain-language questions answered on the map, as described
+  above — a *navigator*, not a SQL generator. The headline feature still to land.
 - **Later — broadening reach.** More databases beyond PostgreSQL (SQLite and MySQL),
   Linux support, a fully localised interface, and maps you can shape yourself — saved
   layouts and your own relationship links.
