@@ -18,6 +18,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Unit/component tests live in src; the e2e specs (./e2e) run under Playwright.
+    include: ['src/**/*.test.{ts,tsx}'],
     // Component and DOM-touching tests need a browser-like environment.
     environment: 'jsdom',
     // A concrete origin (rather than the default opaque about:blank) so localStorage

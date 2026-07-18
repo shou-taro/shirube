@@ -59,6 +59,21 @@ SHIRUBE_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/pagila \
   uv run --directory api pytest -m integration
 ```
 
+### End-to-end (Playwright)
+
+A couple of journeys run through the whole stack — the built SPA served by the backend,
+against a seeded throwaway schema. They need a reachable PostgreSQL and Chromium:
+
+```bash
+./scripts/build.sh                     # bundle the SPA into the API package first
+cd web && pnpm exec playwright install chromium
+SHIRUBE_E2E_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/pagila \
+  pnpm run test:e2e
+```
+
+Playwright starts the backend itself (on port 7473, with a throwaway data directory) and
+seeds a `shirube_e2e` schema in the target database before the run.
+
 ### In VS Code
 
 Both test suites run from the editor's **Testing** panel. The workspace recommends the
