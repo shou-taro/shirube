@@ -130,9 +130,9 @@ shirube's development runs in three phases.
 - **Next — the AI navigator.** Ask, in plain language, where data lives and how tables
   connect, and let the guide lead you there. The AI is a *navigator*, not a SQL
   generator, and it never changes anything. This is the headline feature still to land.
-- **Later — broadening reach.** More databases beyond PostgreSQL (SQLite and MySQL), a
-  fully localised interface, and maps you can shape yourself — saved layouts and your own
-  relationship links.
+- **Later — broadening reach.** More databases beyond PostgreSQL (SQLite and MySQL),
+  Linux support, a fully localised interface, and maps you can shape yourself — saved
+  layouts and your own relationship links.
 
 ## 🤝 Contributing
 
