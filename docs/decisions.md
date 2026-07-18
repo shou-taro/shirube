@@ -311,6 +311,35 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
   needs — scaling to thousands of tables and minimising what is sent externally. Semantic
   (embedding-based) retrieval is a later enhancement.
 
+### AI: the look-up tool set
+
+- A small, fixed set of read-only tools, all metadata-only, over the **already-introspected
+  schema** (built at connect — see *schema introspection* above), so the AI sees exactly
+  what the map sees and no re-query or live database hit is needed:
+  - **`search_objects(query, limit)`** — the entry point ("which table do I start from"):
+    ranked name/column matches, reusing the deterministic search already built. Returns
+    each hit's id, name, kind (table / view / materialised view), schema, and cheap signals
+    (column count, catalogue row-count estimate).
+  - **`get_object(ref)`** — one object's detail: columns (name, type, nullable, primary
+    key, comment) plus relationships split into *references* / *referenced by*, each tagged
+    `foreign_key` or `view_dependency`. This is the map's table detail, for the AI.
+  - **`list_schemas()`** — cheap orientation on a multi-schema database: schema names with
+    object counts.
+- **What tools return:** metadata only — names, types, keys, nullability, comments,
+  relationship kinds, and count *estimates*. **What they never return: row data or column
+  values.** Row-count *estimates* come from the catalogue, not a scan, and are the only
+  numeric signal exposed. The AI proposes; a human clicks through to the data preview to
+  see actual rows.
+- Tools run **on the local backend**; only their results (question-relevant metadata) enter
+  the conversation and thus the external-send surface. The AI pulls incrementally — one
+  search, then the objects that matter — rather than receiving the schema up front.
+- Cross-object **path finding** (Customer → Orders → Payments) is left to a later route
+  planner (see *answers wired to the map*); M2 gives the AI one-hop neighbours via
+  `get_object` and lets it walk.
+- The set assumes a **function-calling-capable model** (see *model tiers*). A no-tool
+  degraded path — packing a bounded, question-relevant metadata slice straight into the
+  prompt for weaker local models — is a later consideration, not part of the first cut.
+
 ### AI: external-send privacy
 
 - **Data values never leave the machine.** No default provider ships; the user configures
