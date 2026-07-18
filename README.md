@@ -85,6 +85,9 @@ application without installing it permanently. Most developers already have
 [pipx](https://pipx.pypa.io/); if you prefer [uv](https://docs.astral.sh/uv/), that
 works just as well.
 
+> The beta is tested on **macOS** and **Windows**. Linux support is planned (see the
+> [roadmap](#roadmap)).
+
 ```bash
 pipx run shirube   # with pipx
 # or

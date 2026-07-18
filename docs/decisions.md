@@ -46,9 +46,11 @@ built), **Active** (an ongoing practice).
 
 - Named, switchable connection profiles (host / port / database / user / sslmode).
   Non-secret fields live in the app-state database; **passwords go in the OS keychain**
-  via `keyring`, never in plaintext. This needs a working keyring backend; on headless
-  Linux without a Secret Service, install one (e.g. `keyrings.alt`). A fallback to an
-  env var / connection URL for keyring-less setups is **planned, not yet built**.
+  via `keyring`, never in plaintext — the macOS Keychain or Windows Credential Manager.
+  The beta targets **macOS and Windows**, where a secure keychain is always present;
+  Linux support (a Secret Service such as GNOME Keyring, or an env / connection-URL
+  fallback) is **planned, not yet supported**. A plaintext keyring backend is never
+  recommended, as it would defeat the whole point.
 - **Why keychain:** the user hits the same database daily, so re-entry every session
   hurts, and `keyring` keeps the cost small.
 
@@ -81,8 +83,9 @@ built), **Active** (an ongoing practice).
 **Built (SSL); scoped out (SSH); deferred (IAM).**
 
 - SSL/TLS via `sslmode` is supported — cloud databases need it. Choosing a custom CA
-  path (`sslrootcert`) from the UI is **planned, not yet built**; today the system trust
-  store is used, so `verify-ca` / `verify-full` need the CA in a standard location.
+  path (`sslrootcert`) from the UI is **planned, not yet built**; today libpq's default
+  CA file location is used, so `verify-ca` / `verify-full` require the CA in
+  `~/.postgresql/root.crt` (or the platform-equivalent standard location).
 - SSH tunnels are the user's job (`ssh -L …`, then point shirube at localhost); building
   tunnelling in brings key/passphrase/multi-hop complexity the OS already handles well.
 - Cloud IAM auth (e.g. RDS IAM) is deferred.
