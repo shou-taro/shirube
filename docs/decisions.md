@@ -353,6 +353,27 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
   metadata is sent, and only to the chosen provider; a local model stays fully local. A
   "preview what will be sent" is a later transparency feature.
 
+### AI: the consent flow
+
+- **Choosing a hosted provider is the consent — but it must be an informed one.** The first
+  time a hosted provider (tier 1) is configured, shirube states plainly, in one place, what
+  it will and won't send: it sends the **question, the running conversation, and
+  question-relevant schema metadata** (table/column names, types, keys, comments,
+  relationship structure, row-count estimates) to that provider; it **never** sends row
+  data or column values. The user acknowledges once, and that is the record of consent.
+- **Local models skip it** — Ollama and other local runners send nothing off the machine,
+  so there is no external recipient to consent to. Tier 2 needs no acknowledgement.
+- **No surprise sends** (mirrors *reconnect on reload; no surprise connections*): nothing
+  goes to a provider until one is configured and acknowledged, and then only when the user
+  actually asks the navigator a question. shirube never pings a provider on its own.
+- **Always-visible destination.** The navigator shows where it is pointed at all times —
+  the provider name, or "local — nothing leaves this machine" — so the user is never unsure
+  who is receiving their schema. Switching to a *different* hosted provider re-triggers the
+  one-time acknowledgement (a new external recipient).
+- The per-turn **"preview exactly what will be sent"** panel stays a later transparency
+  enhancement (see *external-send privacy*); the M2 flow is the upfront explanation plus the
+  persistent destination indicator.
+
 ### AI answers wired to the map
 
 - Table names in an answer will be clickable and move/highlight the map, so the AI and the
