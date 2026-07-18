@@ -1,0 +1,52 @@
+name: Release
+
+# Publish to PyPI automatically when a GitHub release is published (pre-releases
+# included). Authentication is PyPI Trusted Publishing (OIDC) — no token is stored
+# anywhere; the job mints a short-lived identity token and exchanges it with PyPI.
+#
+# Release procedure:
+#   1. Bump the version in api/pyproject.toml AND api/src/shirube/__init__.py,
+#      update CHANGELOG.md, merge to main. (PyPI rejects re-uploading an existing
+#      version, so the version MUST be new.)
+#   2. Create a GitHub release whose tag matches (e.g. v0.1.0b2). Publishing it
+#      triggers this workflow, which builds the SPA + wheel and uploads to PyPI.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  pypi-publish:
+    runs-on: ubuntu-latest
+    # Ties the run to a named environment; the PyPI trusted publisher is scoped to
+    # it, and optional required-reviewers on this environment gate the publish.
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write # required for Trusted Publishing (OIDC)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.14"
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      # Build the SPA and bundle it into the API package, then build the sdist + wheel.
+      - run: ./scripts/build.sh
+      - run: uv build
+        working-directory: api
+      # Guard against a malformed long description before uploading.
+      - run: uvx twine check dist/*
+        working-directory: api
+      # Trusted Publishing: no token — uv exchanges the OIDC id-token with PyPI.
+      - run: uv publish --trusted-publishing always
+        working-directory: api
