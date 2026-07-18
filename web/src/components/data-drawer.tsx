@@ -70,6 +70,8 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
   const [page, setPage] = useState<RowPage | null>(null)
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
+  // Bumped to re-run the fetch on demand (the retry button), without changing the query.
+  const [reloadToken, setReloadToken] = useState(0)
 
   const objectId = object?.id ?? null
 
@@ -113,7 +115,7 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
       cancelled = true
       window.clearTimeout(handle)
     }
-  }, [open, object, profileId, offset, sort, activeFilters])
+  }, [open, object, profileId, offset, sort, activeFilters, reloadToken])
 
   if (!open) {
     return null
@@ -266,6 +268,13 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
         {status === 'error' ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-xs">
             <p className="text-destructive">{error || t('data.error')}</p>
+            <button
+              type="button"
+              onClick={() => setReloadToken((token) => token + 1)}
+              className="rounded-md border border-brand/30 px-2.5 py-1 font-medium text-muted-foreground hover:border-brand/50 hover:text-foreground"
+            >
+              {t('data.retry')}
+            </button>
           </div>
         ) : page === null ? (
           <div className="flex h-full items-center justify-center gap-2 text-xs text-muted-foreground">

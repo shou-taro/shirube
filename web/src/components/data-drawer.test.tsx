@@ -215,4 +215,18 @@ describe('errors', () => {
 
     expect(await screen.findByText('Database unreachable.')).toBeInTheDocument()
   })
+
+  it('retries the read when the retry button is clicked', async () => {
+    mockFetchRows.mockReset()
+    mockFetchRows.mockRejectedValueOnce(new Error('Database unreachable.'))
+    mockFetchRows.mockResolvedValue(DEFAULT_PAGE)
+    renderDrawer()
+
+    // The first read fails…
+    await screen.findByText('Database unreachable.')
+
+    // …clicking retry reads again and the rows appear.
+    fireEvent.click(screen.getByRole('button', { name: 'data.retry' }))
+    expect(await screen.findByText('a@example.com')).toBeInTheDocument()
+  })
 })
