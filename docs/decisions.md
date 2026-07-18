@@ -258,6 +258,31 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
   next, layered on Milestone 1's schema look-up tools. Releasing the foundation first
   gets real-world feedback and de-risks the AI work.
 
+### AI: model tiers and provider abstraction
+
+- Two ways to bring intelligence to the navigator:
+  1. **Bring your own API key** — a hosted provider the user already pays for (Claude, or
+     any OpenAI-compatible endpoint).
+  2. **Local model** — a model running on the user's own machine (Ollama and other
+     OpenAI-compatible local runners), for full privacy.
+- Both keep shirube's core promise: no shirube backend, calls go straight from the user's
+  machine to their chosen provider or local model, and only question-relevant metadata
+  leaves (a local model leaves nothing).
+- **Two provider adapters** behind one internal interface:
+  - **Anthropic native** — talks to the Claude API directly, so Claude (the recommended
+    default) gets first-class tool use and thinking rather than a lowest-common-denominator
+    shim.
+  - **OpenAI-compatible** — one adapter covers OpenAI, Ollama, and the many local runners
+    and gateways that speak the OpenAI chat-completions shape. Ollama is reached this way;
+    there is no separate Ollama adapter.
+- **No provider ships enabled by default** (as with connections — see *external-send
+  privacy* below); the user picks and configures one, and that choice is the consent. The
+  recommended default *model*, once a provider is chosen, is the latest Claude; a
+  schema-navigator may run well on a cheaper or smaller model, so this is a calibration to
+  revisit, not a fixed cost.
+- Adapters expose only what the navigator needs — a chat turn with tool-calling — so
+  adding an engine later is a new adapter rather than a rewrite.
+
 ### AI: metadata only, never auto-executes
 
 - The AI will reason over **schema metadata only** (names, types, PK/FK, comments,
@@ -275,9 +300,10 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
 ### AI: external-send privacy
 
 - **Data values never leave the machine.** No default provider ships; the user configures
-  one (an OpenAI-compatible API *or* local Ollama), and that choice is the consent. Only
-  question-relevant schema metadata is sent, and only to the chosen provider; Ollama stays
-  fully local. A "preview what will be sent" is a later transparency feature.
+  one (Claude, an OpenAI-compatible API, *or* local Ollama — see *model tiers and provider
+  abstraction* above), and that choice is the consent. Only question-relevant schema
+  metadata is sent, and only to the chosen provider; a local model stays fully local. A
+  "preview what will be sent" is a later transparency feature.
 
 ### AI answers wired to the map
 
