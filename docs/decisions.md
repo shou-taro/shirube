@@ -386,6 +386,27 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
   new/clear available). Token usage shown from the provider; no built-in currency
   conversion (pricing drifts and misleads); Ollama shows "local, no API cost".
 
+### AI: the navigator pane (UI)
+
+- The right pane (`explorer.tsx`'s `<aside>` — today a static placeholder: a centred intro
+  plus a fake composer) becomes the working navigator. It keeps the current shape: docked,
+  slid open/closed from the top-bar Sparkles toggle, lilac pane styling.
+- **Composer.** The placeholder input becomes real and multi-line — Enter sends,
+  Shift+Enter for a newline; the send button enables when there is text and turns into a
+  **stop** control while a request is in flight. When no provider is configured yet, the
+  composer prompts to set one up (a link into provider settings) rather than sitting dead.
+- **Conversation.** The centred intro shows only when the thread is empty; otherwise a
+  scrollable list of turns — the user's question and the AI's streamed answer — scoped and
+  persisted per profile (see *per-profile history*), with new/clear.
+- **Answers wired to the map.** Table names and `find_path` hops render as clickable chips
+  that recentre/highlight the map (see *answers wired to the map*); the visual route overlay
+  stays deferred.
+- **Pane header** carries the always-visible **destination indicator** (provider name, or
+  "local — nothing leaves") from the consent flow, a way into provider settings, and token
+  usage per the *token display* decision (a local model shows "local, no API cost").
+- **Width.** `w-72` suits a placeholder but is tight for real conversation; the pane may
+  widen or become resizable — a detail to settle in build, not a blocker.
+
 ### Manual relationship editing
 
 - For legacy schemas lacking FK constraints, let users **add relationships by hand**,
