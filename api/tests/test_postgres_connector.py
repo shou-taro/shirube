@@ -47,6 +47,29 @@ def test_missing_database() -> None:
     assert "does not exist" in message
 
 
+def test_ssl_required() -> None:
+    message = friendly_message(
+        psycopg.OperationalError("server does not support SSL, but SSL was required"),
+        _PARAMS,
+    )
+    assert "SSL" in message
+
+
+def test_permission_denied() -> None:
+    message = friendly_message(
+        psycopg.OperationalError("permission denied for table films"),
+        _PARAMS,
+    )
+    assert "permission" in message.lower()
+    assert "CONNECT and SELECT" in message
+
+
+def test_unrecognised_error_falls_back_to_the_raw_message() -> None:
+    message = friendly_message(psycopg.OperationalError("something unexpected went wrong"), _PARAMS)
+    assert message.startswith("Could not connect:")
+    assert "something unexpected went wrong" in message
+
+
 def test_real_connect_to_unreachable_port_is_translated() -> None:
     """Exercise the real psycopg connect path against a refused port.
 

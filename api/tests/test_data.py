@@ -5,6 +5,9 @@ endpoint is exercised with a fake reader standing in for the real adapter.
 """
 
 from collections.abc import Sequence
+from datetime import datetime
+from decimal import Decimal
+from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,7 +16,7 @@ from hypothesis import strategies as st
 
 from shirube.adapters.api.app import create_app
 from shirube.adapters.api.dependencies import get_data_reader, get_secret_store
-from shirube.adapters.postgres.data_reader import build_select
+from shirube.adapters.postgres.data_reader import _cell, build_select
 from shirube.domain.connection import ConnectionParams
 from shirube.domain.data import (
     ColumnFilter,
@@ -187,6 +190,32 @@ def test_build_select_is_injection_safe(case: _Case) -> None:
         if operator not in _VALUELESS
     ]
     assert params_a == [*expected_values, limit + 1, offset]
+
+
+# --- _cell serialisation -------------------------------------------------------------
+
+
+def test_cell_passes_json_native_values_through() -> None:
+    assert _cell(None) is None
+    assert _cell("hello") == "hello"
+    assert _cell(42) == 42
+    assert _cell(3.5) == 3.5
+    assert _cell(True) is True
+    assert _cell(False) is False
+
+
+def test_cell_renders_binary_as_a_size_placeholder() -> None:
+    assert _cell(b"abc") == "[3 bytes]"
+    assert _cell(bytearray(b"ab")) == "[2 bytes]"
+    assert _cell(memoryview(b"abcd")) == "[4 bytes]"
+
+
+def test_cell_stringifies_other_types() -> None:
+    assert _cell(Decimal("1.50")) == "1.50"
+    assert _cell(UUID("00000000-0000-0000-0000-000000000001")) == (
+        "00000000-0000-0000-0000-000000000001"
+    )
+    assert _cell(datetime(2026, 7, 18, 9, 30)) == "2026-07-18 09:30:00"
 
 
 # --- endpoint ------------------------------------------------------------------------
