@@ -12,6 +12,7 @@ interface never runs ahead of a real use case.
 from collections.abc import Sequence
 from typing import Protocol
 
+from shirube.domain.ai import AiProviderConfig
 from shirube.domain.connection import ConnectionParams, ConnectionProfile
 from shirube.domain.data import RowPage, RowQuery
 from shirube.domain.schema import SchemaGraph
@@ -113,6 +114,27 @@ class SecretStore(Protocol):
 
     def delete_password(self, profile_id: str) -> None:
         """Remove the password for ``profile_id`` (a no-op if absent)."""
+        ...
+
+
+class AiConfigRepository(Protocol):
+    """Stores the app-wide AI provider configuration (non-secret fields only).
+
+    A single active provider is configured at a time, so this holds one config or none —
+    unlike the keyed collection of connection profiles. The API key is a secret and lives
+    in the keychain via :class:`SecretStore`, never here.
+    """
+
+    def get(self) -> AiProviderConfig | None:
+        """Return the configured provider, or ``None`` if none is set."""
+        ...
+
+    def set(self, config: AiProviderConfig) -> None:
+        """Store the provider config, replacing any existing one."""
+        ...
+
+    def clear(self) -> None:
+        """Remove the provider config (a no-op if none is set)."""
         ...
 
 

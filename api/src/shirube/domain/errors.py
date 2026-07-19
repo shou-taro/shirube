@@ -74,3 +74,15 @@ class SecretStoreError(ShirubeError):
 
     status_code = 500
     detail = "Could not access the OS keychain where passwords are stored"
+
+
+class InvalidProviderConfigError(ShirubeError):
+    """Raised when an AI provider configuration is incomplete or inconsistent.
+
+    An OpenAI-compatible provider needs a base URL (there is no default endpoint), and
+    every provider needs a model name — the fields are checked before anything is stored,
+    so a half-configured provider is refused rather than saved.
+    """
+
+    status_code = 400
+    detail = "The AI provider configuration is incomplete"

@@ -1,9 +1,18 @@
-import { Monitor, Moon, Sun, X } from 'lucide-react'
+import { Check, Monitor, Moon, Sun, X } from 'lucide-react'
 import { type ComponentType, type ReactNode, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
-import { fetchHealth } from '@/lib/api'
+import { Input } from '@/components/ui/input'
+import {
+  type AiProvider,
+  type AiProviderInput,
+  type AiProviderKind,
+  clearAiProvider,
+  fetchAiProvider,
+  fetchHealth,
+  saveAiProvider,
+} from '@/lib/api'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
@@ -89,6 +98,177 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (val
         )}
       />
     </button>
+  )
+}
+
+/** A labelled text field stacked vertically, for the provider form. The hint sits outside
+ *  the label so it does not become part of the control's accessible name. */
+function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="flex flex-col gap-1">
+        <span className="text-sm">{label}</span>
+        {children}
+      </label>
+      {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
+    </div>
+  )
+}
+
+/**
+ * The AI-navigator provider settings: which adapter, model and base URL, plus the API key.
+ * Unlike the instant-apply toggles above, this is a server-backed form — it loads the
+ * current provider when the dialog opens and saves on demand. The API key is write-only:
+ * it is stored in the OS keychain and never read back, so a stored key shows as a
+ * placeholder and a blank field keeps it. No provider is configured until the user sets one.
+ */
+function AiProviderSection({ open }: { open: boolean }) {
+  const { t } = useTranslation()
+  const [provider, setProvider] = useState<AiProvider | null | undefined>(undefined)
+  const [kind, setKind] = useState<AiProviderKind>('anthropic')
+  const [model, setModel] = useState('')
+  const [baseUrl, setBaseUrl] = useState('')
+  const [apiKey, setApiKey] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  // Load the configured provider each time the dialog opens, seeding the form from it (or
+  // from sensible defaults when nothing is configured yet). The key field always starts
+  // blank — the stored key is never sent back to the client.
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    let active = true
+    setError(null)
+    setSaved(false)
+    setApiKey('')
+    fetchAiProvider()
+      .then((current) => {
+        if (!active) {
+          return
+        }
+        setProvider(current)
+        setKind(current?.kind ?? 'anthropic')
+        setModel(current?.model ?? 'claude-opus-4-8')
+        setBaseUrl(current?.base_url ?? '')
+      })
+      .catch(() => {
+        if (active) {
+          setProvider(null)
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [open])
+
+  async function handleSave(): Promise<void> {
+    setSaving(true)
+    setError(null)
+    setSaved(false)
+    try {
+      const input: AiProviderInput = {
+        kind,
+        model,
+        base_url: baseUrl.trim() === '' ? null : baseUrl.trim(),
+      }
+      // Only send a key when one was typed; a blank field keeps the stored key.
+      if (apiKey !== '') {
+        input.api_key = apiKey
+      }
+      const result = await saveAiProvider(input)
+      setProvider(result)
+      setApiKey('')
+      setSaved(true)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleRemove(): Promise<void> {
+    setSaving(true)
+    setError(null)
+    setSaved(false)
+    try {
+      await clearAiProvider()
+      setProvider(null)
+      setKind('anthropic')
+      setModel('claude-opus-4-8')
+      setBaseUrl('')
+      setApiKey('')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const configured = provider != null
+  const keyPlaceholder = provider?.has_api_key
+    ? t('settings.aiApiKeyStored')
+    : kind === 'openai_compatible'
+      ? t('settings.aiApiKeyOptional')
+      : ''
+
+  return (
+    <Section title={t('settings.ai')}>
+      <Row label={t('settings.aiProvider')} hint={t('settings.aiProviderHint')}>
+        <Segmented
+          value={kind}
+          onChange={setKind}
+          options={[
+            { value: 'anthropic', label: t('settings.aiKindAnthropic') },
+            { value: 'openai_compatible', label: t('settings.aiKindOpenai') },
+          ]}
+        />
+      </Row>
+      <Field label={t('settings.aiModel')}>
+        <Input
+          value={model}
+          onChange={(event) => setModel(event.target.value)}
+          placeholder="claude-opus-4-8"
+        />
+      </Field>
+      <Field label={t('settings.aiBaseUrl')} hint={t('settings.aiBaseUrlHint')}>
+        <Input
+          value={baseUrl}
+          onChange={(event) => setBaseUrl(event.target.value)}
+          placeholder={kind === 'openai_compatible' ? 'http://localhost:11434/v1' : ''}
+        />
+      </Field>
+      <Field label={t('settings.aiApiKey')} hint={t('settings.aiApiKeyHint')}>
+        <Input
+          type="password"
+          value={apiKey}
+          onChange={(event) => setApiKey(event.target.value)}
+          placeholder={keyPlaceholder}
+          autoComplete="off"
+        />
+      </Field>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <div className="flex items-center gap-2">
+        <Button variant="brand" size="sm" onClick={handleSave} disabled={saving}>
+          {saving ? t('settings.aiSaving') : t('settings.aiSave')}
+        </Button>
+        {configured ? (
+          <Button variant="ghost" size="sm" onClick={handleRemove} disabled={saving}>
+            {t('settings.aiRemove')}
+          </Button>
+        ) : (
+          <span className="text-xs text-muted-foreground">{t('settings.aiNotConfigured')}</span>
+        )}
+        {saved ? (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Check className="size-3.5" />
+            {t('settings.aiSaved')}
+          </span>
+        ) : null}
+      </div>
+    </Section>
   )
 }
 
@@ -230,6 +410,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             />
           </Row>
         </Section>
+
+        <AiProviderSection open={open} />
 
         <Section title={t('settings.about')}>
           <Row label={t('settings.version')}>

@@ -9,16 +9,19 @@ from typing import Annotated
 from fastapi import Depends
 
 from shirube.adapters.keyring.secret_store import KeyringSecretStore
+from shirube.adapters.persistence.ai_config_repository import SqlAiConfigRepository
 from shirube.adapters.persistence.database import get_session_factory
 from shirube.adapters.persistence.profile_repository import SqlProfileRepository
 from shirube.adapters.postgres.connector import PostgresConnector
 from shirube.adapters.postgres.data_reader import PostgresDataReader
 from shirube.adapters.postgres.schema_inspector import PostgresSchemaInspector
+from shirube.application.ai_config import AiConfigService
 from shirube.application.connections import ConnectionService
 from shirube.application.data import DataService
 from shirube.application.profiles import ProfileService
 from shirube.application.schema import SchemaService
 from shirube.ports.repositories import (
+    AiConfigRepository,
     DatabaseConnector,
     DataReader,
     ProfileRepository,
@@ -35,6 +38,11 @@ def get_profile_repository() -> ProfileRepository:
 def get_secret_store() -> SecretStore:
     """Provide the OS-keychain secret store."""
     return KeyringSecretStore()
+
+
+def get_ai_config_repository() -> AiConfigRepository:
+    """Provide the AI provider config repository backed by the app-state database."""
+    return SqlAiConfigRepository(get_session_factory())
 
 
 def get_database_connector() -> DatabaseConnector:
@@ -85,3 +93,11 @@ def get_data_service(
 ) -> DataService:
     """Compose the data service from the repository, secret store and row reader."""
     return DataService(repository, secrets, reader)
+
+
+def get_ai_config_service(
+    repository: Annotated[AiConfigRepository, Depends(get_ai_config_repository)],
+    secrets: Annotated[SecretStore, Depends(get_secret_store)],
+) -> AiConfigService:
+    """Compose the AI config service from the config repository and secret store."""
+    return AiConfigService(repository, secrets)
