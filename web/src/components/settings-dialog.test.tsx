@@ -77,10 +77,46 @@ describe('SettingsDialog', () => {
   it('closes on Escape and on the close button', () => {
     const { onClose } = renderDialog()
 
-    fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'settings.close' }))
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it('moves focus into the dialog when opened and restores it on close', () => {
+    mockHealth.mockResolvedValue({ status: 'ok', version: '9.9.9' })
+    // A trigger outside the dialog holds focus before it opens.
+    const trigger = document.createElement('button')
+    document.body.appendChild(trigger)
+    trigger.focus()
+    expect(trigger).toHaveFocus()
+
+    const { rerender } = render(<SettingsDialog open onClose={vi.fn()} />)
+    // Focus has moved inside the dialog.
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
+
+    rerender(<SettingsDialog open={false} onClose={vi.fn()} />)
+    // On close, focus returns to the trigger.
+    expect(trigger).toHaveFocus()
+    trigger.remove()
+  })
+
+  it('keeps Tab within the dialog (focus trap wraps at the ends)', () => {
+    renderDialog()
+    const dialog = screen.getByRole('dialog')
+    const focusables = Array.from(dialog.querySelectorAll<HTMLElement>('button'))
+    const first = focusables[0]
+    const last = focusables[focusables.length - 1]
+
+    // Tab off the last element wraps to the first.
+    last.focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(first).toHaveFocus()
+
+    // Shift+Tab off the first wraps to the last.
+    first.focus()
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(last).toHaveFocus()
   })
 })

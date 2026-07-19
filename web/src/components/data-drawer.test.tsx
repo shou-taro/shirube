@@ -65,7 +65,8 @@ describe('sorting', () => {
     renderDrawer()
     await screen.findByText('a@example.com')
 
-    const header = screen.getByRole('columnheader', { name: 'id' })
+    // The header is a button (keyboard-operable), inside the columnheader cell.
+    const header = screen.getByRole('button', { name: 'id' })
 
     fireEvent.click(header)
     await waitFor(() =>
@@ -75,6 +76,8 @@ describe('sorting', () => {
         expect.objectContaining({ sort: { column: 'id', direction: 'asc' } }),
       ),
     )
+    // The sort state is reflected to assistive tech on the cell.
+    expect(screen.getByRole('columnheader', { name: 'id' })).toHaveAttribute('aria-sort', 'ascending')
 
     fireEvent.click(header)
     await waitFor(() =>
@@ -84,6 +87,10 @@ describe('sorting', () => {
         expect.objectContaining({ sort: { column: 'id', direction: 'desc' } }),
       ),
     )
+    expect(screen.getByRole('columnheader', { name: 'id' })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    )
 
     fireEvent.click(header)
     await waitFor(() =>
@@ -91,6 +98,26 @@ describe('sorting', () => {
         'p1',
         'public.users',
         expect.objectContaining({ sort: null }),
+      ),
+    )
+    expect(screen.getByRole('columnheader', { name: 'id' })).toHaveAttribute('aria-sort', 'none')
+  })
+
+  it('exposes each header as a focusable button so sorting is keyboard-operable', async () => {
+    renderDrawer()
+    await screen.findByText('a@example.com')
+
+    // Previously a non-focusable <th onClick>; now a real <button>, which the browser
+    // activates on Enter / Space for free. Assert it is focusable and activation sorts.
+    const header = screen.getByRole('button', { name: 'id' })
+    header.focus()
+    expect(header).toHaveFocus()
+    fireEvent.click(header)
+    await waitFor(() =>
+      expect(mockFetchRows).toHaveBeenLastCalledWith(
+        'p1',
+        'public.users',
+        expect.objectContaining({ sort: { column: 'id', direction: 'asc' } }),
       ),
     )
   })
@@ -120,7 +147,7 @@ describe('paging', () => {
     )
 
     // Changing the sort returns to the first page.
-    fireEvent.click(screen.getByRole('columnheader', { name: 'id' }))
+    fireEvent.click(screen.getByRole('button', { name: 'id' }))
     await waitFor(() =>
       expect(mockFetchRows).toHaveBeenLastCalledWith(
         'p1',

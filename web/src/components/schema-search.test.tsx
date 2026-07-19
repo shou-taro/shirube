@@ -24,7 +24,7 @@ const ORDERS = object('public.orders', [col('customer_id')])
 
 function renderSearch(objects: SchemaObject[], onSelect = vi.fn()) {
   render(<SchemaSearch objects={objects} onSelect={onSelect} />)
-  const input = screen.getByRole('textbox')
+  const input = screen.getByRole('combobox')
   return { input, onSelect }
 }
 
@@ -34,7 +34,7 @@ describe('matching', () => {
 
     fireEvent.change(input, { target: { value: 'id' } })
 
-    const results = screen.getAllByRole('button')
+    const results = screen.getAllByRole('option')
     expect(results[0]).toHaveTextContent('identity')
     expect(results[1]).toHaveTextContent('orders')
   })
@@ -60,7 +60,7 @@ describe('selection', () => {
     const { input, onSelect } = renderSearch([IDENTITY, ORDERS])
 
     fireEvent.change(input, { target: { value: 'identity' } })
-    fireEvent.click(screen.getByRole('button', { name: /identity/ }))
+    fireEvent.click(screen.getByRole('option', { name: /identity/ }))
 
     expect(onSelect).toHaveBeenCalledWith('public.identity')
     expect(input).toHaveValue('')
@@ -94,5 +94,28 @@ describe('keyboard shortcut', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))
 
     expect(input).toHaveFocus()
+  })
+})
+
+describe('combobox semantics', () => {
+  it('exposes the expanded state and the active option to assistive tech', () => {
+    const { input } = renderSearch([IDENTITY, ORDERS])
+
+    // Collapsed until results show.
+    expect(input).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.change(input, { target: { value: 'id' } })
+
+    expect(input).toHaveAttribute('aria-expanded', 'true')
+    // The active descendant points at the first (highlighted) option.
+    const [first] = screen.getAllByRole('option')
+    expect(first).toHaveAttribute('aria-selected', 'true')
+    expect(input).toHaveAttribute('aria-activedescendant', first.id)
+
+    // Arrowing down moves the active option to the second result.
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    const [, second] = screen.getAllByRole('option')
+    expect(second).toHaveAttribute('aria-selected', 'true')
+    expect(input).toHaveAttribute('aria-activedescendant', second.id)
   })
 })

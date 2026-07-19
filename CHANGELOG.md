@@ -30,6 +30,18 @@ may still change between releases).
   you onto the map with an error. Connecting a saved connection from the list verifies the
   same way, showing a spinner while it checks.
 
+### Accessibility
+
+- Data-preview column headers are now real buttons: sorting is reachable and operable by
+  keyboard (Enter / Space), and the sort state is announced via `aria-sort`.
+- The table/column search is now a proper ARIA combobox — its expanded state and the
+  highlighted result are exposed to assistive technology, and the field has an accessible
+  name.
+- The settings dialog now manages focus: it moves focus inside on open, keeps Tab within
+  the dialog, and restores focus to the opener on close.
+- Fixed the data-preview filter's operator dropdown, which announced itself as "contains"
+  regardless of the selected operator; it now reads as "Operator".
+
 ## [0.1.0b1] — 2026-07-17
 
 The first public beta: shirube's explorer core. The AI navigator — the feature shirube
