@@ -94,6 +94,22 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
 
   async function handleTest(): Promise<void> {
     setError(null)
+    // The Test button sits outside the form's submit path, so the browser's
+    // ``required`` checks never run for it. Guard the essentials here — an empty host
+    // in particular makes the driver fall back to a local Unix socket and fail with a
+    // cryptic message, so catch it before it reaches the backend. Name only the fields
+    // that are actually blank so the message stays accurate.
+    const missing: string[] = []
+    if (!form.host.trim()) missing.push(t('connection.fields.host').toLowerCase())
+    if (!form.database.trim()) missing.push(t('connection.fields.database').toLowerCase())
+    if (!form.username.trim()) missing.push(t('connection.fields.username').toLowerCase())
+    if (missing.length > 0) {
+      const fields = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(
+        missing,
+      )
+      setError(t('connection.testMissingFields', { fields }))
+      return
+    }
     setTestState('testing')
     try {
       await testConnection({

@@ -34,6 +34,16 @@ def friendly_message(exc: psycopg.Error, params: ConnectionParams) -> str:
     """
     sqlstate = exc.sqlstate
     text = str(exc).lower()
+    # An empty host makes libpq fall back to a local Unix socket (e.g. "connection to
+    # server on socket ...failed"), which is confusing when the user simply left the
+    # field blank. Catch it first and point them at the real cause.
+    if not params.host.strip():
+        return "The host is empty. Enter the database host (for example 'localhost')."
+    if "no password supplied" in text or "fe_sendauth" in text:
+        # A blank password against a server that demands one. Distinct from a *wrong*
+        # password (28P01) — the fix is to supply one, not to correct it. Some servers
+        # need none (trust/peer auth), so this is only reported when the server asks.
+        return f"This server requires a password for user '{params.username}'. Enter the password."
     if sqlstate == "28P01" or "authentication failed" in text:
         return (
             f"Authentication failed for user '{params.username}'. Check the username and password."

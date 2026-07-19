@@ -30,6 +30,7 @@ const en = {
     schemasHint: 'Comma-separated; leave empty for all',
     passwordKeepHint: 'Leave blank to keep the saved password',
     test: 'Test',
+    testMissingFields: 'Enter the {{fields}} before testing.',
     testing: 'Testing…',
     testOk: 'Connection successful',
     saveAndConnect: 'Save and connect',
