@@ -137,6 +137,27 @@ export interface RowPage {
   limit: number
 }
 
+/** Which adapter talks to the configured AI provider. */
+export type AiProviderKind = 'anthropic' | 'openai_compatible'
+
+/** The configured AI provider as returned by the API — never the API key. */
+export interface AiProvider {
+  kind: AiProviderKind
+  model: string
+  /** Where to reach the API; `null` for Anthropic's default endpoint. */
+  base_url: string | null
+  /** Whether an API key is stored in the keychain (the key itself is never returned). */
+  has_api_key: boolean
+}
+
+/** Fields sent when configuring the provider; omit `api_key` to keep the stored one. */
+export interface AiProviderInput {
+  kind: AiProviderKind
+  model: string
+  base_url?: string | null
+  api_key?: string | null
+}
+
 async function errorDetail(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { detail?: string }
@@ -201,6 +222,21 @@ export function testProfileConnection(id: string): Promise<void> {
 /** Introspect a saved profile's database and return its schema as a graph. */
 export function fetchSchema(id: string): Promise<SchemaGraph> {
   return apiFetch<SchemaGraph>(`/profiles/${id}/schema`)
+}
+
+/** Fetch the configured AI provider, or `null` when none is set. */
+export function fetchAiProvider(): Promise<AiProvider | null> {
+  return apiFetch<AiProvider | null>('/ai/provider')
+}
+
+/** Configure the AI provider; omit `api_key` to keep the stored one. */
+export function saveAiProvider(input: AiProviderInput): Promise<AiProvider> {
+  return apiFetch<AiProvider>('/ai/provider', { method: 'PUT', body: JSON.stringify(input) })
+}
+
+/** Unconfigure the AI provider and remove any stored API key. */
+export function clearAiProvider(): Promise<void> {
+  return apiFetch<void>('/ai/provider', { method: 'DELETE' })
 }
 
 /** Read a filtered, sorted page of one table or view's rows. */

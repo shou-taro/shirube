@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createProfile, deleteProfile, fetchHealth, fetchRows } from '@/lib/api'
+import {
+  clearAiProvider,
+  createProfile,
+  deleteProfile,
+  fetchAiProvider,
+  fetchHealth,
+  fetchRows,
+  saveAiProvider,
+} from '@/lib/api'
 
 const originalFetch = globalThis.fetch
 
@@ -85,5 +93,45 @@ describe('request shape', () => {
     const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('/api/profiles')
     expect(init.method).toBe('POST')
+  })
+
+  it('reads the AI provider, returning null when unconfigured', async () => {
+    const spy = mockFetch(new Response('null', { status: 200 }))
+
+    await expect(fetchAiProvider()).resolves.toBeNull()
+    expect((spy.mock.calls[0] as unknown as [string])[0]).toBe('/api/ai/provider')
+  })
+
+  it('PUTs the AI provider config', async () => {
+    const spy = mockFetch(
+      new Response(
+        JSON.stringify({
+          kind: 'openai_compatible',
+          model: 'llama3.1',
+          base_url: 'http://localhost:11434/v1',
+          has_api_key: false,
+        }),
+        { status: 200 },
+      ),
+    )
+
+    await saveAiProvider({
+      kind: 'openai_compatible',
+      model: 'llama3.1',
+      base_url: 'http://localhost:11434/v1',
+    })
+
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/ai/provider')
+    expect(init.method).toBe('PUT')
+  })
+
+  it('DELETEs the AI provider', async () => {
+    const spy = mockFetch(new Response(null, { status: 204 }))
+
+    await expect(clearAiProvider()).resolves.toBeUndefined()
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/ai/provider')
+    expect(init.method).toBe('DELETE')
   })
 })
