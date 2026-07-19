@@ -8,6 +8,14 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.1.0b4] — 2026-07-19
+
+### Fixed
+
+- Connecting to a database with no tables no longer shows a "select a table" prompt in the
+  detail card alongside the centre's "no tables or views found" message — the empty state
+  now reads cleanly.
+
 ## [0.1.0b3] — 2026-07-19
 
 ### Changed
@@ -105,7 +113,8 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.1.0b3...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.1.0b4...HEAD
+[0.1.0b4]: https://github.com/shou-taro/shirube/compare/v0.1.0b3...v0.1.0b4
 [0.1.0b3]: https://github.com/shou-taro/shirube/compare/v0.1.0b2...v0.1.0b3
 [0.1.0b2]: https://github.com/shou-taro/shirube/compare/v0.1.0b1...v0.1.0b2
 [0.1.0b1]: https://github.com/shou-taro/shirube/releases/tag/v0.1.0b1
