@@ -54,6 +54,7 @@ def test_reads_objects_columns_primary_keys_and_kinds(
     _run(
         admin_connection,
         f'CREATE TABLE "{schema}".t (id integer PRIMARY KEY, name text NOT NULL, note text)',
+        f"COMMENT ON COLUMN \"{schema}\".t.name IS 'the display name'",
         f'CREATE VIEW "{schema}".v AS SELECT id, name FROM "{schema}".t',
         f'CREATE MATERIALIZED VIEW "{schema}".mv AS SELECT id FROM "{schema}".t',
     )
@@ -72,6 +73,11 @@ def test_reads_objects_columns_primary_keys_and_kinds(
     assert columns[0].data_type == "integer"
     assert columns[1].is_primary_key is False and columns[1].nullable is False
     assert columns[2].nullable is True
+    # Column comments are read (metadata for the AI navigator); absent ones are None.
+    assert columns[1].comment == "the display name"
+    assert columns[0].comment is None
+    # A freshly-created, never-analysed table reports no row estimate rather than a lie.
+    assert objects[f"{schema}.t"].row_estimate in (None, 0)
 
 
 def test_simple_and_composite_foreign_keys(
