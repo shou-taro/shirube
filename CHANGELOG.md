@@ -8,6 +8,12 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.1.0b2] — 2026-07-19
+
+The first beta was rough around the edges; this release smooths the connection and
+start-up experience, hardens error handling, and improves keyboard and screen-reader
+access. No new features — the AI navigator is still the next milestone.
+
 ### Changed
 
 - Enriched the PyPI package metadata — project URLs (Homepage, Repository, Changelog,
@@ -85,5 +91,6 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.1.0b1...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.1.0b2...HEAD
+[0.1.0b2]: https://github.com/shou-taro/shirube/compare/v0.1.0b1...v0.1.0b2
 [0.1.0b1]: https://github.com/shou-taro/shirube/releases/tag/v0.1.0b1
