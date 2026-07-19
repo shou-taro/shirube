@@ -115,28 +115,100 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-const AI_KINDS: AiProviderKind[] = ['anthropic', 'openai_compatible']
+/** A provider the user can pick from the list. Several map to the same backend adapter
+ *  (`openai_compatible`) but differ in their defaults and which fields they need. */
+type ProviderPreset = 'claude' | 'openai' | 'ollama' | 'custom'
 
-// The prefilled model for each provider kind — Claude's recommended default, and nothing
-// presumptuous for an OpenAI-compatible endpoint (the model name varies by runner).
-const AI_DEFAULT_MODEL: Record<AiProviderKind, string> = {
-  anthropic: 'claude-opus-4-8',
-  openai_compatible: '',
+interface PresetSpec {
+  /** The backend adapter kind this preset saves as. */
+  kind: AiProviderKind
+  labelKey: string
+  /** Prefilled model, and the placeholder shown when it is blank. */
+  modelDefault: string
+  modelPlaceholder: string
+  /** Endpoint used when the base-URL field is hidden, and the value seeded when shown. */
+  baseUrlDefault: string
+  /** Whether the base-URL field is shown (hidden ones use ``baseUrlDefault`` silently). */
+  showBaseUrl: boolean
+  /** How the API key is treated: hosted providers require one, a local runner needs none. */
+  key: 'required' | 'optional' | 'none'
+}
+
+// The provider presets, in the order shown in the list. Claude is the Anthropic-native
+// adapter; the rest all speak the OpenAI-compatible shape but differ in defaults and needs —
+// OpenAI is hosted (fixed endpoint, key required), Ollama is local (no key), and a custom
+// endpoint asks for its own URL.
+const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
+  claude: {
+    kind: 'anthropic',
+    labelKey: 'settings.aiPresetClaude',
+    modelDefault: 'claude-opus-4-8',
+    modelPlaceholder: 'claude-opus-4-8',
+    baseUrlDefault: '',
+    showBaseUrl: false,
+    key: 'required',
+  },
+  openai: {
+    kind: 'openai_compatible',
+    labelKey: 'settings.aiPresetOpenai',
+    modelDefault: '',
+    modelPlaceholder: 'gpt-4o',
+    baseUrlDefault: 'https://api.openai.com/v1',
+    showBaseUrl: false,
+    key: 'required',
+  },
+  ollama: {
+    kind: 'openai_compatible',
+    labelKey: 'settings.aiPresetOllama',
+    modelDefault: '',
+    modelPlaceholder: 'llama3.1',
+    baseUrlDefault: 'http://localhost:11434/v1',
+    showBaseUrl: true,
+    key: 'none',
+  },
+  custom: {
+    kind: 'openai_compatible',
+    labelKey: 'settings.aiPresetCustom',
+    modelDefault: '',
+    modelPlaceholder: '',
+    baseUrlDefault: '',
+    showBaseUrl: true,
+    key: 'optional',
+  },
+}
+
+const AI_PRESET_ORDER: ProviderPreset[] = ['claude', 'openai', 'ollama', 'custom']
+
+/**
+ * Map a saved config back to the preset that produced it, so the form reopens on the right
+ * one. OpenAI and Ollama are told apart by their default endpoints; any other
+ * OpenAI-compatible URL is treated as a custom endpoint.
+ */
+function presetForConfig(config: AiProvider): ProviderPreset {
+  if (config.kind === 'anthropic') {
+    return 'claude'
+  }
+  if (config.base_url === AI_PRESETS.openai.baseUrlDefault) {
+    return 'openai'
+  }
+  if (config.base_url === AI_PRESETS.ollama.baseUrlDefault) {
+    return 'ollama'
+  }
+  return 'custom'
 }
 
 /**
- * The AI-navigator provider settings, split into a tab per provider kind so each shows only
- * the fields that kind needs: Claude requires an API key and treats the base URL as an
- * advanced override; an OpenAI-compatible endpoint requires a base URL and needs no key when
- * it is local. Only one provider is active at a time — the configured one's tab is marked
- * "in use". A server-backed form: it loads the current provider when the dialog opens and
- * saves on demand. The API key is write-only — stored in the OS keychain, never read back —
- * so a stored key shows as a placeholder and a blank field keeps it.
+ * The AI-navigator provider settings: pick a provider from the list, then fill only the
+ * fields that provider needs — a hosted one asks for an API key, a local one does not, and a
+ * custom endpoint asks for its URL. One provider is active at a time; the "in use" line shows
+ * which. A server-backed form that loads the current provider when the dialog opens and saves
+ * on demand. The API key is write-only — stored in the OS keychain, never read back — so a
+ * saved key shows as a note and a blank field keeps it.
  */
 function AiProviderSection({ open }: { open: boolean }) {
   const { t } = useTranslation()
   const [provider, setProvider] = useState<AiProvider | null | undefined>(undefined)
-  const [kind, setKind] = useState<AiProviderKind>('anthropic')
+  const [preset, setPreset] = useState<ProviderPreset>('claude')
   const [model, setModel] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
@@ -144,19 +216,20 @@ function AiProviderSection({ open }: { open: boolean }) {
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
-  // Seed the form fields for a tab: the saved values when that tab is the configured
-  // provider, otherwise that kind's defaults. Always clears the key field — the stored key
-  // is never read back — and any transient error/saved state.
-  function seedFields(nextKind: AiProviderKind, current: AiProvider | null): void {
-    const fromSaved = current !== null && current.kind === nextKind
-    setModel(fromSaved ? current.model : AI_DEFAULT_MODEL[nextKind])
-    setBaseUrl(fromSaved ? (current.base_url ?? '') : '')
+  // Seed the form for a preset: the saved values when that preset is the configured provider,
+  // otherwise the preset's defaults. Always clears the key field — the stored key is never
+  // read back — and any transient error/saved state.
+  function seedFields(nextPreset: ProviderPreset, current: AiProvider | null): void {
+    const spec = AI_PRESETS[nextPreset]
+    const fromSaved = current !== null && presetForConfig(current) === nextPreset
+    setModel(fromSaved ? current.model : spec.modelDefault)
+    setBaseUrl(fromSaved ? (current.base_url ?? '') : spec.baseUrlDefault)
     setApiKey('')
     setError(null)
     setSaved(false)
   }
 
-  // Load the configured provider each time the dialog opens, opening on its tab (or Claude
+  // Load the configured provider each time the dialog opens, selecting its preset (or Claude
   // by default) and seeding the form.
   useEffect(() => {
     if (!open) {
@@ -168,12 +241,13 @@ function AiProviderSection({ open }: { open: boolean }) {
         if (!active) {
           return
         }
-        const nextKind = current?.kind ?? 'anthropic'
         setProvider(current)
-        setKind(nextKind)
-        const fromSaved = current != null && current.kind === nextKind
-        setModel(fromSaved ? current.model : AI_DEFAULT_MODEL[nextKind])
-        setBaseUrl(fromSaved ? (current.base_url ?? '') : '')
+        const nextPreset = current ? presetForConfig(current) : 'claude'
+        setPreset(nextPreset)
+        const spec = AI_PRESETS[nextPreset]
+        const fromSaved = current != null && presetForConfig(current) === nextPreset
+        setModel(fromSaved ? current.model : spec.modelDefault)
+        setBaseUrl(fromSaved ? (current.base_url ?? '') : spec.baseUrlDefault)
         setApiKey('')
         setError(null)
         setSaved(false)
@@ -188,23 +262,36 @@ function AiProviderSection({ open }: { open: boolean }) {
     }
   }, [open])
 
-  function selectKind(nextKind: AiProviderKind): void {
-    setKind(nextKind)
-    seedFields(nextKind, provider ?? null)
+  function selectPreset(next: ProviderPreset): void {
+    setPreset(next)
+    seedFields(next, provider ?? null)
   }
 
+  const spec = AI_PRESETS[preset]
+  const savedPreset = provider != null ? presetForConfig(provider) : null
+  const configured = savedPreset !== null
+  // A stored key only counts as "kept on blank" for the provider it was saved against.
+  const keyStored = provider != null && presetForConfig(provider) === preset && provider.has_api_key
+
   async function handleSave(): Promise<void> {
+    // A hosted provider needs a key; guard here so the miss is caught before the request.
+    if (spec.key === 'required' && apiKey === '' && !keyStored) {
+      setError(t('settings.aiApiKeyMissing'))
+      return
+    }
     setSaving(true)
     setError(null)
     setSaved(false)
     try {
-      const input: AiProviderInput = {
-        kind,
-        model,
-        base_url: baseUrl.trim() === '' ? null : baseUrl.trim(),
-      }
-      // Only send a key when one was typed; a blank field keeps the stored key.
-      if (apiKey !== '') {
+      const resolvedBaseUrl = spec.showBaseUrl
+        ? baseUrl.trim() === ''
+          ? null
+          : baseUrl.trim()
+        : spec.baseUrlDefault || null
+      const input: AiProviderInput = { kind: spec.kind, model, base_url: resolvedBaseUrl }
+      // Send a key only when one was typed (and the provider takes one); blank keeps the
+      // stored key.
+      if (spec.key !== 'none' && apiKey !== '') {
         input.api_key = apiKey
       }
       const result = await saveAiProvider(input)
@@ -224,7 +311,7 @@ function AiProviderSection({ open }: { open: boolean }) {
     try {
       await clearAiProvider()
       setProvider(null)
-      seedFields(kind, null)
+      seedFields(preset, null)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught))
     } finally {
@@ -232,96 +319,78 @@ function AiProviderSection({ open }: { open: boolean }) {
     }
   }
 
-  const configured = provider != null
-  // The stored-key hint belongs only on the configured provider's own tab.
-  const keyStored = provider?.kind === kind && provider.has_api_key
   const keyPlaceholder = keyStored
-    ? t('settings.aiApiKeyStored')
-    : kind === 'anthropic'
-      ? t('settings.aiApiKeyRequired')
-      : t('settings.aiApiKeyOptional')
-
-  const modelField = (
-    <Field label={t('settings.aiModel')}>
-      <Input
-        value={model}
-        onChange={(event) => setModel(event.target.value)}
-        placeholder={AI_DEFAULT_MODEL[kind] || 'gpt-4o'}
-      />
-    </Field>
-  )
-  const apiKeyField = (
-    <Field label={t('settings.aiApiKey')} hint={t('settings.aiApiKeyHint')}>
-      <Input
-        type="password"
-        value={apiKey}
-        onChange={(event) => setApiKey(event.target.value)}
-        placeholder={keyPlaceholder}
-        autoComplete="off"
-      />
-    </Field>
-  )
+    ? ''
+    : spec.key === 'required'
+      ? t('settings.aiApiKeyEnter')
+      : t('settings.aiApiKeyOptionalPlaceholder')
+  const keyHint = keyStored ? t('settings.aiApiKeySaved') : t('settings.aiApiKeyHint')
 
   return (
     <Section title={t('settings.ai')}>
-      <p className="-mt-1 text-xs text-muted-foreground">{t('settings.aiProviderHint')}</p>
-      <div
-        role="tablist"
-        aria-label={t('settings.ai')}
-        className="flex gap-1 rounded-md border bg-background p-0.5"
-      >
-        {AI_KINDS.map((option) => (
-          <button
-            key={option}
-            type="button"
-            role="tab"
-            aria-selected={option === kind}
-            onClick={() => selectKind(option)}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium',
-              option === kind
-                ? 'bg-brand text-brand-foreground'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {option === 'anthropic' ? t('settings.aiKindAnthropic') : t('settings.aiKindOpenai')}
-            {provider?.kind === option ? (
-              <span
-                className={cn(
-                  'rounded-full px-1.5 py-px text-[10px] font-medium',
-                  option === kind ? 'bg-brand-foreground/20' : 'bg-brand/15 text-brand',
-                )}
-              >
-                {t('settings.aiActive')}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
+      <p className="-mt-1 text-xs text-muted-foreground">{t('settings.aiHint')}</p>
 
-      <div role="tabpanel" className="flex flex-col gap-3">
-        {kind === 'anthropic' ? (
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-md border px-3 py-2 text-sm',
+          configured ? 'bg-brand/5' : 'bg-muted/40 text-muted-foreground',
+        )}
+      >
+        {savedPreset !== null ? (
           <>
-            {modelField}
-            {apiKeyField}
-            <Field label={t('settings.aiBaseUrlOptional')} hint={t('settings.aiBaseUrlClaudeHint')}>
-              <Input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} />
-            </Field>
+            <span className="size-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
+            <span>
+              {t('settings.aiInUse', { provider: t(AI_PRESETS[savedPreset].labelKey) })}
+            </span>
           </>
         ) : (
-          <>
-            <Field label={t('settings.aiBaseUrl')} hint={t('settings.aiBaseUrlOpenaiHint')}>
-              <Input
-                value={baseUrl}
-                onChange={(event) => setBaseUrl(event.target.value)}
-                placeholder="http://localhost:11434/v1"
-              />
-            </Field>
-            {modelField}
-            {apiKeyField}
-          </>
+          <span>{t('settings.aiNotSetUp')}</span>
         )}
       </div>
+
+      <Field label={t('settings.aiProviderLabel')}>
+        <select
+          value={preset}
+          onChange={(event) => selectPreset(event.target.value as ProviderPreset)}
+          className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          {AI_PRESET_ORDER.map((option) => (
+            <option key={option} value={option}>
+              {t(AI_PRESETS[option].labelKey)}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      {spec.showBaseUrl ? (
+        <Field label={t('settings.aiBaseUrl')} hint={t('settings.aiBaseUrlHint')}>
+          <Input
+            value={baseUrl}
+            onChange={(event) => setBaseUrl(event.target.value)}
+            placeholder={spec.baseUrlDefault || 'https://…'}
+          />
+        </Field>
+      ) : null}
+
+      <Field label={t('settings.aiModel')}>
+        <Input
+          value={model}
+          onChange={(event) => setModel(event.target.value)}
+          placeholder={spec.modelPlaceholder}
+        />
+      </Field>
+
+      {spec.key !== 'none' ? (
+        <Field label={t('settings.aiApiKey')} hint={keyHint}>
+          <Input
+            type="password"
+            value={apiKey}
+            onChange={(event) => setApiKey(event.target.value)}
+            placeholder={keyPlaceholder}
+            autoComplete="off"
+          />
+        </Field>
+      ) : null}
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex items-center gap-2">
@@ -332,9 +401,7 @@ function AiProviderSection({ open }: { open: boolean }) {
           <Button variant="ghost" size="sm" onClick={handleRemove} disabled={saving}>
             {t('settings.aiRemove')}
           </Button>
-        ) : (
-          <span className="text-xs text-muted-foreground">{t('settings.aiNotConfigured')}</span>
-        )}
+        ) : null}
         {saved ? (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Check className="size-3.5" />

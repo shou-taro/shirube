@@ -139,62 +139,119 @@ describe('SettingsDialog', () => {
 })
 
 describe('SettingsDialog — AI provider', () => {
-  const configured: AiProvider = {
+  const configuredClaude: AiProvider = {
     kind: 'anthropic',
     model: 'claude-sonnet-5',
     base_url: null,
     has_api_key: true,
   }
 
-  it('seeds the form with sensible defaults when nothing is configured', async () => {
+  it('shows the not-set-up status and Claude defaults when nothing is configured', async () => {
     renderDialog()
 
-    // The model defaults to the recommended Claude model; no Remove action is shown.
-    expect(await screen.findByLabelText('settings.aiModel')).toHaveValue('claude-opus-4-8')
+    expect(await screen.findByText('settings.aiNotSetUp')).toBeInTheDocument()
+    // Defaults to the Claude preset with its recommended model; no Remove action yet.
+    expect(screen.getByLabelText('settings.aiProviderLabel')).toHaveValue('claude')
+    expect(screen.getByLabelText('settings.aiModel')).toHaveValue('claude-opus-4-8')
     expect(screen.queryByRole('button', { name: 'settings.aiRemove' })).not.toBeInTheDocument()
-    expect(screen.getByText('settings.aiNotConfigured')).toBeInTheDocument()
   })
 
-  it('loads the configured provider and marks the key as stored', async () => {
-    renderDialog(true, configured)
+  it('loads the configured provider, shows it in use, and marks the key as saved', async () => {
+    renderDialog(true, configuredClaude)
 
-    expect(await screen.findByLabelText('settings.aiModel')).toHaveValue('claude-sonnet-5')
-    // The stored key is never fetched back — the field is blank with a "stored" placeholder.
-    const key = screen.getByLabelText('settings.aiApiKey')
-    expect(key).toHaveValue('')
-    expect(key).toHaveAttribute('placeholder', 'settings.aiApiKeyStored')
+    expect(await screen.findByText('settings.aiInUse')).toBeInTheDocument()
+    expect(screen.getByLabelText('settings.aiProviderLabel')).toHaveValue('claude')
+    expect(screen.getByLabelText('settings.aiModel')).toHaveValue('claude-sonnet-5')
+    // The stored key is never fetched back — the field is blank with a "saved" hint.
+    expect(screen.getByLabelText('settings.aiApiKey')).toHaveValue('')
+    expect(screen.getByText('settings.aiApiKeySaved')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'settings.aiRemove' })).toBeInTheDocument()
   })
 
-  it('saves the provider, sending a typed key and omitting a blank one', async () => {
-    mockSaveProvider.mockResolvedValue(configured)
+  it('swaps to the provider-specific fields when the selection changes', async () => {
+    renderDialog()
+    await screen.findByLabelText('settings.aiModel')
+    // Claude asks for a key and hides the base URL.
+    expect(screen.getByLabelText('settings.aiApiKey')).toBeInTheDocument()
+    expect(screen.queryByLabelText('settings.aiBaseUrl')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
+      target: { value: 'ollama' },
+    })
+
+    // Ollama shows its base URL (prefilled), resets the model, and needs no key.
+    expect(screen.getByLabelText('settings.aiBaseUrl')).toHaveValue('http://localhost:11434/v1')
+    expect(screen.getByLabelText('settings.aiModel')).toHaveValue('')
+    expect(screen.queryByLabelText('settings.aiApiKey')).not.toBeInTheDocument()
+  })
+
+  it('requires an API key before saving a hosted provider', async () => {
     renderDialog()
     await screen.findByLabelText('settings.aiModel')
 
-    fireEvent.change(screen.getByLabelText('settings.aiModel'), {
-      target: { value: 'claude-opus-4-8' },
+    // Claude (a hosted provider) with no key must not be sent to the backend.
+    fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
+
+    expect(await screen.findByText('settings.aiApiKeyMissing')).toBeInTheDocument()
+    expect(mockSaveProvider).not.toHaveBeenCalled()
+  })
+
+  it('saves a local Ollama provider without a key', async () => {
+    mockSaveProvider.mockResolvedValue({
+      kind: 'openai_compatible',
+      model: 'llama3.1',
+      base_url: 'http://localhost:11434/v1',
+      has_api_key: false,
     })
+    renderDialog()
+    await screen.findByLabelText('settings.aiModel')
+
+    fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
+      target: { value: 'ollama' },
+    })
+    fireEvent.change(screen.getByLabelText('settings.aiModel'), { target: { value: 'llama3.1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
+
+    await screen.findByText('settings.aiSaved')
+    // The local endpoint is sent with no api_key field.
+    expect(mockSaveProvider).toHaveBeenCalledWith({
+      kind: 'openai_compatible',
+      model: 'llama3.1',
+      base_url: 'http://localhost:11434/v1',
+    })
+  })
+
+  it('sends the fixed OpenAI endpoint and a typed key', async () => {
+    mockSaveProvider.mockResolvedValue(configuredClaude)
+    renderDialog()
+    await screen.findByLabelText('settings.aiModel')
+
+    fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
+      target: { value: 'openai' },
+    })
+    fireEvent.change(screen.getByLabelText('settings.aiModel'), { target: { value: 'gpt-4o' } })
     fireEvent.change(screen.getByLabelText('settings.aiApiKey'), { target: { value: 'sk-typed' } })
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
 
     await screen.findByText('settings.aiSaved')
+    // OpenAI's base URL is fixed (the field is hidden) and included automatically.
     expect(mockSaveProvider).toHaveBeenCalledWith({
-      kind: 'anthropic',
-      model: 'claude-opus-4-8',
-      base_url: null,
+      kind: 'openai_compatible',
+      model: 'gpt-4o',
+      base_url: 'https://api.openai.com/v1',
       api_key: 'sk-typed',
     })
   })
 
-  it('keeps the stored key when saving with the field left blank', async () => {
-    mockSaveProvider.mockResolvedValue(configured)
-    renderDialog(true, configured)
+  it('keeps the stored key when re-saving the configured provider', async () => {
+    mockSaveProvider.mockResolvedValue(configuredClaude)
+    renderDialog(true, configuredClaude)
     await screen.findByLabelText('settings.aiModel')
 
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
 
     await screen.findByText('settings.aiSaved')
-    // No api_key in the payload — the backend leaves the stored key untouched.
+    // No api_key — the stored one is kept — and no missing-key error, since it is saved.
     expect(mockSaveProvider).toHaveBeenCalledWith({
       kind: 'anthropic',
       model: 'claude-sonnet-5',
@@ -204,51 +261,25 @@ describe('SettingsDialog — AI provider', () => {
 
   it('removes the provider', async () => {
     mockClearProvider.mockResolvedValue()
-    renderDialog(true, configured)
+    renderDialog(true, configuredClaude)
     await screen.findByRole('button', { name: 'settings.aiRemove' })
 
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiRemove' }))
 
     expect(mockClearProvider).toHaveBeenCalledOnce()
-    // Once cleared, the Remove action gives way to the "not configured" note.
-    expect(await screen.findByText('settings.aiNotConfigured')).toBeInTheDocument()
+    // Once cleared, the status returns to "not set up".
+    expect(await screen.findByText('settings.aiNotSetUp')).toBeInTheDocument()
   })
 
-  it('surfaces a save error', async () => {
-    mockSaveProvider.mockRejectedValue(new Error('An OpenAI-compatible provider needs a base URL.'))
+  it('surfaces a save error from the backend', async () => {
+    mockSaveProvider.mockRejectedValue(new Error('The database took too long.'))
     renderDialog()
     await screen.findByLabelText('settings.aiModel')
 
+    // Provide a key so the client-side guard passes and the request is actually made.
+    fireEvent.change(screen.getByLabelText('settings.aiApiKey'), { target: { value: 'sk-x' } })
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
 
-    expect(await screen.findByText('An OpenAI-compatible provider needs a base URL.')).toBeInTheDocument()
-  })
-
-  it('swaps to the kind-specific fields when the tab changes', async () => {
-    renderDialog()
-    // The Claude tab prefills the recommended model and offers an optional base URL.
-    expect(await screen.findByLabelText('settings.aiModel')).toHaveValue('claude-opus-4-8')
-    expect(screen.getByLabelText('settings.aiBaseUrlOptional')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('tab', { name: 'settings.aiKindOpenai' }))
-
-    // The OpenAI-compatible tab resets the model to that kind's default (empty) and shows
-    // the required base-URL field instead of the optional one.
-    expect(screen.getByLabelText('settings.aiModel')).toHaveValue('')
-    expect(screen.getByLabelText('settings.aiBaseUrl')).toBeInTheDocument()
-    expect(screen.queryByLabelText('settings.aiBaseUrlOptional')).not.toBeInTheDocument()
-  })
-
-  it('marks the configured provider tab as in use', async () => {
-    renderDialog(true, configured)
-    await screen.findByLabelText('settings.aiModel')
-
-    const claudeTab = screen.getByRole('tab', { name: /settings\.aiKindAnthropic/ })
-    expect(claudeTab).toHaveAttribute('aria-selected', 'true')
-    expect(claudeTab).toHaveTextContent('settings.aiActive')
-    // The other tab is not marked in use.
-    expect(screen.getByRole('tab', { name: 'settings.aiKindOpenai' })).not.toHaveTextContent(
-      'settings.aiActive',
-    )
+    expect(await screen.findByText('The database took too long.')).toBeInTheDocument()
   })
 })
