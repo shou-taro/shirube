@@ -1,4 +1,4 @@
-import { Copy, Database, MoreHorizontal, Pencil, Plug, Trash2 } from 'lucide-react'
+import { Copy, Database, Loader2, MoreHorizontal, Pencil, Plug, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,9 @@ import type { Profile } from '@/lib/api'
 
 interface ProfilesListProps {
   profiles: Profile[]
+  /** The profile currently being verified, if any — its row shows a spinner and the
+   *  list is disabled while the check is in flight. */
+  connectingId?: string | null
   onConnect: (profile: Profile) => void
   onEdit: (profile: Profile) => void
   onDuplicate: (profile: Profile) => void
@@ -27,15 +30,19 @@ interface ProfilesListProps {
  */
 export function ProfilesList({
   profiles,
+  connectingId = null,
   onConnect,
   onEdit,
   onDuplicate,
   onDelete,
 }: ProfilesListProps) {
   const { t } = useTranslation()
+  const busy = connectingId !== null
   return (
     <ul className="-mr-2 flex h-64 flex-col gap-1.5 overflow-y-auto pr-2">
-      {profiles.map((profile) => (
+      {profiles.map((profile) => {
+        const connecting = connectingId === profile.id
+        return (
         <li
           key={profile.id}
           className="group relative flex items-center rounded-lg border bg-background transition-colors hover:border-brand/50 hover:bg-brand/10"
@@ -43,7 +50,9 @@ export function ProfilesList({
           <button
             type="button"
             onClick={() => onConnect(profile)}
-            className="flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            disabled={busy}
+            aria-label={connecting ? t('connection.connecting') : undefined}
+            className="flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Database className="size-4 shrink-0 text-brand" />
             <span className="min-w-0 flex-1">
@@ -52,7 +61,11 @@ export function ProfilesList({
                 {profile.host}:{profile.port} · {profile.database}
               </span>
             </span>
-            <Plug className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-brand" />
+            {connecting ? (
+              <Loader2 className="size-4 shrink-0 animate-spin text-brand" />
+            ) : (
+              <Plug className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-brand" />
+            )}
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -82,7 +95,8 @@ export function ProfilesList({
             </DropdownMenuContent>
           </DropdownMenu>
         </li>
-      ))}
+        )
+      })}
     </ul>
   )
 }

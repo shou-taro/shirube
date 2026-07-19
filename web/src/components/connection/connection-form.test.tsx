@@ -21,14 +21,21 @@ vi.mock('@/lib/api', async (importOriginal) => ({
   createProfile: vi.fn(),
   updateProfile: vi.fn(),
   testConnection: vi.fn(),
+  testProfileConnection: vi.fn(),
 }))
 
 import { ConnectionForm } from '@/components/connection/connection-form'
-import { createProfile, testConnection, updateProfile } from '@/lib/api'
+import {
+  createProfile,
+  testConnection,
+  testProfileConnection,
+  updateProfile,
+} from '@/lib/api'
 
 const mockCreate = vi.mocked(createProfile)
 const mockUpdate = vi.mocked(updateProfile)
 const mockTest = vi.mocked(testConnection)
+const mockTestProfile = vi.mocked(testProfileConnection)
 
 const SAVED: Profile = {
   id: 'new',
@@ -45,6 +52,7 @@ afterEach(() => {
   mockCreate.mockReset()
   mockUpdate.mockReset()
   mockTest.mockReset()
+  mockTestProfile.mockReset()
 })
 
 function field(label: RegExp) {
@@ -100,6 +108,23 @@ describe('creating a profile', () => {
     expect(await screen.findByText('Database does not exist.')).toBeInTheDocument()
     expect(onConnected).not.toHaveBeenCalled()
   })
+
+  it('verifies before saving and neither saves nor connects when the check fails', async () => {
+    // A bad host must surface on the form, not enter the explorer. On create the check
+    // runs first, so nothing is saved.
+    mockTest.mockRejectedValue(new Error('Could not reach badhost:5432.'))
+    const onConnected = vi.fn()
+    render(
+      <ConnectionForm initial={null} editingId={null} onConnected={onConnected} onCancel={vi.fn()} />,
+    )
+
+    fillNewConnection()
+    fireEvent.click(screen.getByRole('button', { name: /connection.saveAndConnect/ }))
+
+    expect(await screen.findByText('Could not reach badhost:5432.')).toBeInTheDocument()
+    expect(mockCreate).not.toHaveBeenCalled()
+    expect(onConnected).not.toHaveBeenCalled()
+  })
 })
 
 describe('editing a profile', () => {
@@ -133,6 +158,27 @@ describe('editing a profile', () => {
         expect.objectContaining({ name: 'shop', schemas: ['public'], password: undefined }),
       ),
     )
+    // Editing verifies the stored profile (password comes from the keychain).
+    await waitFor(() => expect(mockTestProfile).toHaveBeenCalledWith('p1'))
+  })
+
+  it('does not connect when the saved profile fails verification', async () => {
+    mockUpdate.mockResolvedValue(existing)
+    mockTestProfile.mockRejectedValue(new Error('Authentication failed.'))
+    const onConnected = vi.fn()
+    render(
+      <ConnectionForm
+        initial={existing}
+        editingId="p1"
+        onConnected={onConnected}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /connection.saveAndConnect/ }))
+
+    expect(await screen.findByText('Authentication failed.')).toBeInTheDocument()
+    expect(onConnected).not.toHaveBeenCalled()
   })
 })
 
