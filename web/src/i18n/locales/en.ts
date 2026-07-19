@@ -130,8 +130,6 @@ const en = {
     defaultViewHint: 'How the map opens on a new connection',
     ai: 'AI navigator',
     aiHint: 'Where the navigator sends your schema. Nothing is sent until you set one up.',
-    aiInUse: 'In use: {{provider}}',
-    aiNotSetUp: 'No provider set up yet.',
     aiProviderLabel: 'Provider',
     aiPresetClaude: 'Claude',
     aiPresetOpenai: 'OpenAI',

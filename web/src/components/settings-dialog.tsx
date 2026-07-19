@@ -1,4 +1,4 @@
-import { Check, Monitor, Moon, Sun, X } from 'lucide-react'
+import { Check, Info, Monitor, Moon, Network, Palette, Sparkles, Sun, X } from 'lucide-react'
 import { type ComponentType, type ReactNode, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -268,8 +268,7 @@ function AiProviderSection({ open }: { open: boolean }) {
   }
 
   const spec = AI_PRESETS[preset]
-  const savedPreset = provider != null ? presetForConfig(provider) : null
-  const configured = savedPreset !== null
+  const configured = provider != null
   // A stored key only counts as "kept on blank" for the provider it was saved against.
   const keyStored = provider != null && presetForConfig(provider) === preset && provider.has_api_key
 
@@ -329,24 +328,6 @@ function AiProviderSection({ open }: { open: boolean }) {
   return (
     <Section title={t('settings.ai')}>
       <p className="-mt-1 text-xs text-muted-foreground">{t('settings.aiHint')}</p>
-
-      <div
-        className={cn(
-          'flex items-center gap-2 rounded-md border px-3 py-2 text-sm',
-          configured ? 'bg-brand/5' : 'bg-muted/40 text-muted-foreground',
-        )}
-      >
-        {savedPreset !== null ? (
-          <>
-            <span className="size-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
-            <span>
-              {t('settings.aiInUse', { provider: t(AI_PRESETS[savedPreset].labelKey) })}
-            </span>
-          </>
-        ) : (
-          <span>{t('settings.aiNotSetUp')}</span>
-        )}
-      </div>
 
       <Field label={t('settings.aiProviderLabel')}>
         <select
@@ -413,6 +394,17 @@ function AiProviderSection({ open }: { open: boolean }) {
   )
 }
 
+// The dialog's left-hand navigation: one entry per settings group, shown one at a time so
+// the panel stays short rather than one long scroll.
+const SETTINGS_CATEGORIES = [
+  { id: 'appearance', labelKey: 'settings.appearance', icon: Palette },
+  { id: 'erMap', labelKey: 'settings.erMap', icon: Network },
+  { id: 'ai', labelKey: 'settings.ai', icon: Sparkles },
+  { id: 'about', labelKey: 'settings.about', icon: Info },
+] as const
+
+type SettingsCategory = (typeof SETTINGS_CATEGORIES)[number]['id']
+
 interface SettingsDialogProps {
   open: boolean
   onClose: () => void
@@ -426,6 +418,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const { t } = useTranslation()
   const { settings, update } = useSettings()
   const [version, setVersion] = useState<string | null>(null)
+  const [category, setCategory] = useState<SettingsCategory>('appearance')
   const dialogRef = useRef<HTMLDivElement>(null)
 
   // Manage focus while the modal is open: move focus in, keep Tab inside it, close on
@@ -503,7 +496,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         aria-modal="true"
         aria-label={t('settings.title')}
         tabIndex={-1}
-        className="relative z-10 flex w-full max-w-md flex-col overflow-hidden rounded-xl border bg-card shadow-lg outline-none"
+        className="relative z-10 flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border bg-card shadow-lg outline-none"
       >
         <div className="flex items-center justify-between border-b px-5 py-3">
           <h2 className="text-sm font-medium">{t('settings.title')}</h2>
@@ -518,47 +511,87 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           </Button>
         </div>
 
-        <Section title={t('settings.appearance')}>
-          <Row label={t('settings.theme')}>
-            <Segmented
-              value={settings.theme}
-              onChange={(theme) => update({ theme })}
-              options={[
-                { value: 'system', label: t('settings.themeSystem'), icon: Monitor },
-                { value: 'light', label: t('settings.themeLight'), icon: Sun },
-                { value: 'dark', label: t('settings.themeDark'), icon: Moon },
-              ]}
-            />
-          </Row>
-        </Section>
+        <div className="flex min-h-0 flex-1">
+          {/* Left-hand group navigation: click a group to show only its settings. */}
+          <nav
+            aria-label={t('settings.title')}
+            className="flex w-44 shrink-0 flex-col gap-0.5 overflow-y-auto border-r p-2"
+          >
+            {SETTINGS_CATEGORIES.map((item) => {
+              const Icon = item.icon
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setCategory(item.id)}
+                  aria-current={category === item.id ? 'page' : undefined}
+                  className={cn(
+                    'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors',
+                    category === item.id
+                      ? 'bg-brand/10 font-medium text-foreground'
+                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                  )}
+                >
+                  <Icon className="size-4 shrink-0" />
+                  {t(item.labelKey)}
+                </button>
+              )
+            })}
+          </nav>
 
-        <Section title={t('settings.erMap')}>
-          <Row label={t('settings.showViewDependencies')} hint={t('settings.showViewDependenciesHint')}>
-            <Switch
-              checked={settings.showViewDependencies}
-              onChange={(showViewDependencies) => update({ showViewDependencies })}
-              label={t('settings.showViewDependencies')}
-            />
-          </Row>
-          <Row label={t('settings.defaultView')} hint={t('settings.defaultViewHint')}>
-            <Segmented
-              value={settings.defaultView}
-              onChange={(defaultView) => update({ defaultView })}
-              options={[
-                { value: 'neighbourhood', label: t('settings.viewNeighbourhood') },
-                { value: 'all', label: t('settings.viewAll') },
-              ]}
-            />
-          </Row>
-        </Section>
+          <div className="min-h-[20rem] min-w-0 flex-1 overflow-y-auto">
+            {category === 'appearance' ? (
+              <Section title={t('settings.appearance')}>
+                <Row label={t('settings.theme')}>
+                  <Segmented
+                    value={settings.theme}
+                    onChange={(theme) => update({ theme })}
+                    options={[
+                      { value: 'system', label: t('settings.themeSystem'), icon: Monitor },
+                      { value: 'light', label: t('settings.themeLight'), icon: Sun },
+                      { value: 'dark', label: t('settings.themeDark'), icon: Moon },
+                    ]}
+                  />
+                </Row>
+              </Section>
+            ) : null}
 
-        <AiProviderSection open={open} />
+            {category === 'erMap' ? (
+              <Section title={t('settings.erMap')}>
+                <Row
+                  label={t('settings.showViewDependencies')}
+                  hint={t('settings.showViewDependenciesHint')}
+                >
+                  <Switch
+                    checked={settings.showViewDependencies}
+                    onChange={(showViewDependencies) => update({ showViewDependencies })}
+                    label={t('settings.showViewDependencies')}
+                  />
+                </Row>
+                <Row label={t('settings.defaultView')} hint={t('settings.defaultViewHint')}>
+                  <Segmented
+                    value={settings.defaultView}
+                    onChange={(defaultView) => update({ defaultView })}
+                    options={[
+                      { value: 'neighbourhood', label: t('settings.viewNeighbourhood') },
+                      { value: 'all', label: t('settings.viewAll') },
+                    ]}
+                  />
+                </Row>
+              </Section>
+            ) : null}
 
-        <Section title={t('settings.about')}>
-          <Row label={t('settings.version')}>
-            <span className="text-sm text-muted-foreground">{version ?? '—'}</span>
-          </Row>
-        </Section>
+            {category === 'ai' ? <AiProviderSection open={open} /> : null}
+
+            {category === 'about' ? (
+              <Section title={t('settings.about')}>
+                <Row label={t('settings.version')}>
+                  <span className="text-sm text-muted-foreground">{version ?? '—'}</span>
+                </Row>
+              </Section>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   )

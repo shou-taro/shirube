@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 // t returns the key; useSettings is stubbed so the dialog can be tested in isolation.
@@ -69,6 +69,7 @@ describe('SettingsDialog', () => {
 
   it('toggles the view-dependencies switch', () => {
     renderDialog()
+    fireEvent.click(screen.getByRole('button', { name: 'settings.erMap' }))
 
     fireEvent.click(screen.getByRole('switch', { name: 'settings.showViewDependencies' }))
 
@@ -78,6 +79,7 @@ describe('SettingsDialog', () => {
 
   it('changes the default view', () => {
     renderDialog()
+    fireEvent.click(screen.getByRole('button', { name: 'settings.erMap' }))
 
     fireEvent.click(screen.getByRole('button', { name: 'settings.viewAll' }))
 
@@ -86,6 +88,7 @@ describe('SettingsDialog', () => {
 
   it('shows the running version from the health check', async () => {
     renderDialog()
+    fireEvent.click(screen.getByRole('button', { name: 'settings.about' }))
 
     expect(await screen.findByText('9.9.9')).toBeInTheDocument()
   })
@@ -146,20 +149,26 @@ describe('SettingsDialog — AI provider', () => {
     has_api_key: true,
   }
 
-  it('shows the not-set-up status and Claude defaults when nothing is configured', async () => {
-    renderDialog()
+  // Render the dialog, open the AI navigator group (its own tab in the grouped settings),
+  // and wait for the provider form to load.
+  async function openAiSection(provider: AiProvider | null = null): Promise<void> {
+    renderDialog(true, provider)
+    fireEvent.click(screen.getByRole('button', { name: 'settings.ai' }))
+    await screen.findByLabelText('settings.aiProviderLabel')
+  }
 
-    expect(await screen.findByText('settings.aiNotSetUp')).toBeInTheDocument()
+  it('shows the Claude defaults when nothing is configured', async () => {
+    await openAiSection(null)
+
     // Defaults to the Claude preset with its recommended model; no Remove action yet.
     expect(screen.getByLabelText('settings.aiProviderLabel')).toHaveValue('claude')
     expect(screen.getByLabelText('settings.aiModel')).toHaveValue('claude-opus-4-8')
     expect(screen.queryByRole('button', { name: 'settings.aiRemove' })).not.toBeInTheDocument()
   })
 
-  it('loads the configured provider, shows it in use, and marks the key as saved', async () => {
-    renderDialog(true, configuredClaude)
+  it('loads the configured provider and marks the key as saved', async () => {
+    await openAiSection(configuredClaude)
 
-    expect(await screen.findByText('settings.aiInUse')).toBeInTheDocument()
     expect(screen.getByLabelText('settings.aiProviderLabel')).toHaveValue('claude')
     expect(screen.getByLabelText('settings.aiModel')).toHaveValue('claude-sonnet-5')
     // The stored key is never fetched back — the field is blank with a "saved" hint.
@@ -169,8 +178,7 @@ describe('SettingsDialog — AI provider', () => {
   })
 
   it('swaps to the provider-specific fields when the selection changes', async () => {
-    renderDialog()
-    await screen.findByLabelText('settings.aiModel')
+    await openAiSection(null)
     // Claude asks for a key and hides the base URL.
     expect(screen.getByLabelText('settings.aiApiKey')).toBeInTheDocument()
     expect(screen.queryByLabelText('settings.aiBaseUrl')).not.toBeInTheDocument()
@@ -186,8 +194,7 @@ describe('SettingsDialog — AI provider', () => {
   })
 
   it('requires an API key before saving a hosted provider', async () => {
-    renderDialog()
-    await screen.findByLabelText('settings.aiModel')
+    await openAiSection(null)
 
     // Claude (a hosted provider) with no key must not be sent to the backend.
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
@@ -203,8 +210,7 @@ describe('SettingsDialog — AI provider', () => {
       base_url: 'http://localhost:11434/v1',
       has_api_key: false,
     })
-    renderDialog()
-    await screen.findByLabelText('settings.aiModel')
+    await openAiSection(null)
 
     fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
       target: { value: 'ollama' },
@@ -223,8 +229,7 @@ describe('SettingsDialog — AI provider', () => {
 
   it('sends the fixed OpenAI endpoint and a typed key', async () => {
     mockSaveProvider.mockResolvedValue(configuredClaude)
-    renderDialog()
-    await screen.findByLabelText('settings.aiModel')
+    await openAiSection(null)
 
     fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
       target: { value: 'openai' },
@@ -245,8 +250,7 @@ describe('SettingsDialog — AI provider', () => {
 
   it('keeps the stored key when re-saving the configured provider', async () => {
     mockSaveProvider.mockResolvedValue(configuredClaude)
-    renderDialog(true, configuredClaude)
-    await screen.findByLabelText('settings.aiModel')
+    await openAiSection(configuredClaude)
 
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
 
@@ -261,20 +265,21 @@ describe('SettingsDialog — AI provider', () => {
 
   it('removes the provider', async () => {
     mockClearProvider.mockResolvedValue()
-    renderDialog(true, configuredClaude)
-    await screen.findByRole('button', { name: 'settings.aiRemove' })
+    await openAiSection(configuredClaude)
+    expect(screen.getByRole('button', { name: 'settings.aiRemove' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiRemove' }))
 
     expect(mockClearProvider).toHaveBeenCalledOnce()
-    // Once cleared, the status returns to "not set up".
-    expect(await screen.findByText('settings.aiNotSetUp')).toBeInTheDocument()
+    // Once cleared, the provider is no longer configured, so Remove disappears.
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'settings.aiRemove' })).not.toBeInTheDocument(),
+    )
   })
 
   it('surfaces a save error from the backend', async () => {
     mockSaveProvider.mockRejectedValue(new Error('The database took too long.'))
-    renderDialog()
-    await screen.findByLabelText('settings.aiModel')
+    await openAiSection(null)
 
     // Provide a key so the client-side guard passes and the request is actually made.
     fireEvent.change(screen.getByLabelText('settings.aiApiKey'), { target: { value: 'sk-x' } })
