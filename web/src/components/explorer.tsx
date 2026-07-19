@@ -207,7 +207,11 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           ) : null}
 
           {/* Floating table-detail card: hugs its content and caps at the pane height,
-              scrolling within. Each section inside collapses on its own. */}
+              scrolling within. Each section inside collapses on its own. Shown only when
+              there is a diagram to detail — hidden while loading, on error, and for an
+              empty schema, where a "select a table" prompt would contradict the centre's
+              "no tables or views" message. */}
+          {schema.status === 'ready' && schema.graph.objects.length > 0 && (
           <div className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-64 flex-col overflow-hidden rounded-xl border border-brand/20 bg-card shadow-md">
             <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 bg-brand/15 px-3 text-xs font-medium text-foreground">
               {centreObject ? (
@@ -253,6 +257,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               </button>
             )}
           </div>
+          )}
           </div>
 
           {/* Bottom: the row-preview drawer for the current centre object. */}
