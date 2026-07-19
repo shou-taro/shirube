@@ -39,6 +39,35 @@ describe('matching', () => {
     expect(results[1]).toHaveTextContent('orders')
   })
 
+  it('ranks an exact name match above a longer substring match', () => {
+    // The `store` table must beat `sales_by_store` when searching "store", even though
+    // `sales_by_store` sorts first alphabetically.
+    const store = object('public.store')
+    const salesByStore = object('public.sales_by_store')
+    const { input } = renderSearch([salesByStore, store])
+
+    fireEvent.change(input, { target: { value: 'store' } })
+
+    const results = screen.getAllByRole('option')
+    // `.not` guards against the wrong order — `sales_by_store` also contains "store".
+    expect(results[0]).not.toHaveTextContent('sales_by_store')
+    expect(results[0]).toHaveTextContent('store')
+    expect(results[1]).toHaveTextContent('sales_by_store')
+  })
+
+  it('ranks a prefix match above a mid-string substring match', () => {
+    const orders = object('public.orders')
+    const backorders = object('public.backorders')
+    const { input } = renderSearch([backorders, orders])
+
+    fireEvent.change(input, { target: { value: 'order' } })
+
+    const results = screen.getAllByRole('option')
+    expect(results[0]).not.toHaveTextContent('backorders')
+    expect(results[0]).toHaveTextContent('orders') // prefix
+    expect(results[1]).toHaveTextContent('backorders') // substring
+  })
+
   it('shows a no-results message when nothing matches', () => {
     const { input } = renderSearch([IDENTITY, ORDERS])
 
