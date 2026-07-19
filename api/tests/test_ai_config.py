@@ -129,6 +129,16 @@ def test_blank_model_is_rejected(client: TestClient) -> None:
     assert response.status_code == 400
 
 
+def test_anthropic_requires_an_api_key(client: TestClient) -> None:
+    # Claude is hosted, so configuring it without a key (and none already stored) is refused.
+    response = client.put(
+        "/api/ai/provider",
+        json={"kind": "anthropic", "model": "claude-opus-4-8"},
+    )
+    assert response.status_code == 400
+    assert "API key" in response.json()["detail"]
+
+
 def test_delete_unconfigures_and_removes_key(
     client: TestClient,
     secrets: FakeSecretStore,

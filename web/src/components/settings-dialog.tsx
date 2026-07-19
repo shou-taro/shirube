@@ -115,12 +115,23 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
+const AI_KINDS: AiProviderKind[] = ['anthropic', 'openai_compatible']
+
+// The prefilled model for each provider kind — Claude's recommended default, and nothing
+// presumptuous for an OpenAI-compatible endpoint (the model name varies by runner).
+const AI_DEFAULT_MODEL: Record<AiProviderKind, string> = {
+  anthropic: 'claude-opus-4-8',
+  openai_compatible: '',
+}
+
 /**
- * The AI-navigator provider settings: which adapter, model and base URL, plus the API key.
- * Unlike the instant-apply toggles above, this is a server-backed form — it loads the
- * current provider when the dialog opens and saves on demand. The API key is write-only:
- * it is stored in the OS keychain and never read back, so a stored key shows as a
- * placeholder and a blank field keeps it. No provider is configured until the user sets one.
+ * The AI-navigator provider settings, split into a tab per provider kind so each shows only
+ * the fields that kind needs: Claude requires an API key and treats the base URL as an
+ * advanced override; an OpenAI-compatible endpoint requires a base URL and needs no key when
+ * it is local. Only one provider is active at a time — the configured one's tab is marked
+ * "in use". A server-backed form: it loads the current provider when the dialog opens and
+ * saves on demand. The API key is write-only — stored in the OS keychain, never read back —
+ * so a stored key shows as a placeholder and a blank field keeps it.
  */
 function AiProviderSection({ open }: { open: boolean }) {
   const { t } = useTranslation()
@@ -133,26 +144,39 @@ function AiProviderSection({ open }: { open: boolean }) {
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
-  // Load the configured provider each time the dialog opens, seeding the form from it (or
-  // from sensible defaults when nothing is configured yet). The key field always starts
-  // blank — the stored key is never sent back to the client.
+  // Seed the form fields for a tab: the saved values when that tab is the configured
+  // provider, otherwise that kind's defaults. Always clears the key field — the stored key
+  // is never read back — and any transient error/saved state.
+  function seedFields(nextKind: AiProviderKind, current: AiProvider | null): void {
+    const fromSaved = current !== null && current.kind === nextKind
+    setModel(fromSaved ? current.model : AI_DEFAULT_MODEL[nextKind])
+    setBaseUrl(fromSaved ? (current.base_url ?? '') : '')
+    setApiKey('')
+    setError(null)
+    setSaved(false)
+  }
+
+  // Load the configured provider each time the dialog opens, opening on its tab (or Claude
+  // by default) and seeding the form.
   useEffect(() => {
     if (!open) {
       return
     }
     let active = true
-    setError(null)
-    setSaved(false)
-    setApiKey('')
     fetchAiProvider()
       .then((current) => {
         if (!active) {
           return
         }
+        const nextKind = current?.kind ?? 'anthropic'
         setProvider(current)
-        setKind(current?.kind ?? 'anthropic')
-        setModel(current?.model ?? 'claude-opus-4-8')
-        setBaseUrl(current?.base_url ?? '')
+        setKind(nextKind)
+        const fromSaved = current != null && current.kind === nextKind
+        setModel(fromSaved ? current.model : AI_DEFAULT_MODEL[nextKind])
+        setBaseUrl(fromSaved ? (current.base_url ?? '') : '')
+        setApiKey('')
+        setError(null)
+        setSaved(false)
       })
       .catch(() => {
         if (active) {
@@ -163,6 +187,11 @@ function AiProviderSection({ open }: { open: boolean }) {
       active = false
     }
   }, [open])
+
+  function selectKind(nextKind: AiProviderKind): void {
+    setKind(nextKind)
+    seedFields(nextKind, provider ?? null)
+  }
 
   async function handleSave(): Promise<void> {
     setSaving(true)
@@ -192,14 +221,10 @@ function AiProviderSection({ open }: { open: boolean }) {
   async function handleRemove(): Promise<void> {
     setSaving(true)
     setError(null)
-    setSaved(false)
     try {
       await clearAiProvider()
       setProvider(null)
-      setKind('anthropic')
-      setModel('claude-opus-4-8')
-      setBaseUrl('')
-      setApiKey('')
+      seedFields(kind, null)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught))
     } finally {
@@ -208,47 +233,96 @@ function AiProviderSection({ open }: { open: boolean }) {
   }
 
   const configured = provider != null
-  const keyPlaceholder = provider?.has_api_key
+  // The stored-key hint belongs only on the configured provider's own tab.
+  const keyStored = provider?.kind === kind && provider.has_api_key
+  const keyPlaceholder = keyStored
     ? t('settings.aiApiKeyStored')
-    : kind === 'openai_compatible'
-      ? t('settings.aiApiKeyOptional')
-      : ''
+    : kind === 'anthropic'
+      ? t('settings.aiApiKeyRequired')
+      : t('settings.aiApiKeyOptional')
+
+  const modelField = (
+    <Field label={t('settings.aiModel')}>
+      <Input
+        value={model}
+        onChange={(event) => setModel(event.target.value)}
+        placeholder={AI_DEFAULT_MODEL[kind] || 'gpt-4o'}
+      />
+    </Field>
+  )
+  const apiKeyField = (
+    <Field label={t('settings.aiApiKey')} hint={t('settings.aiApiKeyHint')}>
+      <Input
+        type="password"
+        value={apiKey}
+        onChange={(event) => setApiKey(event.target.value)}
+        placeholder={keyPlaceholder}
+        autoComplete="off"
+      />
+    </Field>
+  )
 
   return (
     <Section title={t('settings.ai')}>
-      <Row label={t('settings.aiProvider')} hint={t('settings.aiProviderHint')}>
-        <Segmented
-          value={kind}
-          onChange={setKind}
-          options={[
-            { value: 'anthropic', label: t('settings.aiKindAnthropic') },
-            { value: 'openai_compatible', label: t('settings.aiKindOpenai') },
-          ]}
-        />
-      </Row>
-      <Field label={t('settings.aiModel')}>
-        <Input
-          value={model}
-          onChange={(event) => setModel(event.target.value)}
-          placeholder="claude-opus-4-8"
-        />
-      </Field>
-      <Field label={t('settings.aiBaseUrl')} hint={t('settings.aiBaseUrlHint')}>
-        <Input
-          value={baseUrl}
-          onChange={(event) => setBaseUrl(event.target.value)}
-          placeholder={kind === 'openai_compatible' ? 'http://localhost:11434/v1' : ''}
-        />
-      </Field>
-      <Field label={t('settings.aiApiKey')} hint={t('settings.aiApiKeyHint')}>
-        <Input
-          type="password"
-          value={apiKey}
-          onChange={(event) => setApiKey(event.target.value)}
-          placeholder={keyPlaceholder}
-          autoComplete="off"
-        />
-      </Field>
+      <p className="-mt-1 text-xs text-muted-foreground">{t('settings.aiProviderHint')}</p>
+      <div
+        role="tablist"
+        aria-label={t('settings.ai')}
+        className="flex gap-1 rounded-md border bg-background p-0.5"
+      >
+        {AI_KINDS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            role="tab"
+            aria-selected={option === kind}
+            onClick={() => selectKind(option)}
+            className={cn(
+              'flex flex-1 items-center justify-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium',
+              option === kind
+                ? 'bg-brand text-brand-foreground'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {option === 'anthropic' ? t('settings.aiKindAnthropic') : t('settings.aiKindOpenai')}
+            {provider?.kind === option ? (
+              <span
+                className={cn(
+                  'rounded-full px-1.5 py-px text-[10px] font-medium',
+                  option === kind ? 'bg-brand-foreground/20' : 'bg-brand/15 text-brand',
+                )}
+              >
+                {t('settings.aiActive')}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      <div role="tabpanel" className="flex flex-col gap-3">
+        {kind === 'anthropic' ? (
+          <>
+            {modelField}
+            {apiKeyField}
+            <Field label={t('settings.aiBaseUrlOptional')} hint={t('settings.aiBaseUrlClaudeHint')}>
+              <Input value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} />
+            </Field>
+          </>
+        ) : (
+          <>
+            <Field label={t('settings.aiBaseUrl')} hint={t('settings.aiBaseUrlOpenaiHint')}>
+              <Input
+                value={baseUrl}
+                onChange={(event) => setBaseUrl(event.target.value)}
+                placeholder="http://localhost:11434/v1"
+              />
+            </Field>
+            {modelField}
+            {apiKeyField}
+          </>
+        )}
+      </div>
+
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex items-center gap-2">
         <Button variant="brand" size="sm" onClick={handleSave} disabled={saving}>

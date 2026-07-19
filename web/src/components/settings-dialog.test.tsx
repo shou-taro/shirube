@@ -223,4 +223,32 @@ describe('SettingsDialog — AI provider', () => {
 
     expect(await screen.findByText('An OpenAI-compatible provider needs a base URL.')).toBeInTheDocument()
   })
+
+  it('swaps to the kind-specific fields when the tab changes', async () => {
+    renderDialog()
+    // The Claude tab prefills the recommended model and offers an optional base URL.
+    expect(await screen.findByLabelText('settings.aiModel')).toHaveValue('claude-opus-4-8')
+    expect(screen.getByLabelText('settings.aiBaseUrlOptional')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'settings.aiKindOpenai' }))
+
+    // The OpenAI-compatible tab resets the model to that kind's default (empty) and shows
+    // the required base-URL field instead of the optional one.
+    expect(screen.getByLabelText('settings.aiModel')).toHaveValue('')
+    expect(screen.getByLabelText('settings.aiBaseUrl')).toBeInTheDocument()
+    expect(screen.queryByLabelText('settings.aiBaseUrlOptional')).not.toBeInTheDocument()
+  })
+
+  it('marks the configured provider tab as in use', async () => {
+    renderDialog(true, configured)
+    await screen.findByLabelText('settings.aiModel')
+
+    const claudeTab = screen.getByRole('tab', { name: /settings\.aiKindAnthropic/ })
+    expect(claudeTab).toHaveAttribute('aria-selected', 'true')
+    expect(claudeTab).toHaveTextContent('settings.aiActive')
+    // The other tab is not marked in use.
+    expect(screen.getByRole('tab', { name: 'settings.aiKindOpenai' })).not.toHaveTextContent(
+      'settings.aiActive',
+    )
+  })
 })

@@ -67,6 +67,15 @@ class AiConfigService:
             SecretStoreError: if the API key cannot be written to the keychain.
         """
         self._validate(config)
+        # Claude talks to the hosted Claude API, so it always needs a key — either supplied
+        # now or already stored. (A local OpenAI-compatible provider, by contrast, needs
+        # none.) This is checked before writing so a keyless Claude provider is never saved.
+        if config.kind is AiProviderKind.ANTHROPIC and not (
+            api_key or self._secrets.get_password(AI_PROVIDER_SECRET_ID)
+        ):
+            raise InvalidProviderConfigError(
+                "Claude needs an API key — enter your Anthropic API key."
+            )
         previous = self._repository.get()
         self._repository.set(config)
         if api_key:
