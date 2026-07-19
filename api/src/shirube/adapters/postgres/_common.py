@@ -64,6 +64,14 @@ def friendly_message(exc: psycopg.Error, params: ConnectionParams) -> str:
             f"Could not reach {params.host}:{params.port}. Check the host and port, and "
             "that the server (or SSH tunnel) is running."
         )
+    if sqlstate == "57014" or "statement timeout" in text:
+        # Connected fine, but a query ran past shirube's statement timeout and was
+        # cancelled — distinct from a *connection* timeout above. Common on a very large
+        # table or catalogue, so point at narrowing the work rather than the connection.
+        return (
+            "The database took too long to respond and the query was cancelled "
+            "(statement timeout). Try a smaller schema, or filter to fewer rows."
+        )
     if "ssl" in text:
         return "The server requires SSL. Try setting sslmode to 'require' or higher."
     if sqlstate == "42501" or "permission denied" in text:

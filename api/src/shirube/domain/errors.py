@@ -63,3 +63,14 @@ class InvalidQueryError(ShirubeError):
 
     status_code = 400
     detail = "The query referenced a column that does not exist"
+
+
+class SecretStoreError(ShirubeError):
+    """Raised when the OS keychain cannot be read or written.
+
+    A locked keychain, a missing backend, or the user declining access all surface here
+    rather than as an unhandled 500, so the caller gets a clear, translated message.
+    """
+
+    status_code = 500
+    detail = "Could not access the OS keychain where passwords are stored"

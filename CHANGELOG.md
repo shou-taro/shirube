@@ -29,6 +29,16 @@ may still change between releases).
   host or password surfaces on the form — as it does for **Test** — instead of dropping
   you onto the map with an error. Connecting a saved connection from the list verifies the
   same way, showing a spinner while it checks.
+- A query cancelled by the statement timeout (e.g. previewing a very large table) now
+  reads as a timeout with advice to narrow the work, rather than a misleading "could not
+  connect".
+- OS keychain failures (a locked or unavailable keychain, or access denied) now surface as
+  a clear message instead of an unhandled error, and a keychain write failure while
+  creating a connection rolls the connection back rather than leaving it saved without a
+  password.
+- Starting shirube when its port is already in use now prints a clear message and exits,
+  instead of an obscure bind error — and no longer opens the browser onto whatever else is
+  listening there.
 
 ## [0.1.0b1] — 2026-07-17
 

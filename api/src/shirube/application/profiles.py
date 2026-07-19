@@ -55,8 +55,14 @@ class ProfileService:
     def create(self, fields: ProfileFields, password: str) -> ConnectionProfile:
         """Create a profile and store its password in the keychain.
 
+        If the password cannot be stored (e.g. a locked keychain), the just-added profile
+        is rolled back, so a failure never leaves a saved-but-unusable profile behind.
+
         Returns:
             The created profile (without the password).
+
+        Raises:
+            SecretStoreError: if the password cannot be written to the keychain.
         """
         profile = ConnectionProfile(
             id=str(uuid.uuid4()),
@@ -69,7 +75,12 @@ class ProfileService:
             schemas=fields.schemas,
         )
         self._repository.add(profile)
-        self._secrets.set_password(profile.id, password)
+        try:
+            self._secrets.set_password(profile.id, password)
+        except Exception:
+            # Undo the add so the two stores never drift into a passwordless profile.
+            self._repository.delete(profile.id)
+            raise
         return profile
 
     def update(

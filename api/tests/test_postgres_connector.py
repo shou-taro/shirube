@@ -65,6 +65,20 @@ def test_missing_database() -> None:
     assert "does not exist" in message
 
 
+def test_statement_timeout_is_translated() -> None:
+    """A query cancelled by the statement timeout is distinct from a connection timeout.
+
+    The user is connected fine; a big query simply ran too long. The message must say so
+    rather than falling through to the generic "could not connect".
+    """
+    message = friendly_message(
+        psycopg.errors.QueryCanceled("canceling statement due to statement timeout"),
+        _PARAMS,
+    )
+    assert "statement timeout" in message.lower()
+    assert "took too long" in message.lower()
+
+
 def test_ssl_required() -> None:
     message = friendly_message(
         psycopg.OperationalError("server does not support SSL, but SSL was required"),
