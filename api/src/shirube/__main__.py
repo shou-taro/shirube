@@ -4,7 +4,9 @@ Starts the local API server (which also serves the bundled single-page app in a
 packaged build) and, unless disabled, opens the browser once the server is up.
 """
 
+import errno
 import socket
+import sys
 import threading
 import time
 import webbrowser
@@ -51,6 +53,27 @@ def _wait_until_ready(host: str, port: int, timeout: float) -> bool:
     return False
 
 
+def _port_in_use(host: str, port: int) -> bool:
+    """Whether ``port`` on ``host`` is already taken by a live listener.
+
+    Binding briefly is the reliable check. Only "address already in use" counts as taken;
+    any other bind error (e.g. an address family we can't probe) is treated as free, so
+    the pre-flight never blocks a start it shouldn't — uvicorn's own bind is the backstop.
+
+    Args:
+        host: The host the server will bind to.
+        port: The port the server will bind to.
+
+    Returns:
+        True if the port is already in use, False otherwise.
+    """
+    try:
+        with socket.create_server((host, port)):
+            return False
+    except OSError as exc:
+        return exc.errno == errno.EADDRINUSE
+
+
 def _open_browser_when_ready(host: str, port: int, url: str) -> None:
     """Open ``url`` once the server is answering, so the first request never races it.
 
@@ -88,6 +111,19 @@ def main() -> None:
             "you intend to expose it.",
             host=settings.host,
         )
+    # Fail early and clearly if the port is taken, rather than letting uvicorn's bind
+    # error scroll past — and before the browser thread starts, so it can't open onto
+    # whatever else is already listening there (e.g. an existing shirube instance).
+    if _port_in_use(settings.host, settings.port):
+        logger.error("port_in_use", host=settings.host, port=settings.port)
+        print(
+            f"shirube could not start: port {settings.port} is already in use on "
+            f"{settings.host}.\nAnother shirube may already be running — open "
+            f"http://{settings.host}:{settings.port} — or set SHIRUBE_PORT to a free "
+            "port.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     url = f"http://{settings.host}:{settings.port}"
     if settings.open_browser:
         # Open the browser only once the server is accepting connections; a daemon

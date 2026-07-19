@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from shirube.adapters.api.app import create_app
 from shirube.adapters.api.dependencies import get_secret_store
+from shirube.domain.errors import SecretStoreError
 
 
 class FakeSecretStore:
@@ -99,3 +100,22 @@ def test_delete_removes_profile_and_password(client: TestClient, secrets: FakeSe
 
 def test_get_missing_returns_404(client: TestClient) -> None:
     assert client.get("/api/profiles/does-not-exist").status_code == 404
+
+
+class FailingSecretStore(FakeSecretStore):
+    """A keychain whose writes fail — as a locked or unavailable OS keychain would."""
+
+    def set_password(self, profile_id: str, password: str) -> None:
+        raise SecretStoreError
+
+
+def test_create_rolls_back_the_profile_when_the_password_cannot_be_stored() -> None:
+    """A keychain write failure must not leave a saved-but-passwordless profile behind."""
+    failing = FailingSecretStore()
+    app = create_app()
+    app.dependency_overrides[get_secret_store] = lambda: failing
+    with TestClient(app, raise_server_exceptions=False) as test_client:
+        response = test_client.post("/api/profiles", json=_new_profile())
+        assert response.status_code == 500
+        # The profile was rolled back, so nothing is listed.
+        assert test_client.get("/api/profiles").json() == []
