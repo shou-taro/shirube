@@ -15,6 +15,17 @@ may still change between releases).
 - PyPI releases are now published automatically from a GitHub release via Trusted
   Publishing (OIDC), rather than by hand.
 
+### Fixed
+
+- The browser now opens only once the server is accepting connections, instead of after
+  a fixed one-second delay — a slow cold start no longer greets you with a "cannot
+  connect" page.
+- The connection form's **Test** button now checks the required fields itself (it sits
+  outside the form's own validation), naming just the ones left blank rather than failing
+  with a cryptic driver error.
+- Clearer messages for two connection failures: an empty host (which quietly falls back
+  to a local socket) and a missing password on a server that requires one.
+
 ## [0.1.0b1] — 2026-07-17
 
 The first public beta: shirube's explorer core. The AI navigator — the feature shirube

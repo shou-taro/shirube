@@ -3,9 +3,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { Profile } from '@/lib/api'
 
-// t returns the key, so tests query by stable keys rather than translated copy.
+// t returns the key, so tests query by stable keys rather than translated copy. The
+// one exception mirrors the real copy for the "missing fields" message, so a test can
+// assert which fields it actually names.
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, opts?: { fields?: string }) =>
+      key === 'connection.testMissingFields' && opts?.fields
+        ? `Enter the ${opts.fields} before testing.`
+        : key,
+  }),
 }))
 
 // Replace the network calls; keep the real types and other exports.
@@ -155,6 +162,24 @@ describe('testing the connection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'connection.test' }))
 
     expect(await screen.findByText('Authentication failed.')).toBeInTheDocument()
+  })
+
+  it('blocks testing with an empty host, naming only the host, and never calls the backend', async () => {
+    render(
+      <ConnectionForm initial={null} editingId={null} onConnected={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    // Everything but the host — the Test button bypasses the form's required checks.
+    fireEvent.change(field(/connection.fields.database/), { target: { value: 'shop' } })
+    fireEvent.change(field(/connection.fields.username/), { target: { value: 'ro' } })
+    fireEvent.click(screen.getByRole('button', { name: 'connection.test' }))
+
+    // Only the blank field is named — not the ones the user already filled.
+    const message = await screen.findByText(/Enter the .* before testing\./)
+    expect(message).toHaveTextContent('host')
+    expect(message).not.toHaveTextContent('database')
+    expect(message).not.toHaveTextContent('user')
+    expect(mockTest).not.toHaveBeenCalled()
   })
 })
 

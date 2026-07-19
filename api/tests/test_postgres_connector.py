@@ -39,6 +39,24 @@ def test_unreachable_host_names_host_and_port() -> None:
     assert "Could not reach db.example.com:5432" in message
 
 
+def test_no_password_supplied_asks_for_one() -> None:
+    """A blank password against a server that requires one is called out distinctly.
+
+    libpq raises a client-side ``fe_sendauth: no password supplied`` here rather than an
+    authentication failure, so it must map to "enter a password", not "check the
+    password".
+    """
+    message = friendly_message(
+        psycopg.OperationalError(
+            'connection to server at "127.0.0.1", port 5432 failed: '
+            "fe_sendauth: no password supplied"
+        ),
+        _PARAMS,
+    )
+    assert "requires a password" in message
+    assert "readonly" in message
+
+
 def test_missing_database() -> None:
     message = friendly_message(
         psycopg.OperationalError('database "shop" does not exist'),
@@ -62,6 +80,30 @@ def test_permission_denied() -> None:
     )
     assert "permission" in message.lower()
     assert "CONNECT and SELECT" in message
+
+
+def test_empty_host_is_named_over_the_raw_socket_error() -> None:
+    """An empty host makes libpq fall back to a Unix socket; say so plainly.
+
+    The blank host is the real cause, so it must be reported ahead of the generic
+    fallback rather than surfacing psycopg's cryptic socket message.
+    """
+    params = ConnectionParams(
+        host="",
+        port=5432,
+        database="shop",
+        username="readonly",
+        password="",
+        sslmode=SslMode.PREFER,
+    )
+    message = friendly_message(
+        psycopg.OperationalError(
+            'connection to server on socket "/tmp/.s.PGSQL.5432" failed: '
+            "No such file or directory"
+        ),
+        params,
+    )
+    assert "host is empty" in message.lower()
 
 
 def test_unrecognised_error_falls_back_to_the_raw_message() -> None:
