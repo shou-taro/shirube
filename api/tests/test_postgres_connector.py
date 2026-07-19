@@ -98,8 +98,7 @@ def test_empty_host_is_named_over_the_raw_socket_error() -> None:
     )
     message = friendly_message(
         psycopg.OperationalError(
-            'connection to server on socket "/tmp/.s.PGSQL.5432" failed: '
-            "No such file or directory"
+            'connection to server on socket "/tmp/.s.PGSQL.5432" failed: No such file or directory'
         ),
         params,
     )

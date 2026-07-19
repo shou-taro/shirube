@@ -39,7 +39,8 @@ def _wait_until_ready(host: str, port: int, timeout: float) -> bool:
     """
     # ``0.0.0.0`` means "all interfaces" and isn't itself connectable; probe loopback.
     # An IPv6 literal may arrive bracketed (``[::1]``) — strip it for ``connect``.
-    connect_host = "127.0.0.1" if host == "0.0.0.0" else host.strip("[]")
+    # This is a comparison to detect the wildcard, not a bind, so B104 doesn't apply.
+    connect_host = "127.0.0.1" if host == "0.0.0.0" else host.strip("[]")  # nosec B104
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
