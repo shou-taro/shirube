@@ -41,12 +41,14 @@ class Column:
         data_type: Human-readable SQL type (e.g. ``integer``, ``character varying(255)``).
         nullable: Whether the column accepts NULL.
         is_primary_key: Whether the column is part of the primary key.
+        comment: The column's database comment (``COMMENT ON COLUMN``), or ``None``.
     """
 
     name: str
     data_type: str
     nullable: bool
     is_primary_key: bool = False
+    comment: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,12 +60,16 @@ class SchemaObject:
         name: The object's name, unique within its schema.
         kind: Whether it is a table, view or materialized view.
         columns: The object's columns, in definition order.
+        row_estimate: The catalogue's estimated row count (``pg_class.reltuples``), or
+            ``None`` when unknown (e.g. never analysed, or a plain view). An estimate, not
+            a scan — the only numeric signal the AI navigator is given, and never exact.
     """
 
     schema: str
     name: str
     kind: ObjectKind
     columns: tuple[Column, ...] = field(default_factory=tuple)
+    row_estimate: int | None = None
 
     @property
     def id(self) -> str:

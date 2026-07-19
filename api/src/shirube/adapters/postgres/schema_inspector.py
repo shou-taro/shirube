@@ -47,7 +47,10 @@ def _schema_filter(alias: str) -> str:
 
 
 _OBJECTS_SQL = f"""
-    SELECT n.nspname AS schema, c.relname AS name, c.relkind AS kind
+    SELECT n.nspname AS schema,
+           c.relname AS name,
+           c.relkind AS kind,
+           c.reltuples::bigint AS row_estimate
     FROM pg_catalog.pg_class c
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relkind IN ('r', 'v', 'm') AND {_schema_filter("n")}
@@ -60,7 +63,8 @@ _COLUMNS_SQL = f"""
            a.attname AS name,
            pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
            NOT a.attnotnull AS nullable,
-           COALESCE(pk.is_primary_key, false) AS is_primary_key
+           COALESCE(pk.is_primary_key, false) AS is_primary_key,
+           pg_catalog.col_description(c.oid, a.attnum) AS comment
     FROM pg_catalog.pg_attribute a
     JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
@@ -126,6 +130,19 @@ _VIEW_DEPENDENCIES_SQL = f"""
 """  # nosec B608
 
 
+def _row_estimate(value: Any) -> int | None:
+    """Normalise a ``reltuples`` estimate: a negative value means "unknown" → ``None``.
+
+    PostgreSQL stores ``-1`` for a relation never analysed (and plain views carry no
+    meaningful count), so anything below zero is reported as no estimate rather than a
+    misleading number.
+    """
+    if value is None:
+        return None
+    estimate = int(value)
+    return estimate if estimate >= 0 else None
+
+
 def build_graph(
     object_rows: Sequence[dict[str, Any]],
     column_rows: Sequence[dict[str, Any]],
@@ -141,9 +158,11 @@ def build_graph(
     Foreign keys come first, then view dependencies.
 
     Args:
-        object_rows: Rows of ``schema``, ``name`` and ``kind`` (a relkind code).
+        object_rows: Rows of ``schema``, ``name``, ``kind`` (a relkind code) and an
+            optional ``row_estimate`` (the catalogue's ``reltuples``).
         column_rows: Rows of ``schema``, ``table``, ``name``, ``data_type``,
-            ``nullable`` and ``is_primary_key``, ordered by object then position.
+            ``nullable``, ``is_primary_key`` and an optional ``comment``, ordered by
+            object then position.
         relationship_rows: Rows of ``constraint_name``, the source/target schema and
             table, and ``source_columns``/``target_columns`` arrays.
         dependency_rows: Rows of ``view_schema``, ``view_name``, ``ref_schema`` and
@@ -161,6 +180,7 @@ def build_graph(
                 data_type=row["data_type"],
                 nullable=row["nullable"],
                 is_primary_key=row["is_primary_key"],
+                comment=row.get("comment"),
             )
         )
 
@@ -170,6 +190,7 @@ def build_graph(
             name=row["name"],
             kind=_KIND_BY_RELKIND[row["kind"]],
             columns=tuple(columns_by_object.get((row["schema"], row["name"]), ())),
+            row_estimate=_row_estimate(row.get("row_estimate")),
         )
         for row in object_rows
         if row["kind"] in _KIND_BY_RELKIND
