@@ -1,5 +1,5 @@
 import { Monitor, Moon, Sun, X } from 'lucide-react'
-import { type ComponentType, type ReactNode, useEffect, useState } from 'react'
+import { type ComponentType, type ReactNode, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -105,19 +105,58 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const { t } = useTranslation()
   const { settings, update } = useSettings()
   const [version, setVersion] = useState<string | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Close on Escape while open.
+  // Manage focus while the modal is open: move focus in, keep Tab inside it, close on
+  // Escape, and hand focus back to whatever opened it on close. Without this, focus stays
+  // behind the overlay and Tab walks the page underneath.
   useEffect(() => {
     if (!open) {
       return
     }
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const focusable = (): HTMLElement[] => {
+      const dialog = dialogRef.current
+      if (dialog === null) {
+        return []
+      }
+      return Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => !element.hasAttribute('disabled'))
+    }
+    // Move focus into the dialog (the first control, or the dialog itself as a fallback).
+    ;(focusable()[0] ?? dialogRef.current)?.focus()
+
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
         onClose()
+        return
+      }
+      if (event.key !== 'Tab') {
+        return
+      }
+      const items = focusable()
+      if (items.length === 0) {
+        return
+      }
+      const first = items[0]
+      const last = items[items.length - 1]
+      // Wrap at the ends so Tab / Shift+Tab cycle within the dialog rather than escaping.
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
       }
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      previouslyFocused?.focus?.()
+    }
   }, [open, onClose])
 
   // Read the running version when the dialog opens.
@@ -138,10 +177,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={t('settings.title')}
-        className="relative z-10 flex w-full max-w-md flex-col overflow-hidden rounded-xl border bg-card shadow-lg"
+        tabIndex={-1}
+        className="relative z-10 flex w-full max-w-md flex-col overflow-hidden rounded-xl border bg-card shadow-lg outline-none"
       >
         <div className="flex items-center justify-between border-b px-5 py-3">
           <h2 className="text-sm font-medium">{t('settings.title')}</h2>

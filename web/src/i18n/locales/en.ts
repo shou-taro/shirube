@@ -103,6 +103,7 @@ const en = {
     addFilter: 'Add filter',
     removeFilter: 'Remove filter',
     filterColumn: 'Column',
+    filterOperator: 'Operator',
     filterValue: 'Value',
     operator: {
       eq: 'equals',

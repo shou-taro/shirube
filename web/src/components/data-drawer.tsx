@@ -226,7 +226,7 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
               onChange={(event) =>
                 updateFilter(index, { operator: event.target.value as FilterOperator })
               }
-              aria-label={t('data.operator.contains')}
+              aria-label={t('data.filterOperator')}
               className="bg-transparent text-muted-foreground outline-none"
             >
               {OPERATORS.map((operator) => (
@@ -295,21 +295,36 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
                 {page.columns.map((column) => (
                   <th
                     key={column}
-                    onClick={() => cycleSort(column)}
-                    title={
+                    // Reflect the sort state to assistive tech: 'ascending' / 'descending'
+                    // on the sorted column, 'none' otherwise.
+                    aria-sort={
                       sort?.column === column
                         ? sort.direction === 'asc'
-                          ? t('data.sortAsc')
-                          : t('data.sortDesc')
-                        : t('data.sortNone')
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
                     }
                     // Stuck 1px above the scrollport so no sub-pixel seam opens at the top
                     // on HiDPI scrolling; will-change promotes the header to its own layer
                     // so it scrolls in sync with the body instead of repainting a frame
                     // late (which flashes the row moving beneath it).
-                    className="sticky -top-px z-10 cursor-pointer select-none whitespace-nowrap border-b border-r border-border bg-secondary px-2.5 py-1.5 text-left font-semibold text-foreground [will-change:transform] last:border-r-0 hover:bg-brand/15"
+                    className="sticky -top-px z-10 whitespace-nowrap border-b border-r border-border bg-secondary p-0 [will-change:transform] last:border-r-0"
                   >
-                    <span className="inline-flex items-center gap-1">
+                    {/* A real button so sorting is reachable and operable by keyboard
+                        (Enter / Space), not mouse-only. It fills the cell and carries the
+                        cell's own padding, hover and focus ring — visually unchanged. */}
+                    <button
+                      type="button"
+                      onClick={() => cycleSort(column)}
+                      title={
+                        sort?.column === column
+                          ? sort.direction === 'asc'
+                            ? t('data.sortAsc')
+                            : t('data.sortDesc')
+                          : t('data.sortNone')
+                      }
+                      className="flex w-full cursor-pointer select-none items-center gap-1 px-2.5 py-1.5 text-left font-semibold text-foreground hover:bg-brand/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
+                    >
                       {column}
                       {sort?.column === column &&
                         (sort.direction === 'asc' ? (
@@ -317,7 +332,7 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
                         ) : (
                           <ArrowDown className="size-3 text-brand" />
                         ))}
-                    </span>
+                    </button>
                   </th>
                 ))}
               </tr>

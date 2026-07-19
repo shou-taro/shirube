@@ -8,6 +8,10 @@ import { cn } from '@/lib/utils'
 
 const MAX_RESULTS = 8
 
+// Ids wiring the input to its results for assistive technology (ARIA combobox pattern).
+const LISTBOX_ID = 'schema-search-listbox'
+const optionId = (objectId: string): string => `schema-search-option-${objectId}`
+
 // True on Apple platforms, so the shortcut binds to ⌘ there and Ctrl elsewhere. Read from
 // the platform once; `navigator.platform` is legacy but still the most reliable signal.
 const IS_MAC =
@@ -127,6 +131,18 @@ export function SchemaSearch({ objects, onSelect }: SchemaSearchProps) {
           type="text"
           value={query}
           placeholder={t('search.placeholder')}
+          // A combobox controlling a listbox of results: expose the state and the active
+          // option so a screen reader can announce them (a placeholder is not a name).
+          role="combobox"
+          aria-label={t('search.placeholder')}
+          aria-autocomplete="list"
+          aria-controls={LISTBOX_ID}
+          aria-expanded={showResults}
+          aria-activedescendant={
+            showResults && matches.length > 0
+              ? optionId((matches[active] ?? matches[0]).object.id)
+              : undefined
+          }
           onChange={(event) => {
             setQuery(event.target.value)
             setActive(0)
@@ -150,6 +166,9 @@ export function SchemaSearch({ objects, onSelect }: SchemaSearchProps) {
 
       {showResults && (
         <ul
+          id={LISTBOX_ID}
+          role="listbox"
+          aria-label={t('search.placeholder')}
           className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
           onMouseDown={() => {
             // Keep focus on the input so onBlur's timer does not fire mid-click.
@@ -162,9 +181,12 @@ export function SchemaSearch({ objects, onSelect }: SchemaSearchProps) {
             <li className="px-2.5 py-2 text-sm text-muted-foreground">{t('search.noResults')}</li>
           ) : (
             matches.map((match, index) => (
-              <li key={match.object.id}>
+              <li key={match.object.id} role="presentation">
                 <button
                   type="button"
+                  role="option"
+                  id={optionId(match.object.id)}
+                  aria-selected={index === active}
                   onClick={() => choose(match)}
                   onMouseEnter={() => setActive(index)}
                   className={cn(

@@ -12,7 +12,9 @@ test('previews rows and narrows them with a filter', async ({ page }) => {
 
   // Filter title contains "Wizard": only the matching row remains.
   await page.getByRole('button', { name: 'Add filter' }).click()
-  await page.getByLabel('Column').selectOption('title')
+  // Exact match: the search box's label ("Search tables and columns…") otherwise also
+  // matches the substring "Column".
+  await page.getByLabel('Column', { exact: true }).selectOption('title')
   await page.getByPlaceholder('Value').fill('Wizard')
 
   await expect(page.getByText('A Wizard of Earthsea')).toBeVisible()

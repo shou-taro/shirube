@@ -6,7 +6,8 @@ test('searches for a table and travels to it', async ({ page }) => {
   await connect(page)
 
   await page.getByPlaceholder('Search tables and columns…').fill('authors')
-  await page.getByRole('button', { name: /authors/ }).click()
+  // Results are listbox options (the input is an ARIA combobox), not plain buttons.
+  await page.getByRole('option', { name: /authors/ }).click()
 
   // The centre is now `authors`; its rows confirm the map recentred.
   await page.getByRole('button', { name: 'View data' }).click()
