@@ -7,7 +7,7 @@ import { HeroBackdrop } from '@/components/connection/hero-backdrop'
 import { ProfilesList } from '@/components/connection/profiles-list'
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
-import { deleteProfile, listProfiles, type Profile } from '@/lib/api'
+import { deleteProfile, listProfiles, testProfileConnection, type Profile } from '@/lib/api'
 
 type View =
   | { mode: 'list' }
@@ -26,6 +26,11 @@ export function ConnectionScreen({ onConnected }: ConnectionScreenProps) {
   const { t } = useTranslation()
   const [profiles, setProfiles] = useState<Profile[] | null>(null)
   const [view, setView] = useState<View>({ mode: 'list' })
+  // The profile currently being verified from the list, and any failure from that —
+  // so connecting a saved-but-broken profile surfaces here rather than as an error on
+  // the ER screen.
+  const [connectingId, setConnectingId] = useState<string | null>(null)
+  const [connectError, setConnectError] = useState<string | null>(null)
 
   const reload = useCallback(async () => {
     const loaded = await listProfiles()
@@ -36,6 +41,19 @@ export function ConnectionScreen({ onConnected }: ConnectionScreenProps) {
   useEffect(() => {
     void reload()
   }, [reload])
+
+  async function handleConnect(profile: Profile): Promise<void> {
+    setConnectError(null)
+    setConnectingId(profile.id)
+    try {
+      // Verify before entering the explorer, using the profile's stored password.
+      await testProfileConnection(profile.id)
+      onConnected(profile)
+    } catch (err) {
+      setConnectError(err instanceof Error ? err.message : String(err))
+      setConnectingId(null)
+    }
+  }
 
   async function handleDelete(profile: Profile): Promise<void> {
     await deleteProfile(profile.id)
@@ -83,9 +101,13 @@ export function ConnectionScreen({ onConnected }: ConnectionScreenProps) {
                   {t('connection.new')}
                 </Button>
               </div>
+              {connectError ? (
+                <p className="mb-3 text-sm text-destructive">{connectError}</p>
+              ) : null}
               <ProfilesList
                 profiles={profiles}
-                onConnect={onConnected}
+                connectingId={connectingId}
+                onConnect={(profile) => void handleConnect(profile)}
                 onEdit={(profile) => setView({ mode: 'form', initial: profile, editingId: profile.id })}
                 onDuplicate={(profile) =>
                   setView({

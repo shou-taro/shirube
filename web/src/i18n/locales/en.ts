@@ -32,6 +32,7 @@ const en = {
     test: 'Test',
     testMissingFields: 'Enter the {{fields}} before testing.',
     testing: 'Testing…',
+    connecting: 'Connecting…',
     testOk: 'Connection successful',
     saveAndConnect: 'Save and connect',
     saving: 'Saving…',

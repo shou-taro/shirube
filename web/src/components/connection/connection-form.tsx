@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import {
   createProfile,
   testConnection,
+  testProfileConnection,
   updateProfile,
   type Profile,
   type ProfileInput,
@@ -133,9 +134,27 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
     setSaving(true)
     try {
       const input = toInput(form)
-      const saved = editingId
-        ? await updateProfile(editingId, input)
-        : await createProfile(input)
+      // Verify the connection before entering the explorer, so a bad host or password
+      // surfaces here — as it does for Test — rather than as an error on the ER screen.
+      let saved: Profile
+      if (editingId === null) {
+        // Creating: the password is in hand, so verify *before* saving. A failed test
+        // then leaves no broken profile behind, and a retry can't create a duplicate.
+        await testConnection({
+          host: form.host,
+          port: Number(form.port) || 5432,
+          database: form.database,
+          username: form.username,
+          password: form.password,
+          sslmode: form.sslmode,
+        })
+        saved = await createProfile(input)
+      } else {
+        // Editing: the password may be blank ("keep the stored one"), so save first and
+        // verify the stored profile, which reads the password from the keychain.
+        saved = await updateProfile(editingId, input)
+        await testProfileConnection(editingId)
+      }
       onConnected(saved)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

@@ -25,6 +25,10 @@ may still change between releases).
   with a cryptic driver error.
 - Clearer messages for two connection failures: an empty host (which quietly falls back
   to a local socket) and a missing password on a server that requires one.
+- **Save and connect** now verifies the connection before opening the explorer, so a bad
+  host or password surfaces on the form — as it does for **Test** — instead of dropping
+  you onto the map with an error. Connecting a saved connection from the list verifies the
+  same way, showing a spinner while it checks.
 
 ## [0.1.0b1] — 2026-07-17
 
