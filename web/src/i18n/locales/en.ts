@@ -7,7 +7,7 @@
 const en = {
   app: {
     name: 'shirube',
-    tagline: 'Navigate and understand your database with AI.',
+    tagline: 'Read your database as a map.',
   },
   connection: {
     savedConnections: 'Saved connections',

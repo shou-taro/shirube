@@ -8,6 +8,20 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.1.0b3] — 2026-07-19
+
+### Changed
+
+- The connection screen's tagline now reads "Read your database as a map." The AI
+  navigator is still the next milestone, so the beta no longer describes itself as
+  understanding your database "with AI".
+
+### Fixed
+
+- Search now ranks an exact name match ahead of a longer partial match: searching a table
+  name surfaces that table first, rather than an alphabetically-earlier table that merely
+  contains the text (e.g. `store` now leads `sales_by_store`).
+
 ## [0.1.0b2] — 2026-07-19
 
 The first beta was rough around the edges; this release smooths the connection and
@@ -91,6 +105,7 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.1.0b2...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.1.0b3...HEAD
+[0.1.0b3]: https://github.com/shou-taro/shirube/compare/v0.1.0b2...v0.1.0b3
 [0.1.0b2]: https://github.com/shou-taro/shirube/compare/v0.1.0b1...v0.1.0b2
 [0.1.0b1]: https://github.com/shou-taro/shirube/releases/tag/v0.1.0b1
