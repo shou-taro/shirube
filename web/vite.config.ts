@@ -30,5 +30,19 @@ export default defineConfig({
     // linter and the type checker.
     globals: false,
     css: false,
+    coverage: {
+      provider: 'v8',
+      // Report on the source, not the tests or the wiring that only runs a browser.
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/test/**',
+        // Bootstraps the real app against a live backend — exercised by the e2e suite.
+        'src/main.tsx',
+        // Plain data with no logic to cover.
+        'src/i18n/**',
+      ],
+      reporter: ['text-summary', 'html'],
+    },
   },
 })

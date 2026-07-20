@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
+    "coverage": "vitest run --coverage --no-file-parallelism",
     "test:e2e": "playwright test",
     "preview": "vite preview"
   },
@@ -39,6 +40,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "4.1.10",
     "jsdom": "^29.1.1",
     "oxlint": "^1.71.0",
     "pg": "^8.22.0",
