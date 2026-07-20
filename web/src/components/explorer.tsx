@@ -114,8 +114,8 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
     setTrusted(loadTrustedDestinations())
   }, [loadProvider])
 
-  const trust = useCallback((key: string) => setTrusted(trustDestination(key)), [])
-  const forget = useCallback((key: string) => setTrusted(forgetDestination(key)), [])
+  const trust = useCallback((id: string) => setTrusted(trustDestination(id)), [])
+  const forget = useCallback((id: string) => setTrusted(forgetDestination(id)), [])
 
   // Clear the search/navigation override once the map has arrived at it, so selecting the
   // same table again later still re-triggers a travel (a repeated value would not).

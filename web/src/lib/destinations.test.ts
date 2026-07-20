@@ -5,7 +5,7 @@ import {
   describeDestination,
   forgetDestination,
   isDestinationTrusted,
-  labelForTrustKey,
+  labelForDestinationId,
   loadTrustedDestinations,
   trustDestination,
 } from '@/lib/destinations'
@@ -22,7 +22,7 @@ describe('describeDestination', () => {
   it('describes Claude as a remote, hosted destination', () => {
     const destination = describeDestination(provider({ kind: 'anthropic', base_url: null }))
     expect(destination).toEqual({
-      key: 'anthropic',
+      id: 'anthropic',
       label: 'Claude',
       host: 'api.anthropic.com',
       isLocal: false,
@@ -33,7 +33,7 @@ describe('describeDestination', () => {
     const destination = describeDestination(provider({ base_url: 'http://localhost:11434/v1' }))
     expect(destination.isLocal).toBe(true)
     expect(destination.host).toBe('localhost')
-    expect(destination.key).toBe('openai:localhost')
+    expect(destination.id).toBe('openai:localhost')
   })
 
   it('treats a remote OpenAI-compatible endpoint as hosted, keyed by host', () => {
@@ -42,7 +42,7 @@ describe('describeDestination', () => {
     )
     expect(destination.isLocal).toBe(false)
     expect(destination.host).toBe('mac-studio.example.ts.net')
-    expect(destination.key).toBe('openai:mac-studio.example.ts.net')
+    expect(destination.id).toBe('openai:mac-studio.example.ts.net')
   })
 })
 
@@ -69,16 +69,16 @@ describe('isDestinationTrusted', () => {
     expect(isDestinationTrusted(local, [])).toBe(true)
   })
 
-  it('trusts a remote destination only once its key is stored', () => {
+  it('trusts a remote destination only once its identifier is stored', () => {
     const remote = describeDestination(provider({ kind: 'anthropic', base_url: null }))
     expect(isDestinationTrusted(remote, [])).toBe(false)
     expect(isDestinationTrusted(remote, ['anthropic'])).toBe(true)
   })
 })
 
-describe('labelForTrustKey', () => {
-  it('reads back a friendly label from a stored key', () => {
-    expect(labelForTrustKey('anthropic')).toBe('Claude')
-    expect(labelForTrustKey('openai:mac-studio.example.ts.net')).toBe('mac-studio.example.ts.net')
+describe('labelForDestinationId', () => {
+  it('reads back a friendly label from a stored identifier', () => {
+    expect(labelForDestinationId('anthropic')).toBe('Claude')
+    expect(labelForDestinationId('openai:mac-studio.example.ts.net')).toBe('mac-studio.example.ts.net')
   })
 })

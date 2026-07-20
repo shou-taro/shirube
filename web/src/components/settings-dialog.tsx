@@ -13,7 +13,7 @@ import {
   fetchHealth,
   saveAiProvider,
 } from '@/lib/api'
-import { labelForTrustKey } from '@/lib/destinations'
+import { labelForDestinationId } from '@/lib/destinations'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
@@ -213,7 +213,7 @@ function AiProviderSection({
 }: {
   open: boolean
   trusted: string[]
-  onForget: (key: string) => void
+  onForget: (id: string) => void
 }) {
   const { t } = useTranslation()
   const [provider, setProvider] = useState<AiProvider | null | undefined>(undefined)
@@ -409,19 +409,19 @@ function AiProviderSection({
           <p className="mt-2 text-xs text-muted-foreground">{t('settings.aiTrustedEmpty')}</p>
         ) : (
           <ul className="mt-2 flex flex-col gap-1.5">
-            {trusted.map((key) => (
+            {trusted.map((id) => (
               <li
-                key={key}
+                key={id}
                 className="flex items-center justify-between gap-2 rounded-md border bg-background px-2.5 py-1.5"
               >
-                <span className="min-w-0 truncate text-sm" title={labelForTrustKey(key)}>
-                  {labelForTrustKey(key)}
+                <span className="min-w-0 truncate text-sm" title={labelForDestinationId(id)}>
+                  {labelForDestinationId(id)}
                 </span>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-7 shrink-0 px-2 text-xs"
-                  onClick={() => onForget(key)}
+                  onClick={() => onForget(id)}
                 >
                   {t('settings.aiForget')}
                 </Button>
@@ -450,8 +450,8 @@ interface SettingsDialogProps {
   onClose: () => void
   /** Destinations the user has agreed the navigator may send the schema to. */
   trusted: string[]
-  /** Forget a trusted destination by its key. */
-  onForget: (key: string) => void
+  /** Forget a trusted destination by its identifier. */
+  onForget: (id: string) => void
 }
 
 /**

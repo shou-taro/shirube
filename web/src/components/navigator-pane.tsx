@@ -27,10 +27,10 @@ interface NavigatorPaneProps {
   provider: AiProvider | null
   /** Whether the provider configuration is still loading (avoids flashing the prompt). */
   providerLoading: boolean
-  /** Destination keys the user has agreed to send the schema to. */
+  /** Destination identifiers the user has agreed to send the schema to. */
   trusted: string[]
-  /** Remember trust for a destination key (persisted by the owner). */
-  onTrust: (key: string) => void
+  /** Remember trust for a destination identifier (persisted by the owner). */
+  onTrust: (id: string) => void
   /** Open the settings dialog, so the user can configure a provider. */
   onOpenSettings: () => void
 }
@@ -164,7 +164,7 @@ export function NavigatorPane({
     if (destination === null || consenting === null) {
       return
     }
-    onTrust(destination.key)
+    onTrust(destination.id)
     const question = consenting
     setConsenting(null)
     setInput('')
