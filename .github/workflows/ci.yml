@@ -136,9 +136,12 @@ jobs:
         env:
           CI: "true"
           SHIRUBE_E2E_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      # Keep the failing run's traces (see the config's trace: on-first-retry), which
+      # `playwright show-trace` replays. There is no HTML report to collect — the reporter
+      # is `list`, which writes to the console only — so test-results/ is what exists.
       - uses: actions/upload-artifact@v7
         if: ${{ failure() }}
         with:
-          name: playwright-report
-          path: web/playwright-report/
+          name: playwright-traces
+          path: web/test-results/
           retention-days: 7
