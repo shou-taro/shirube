@@ -8,8 +8,13 @@ import {
   fetchAiProvider,
   fetchHealth,
   fetchRows,
+  fetchSchema,
+  listProfiles,
   saveAiProvider,
   streamChat,
+  testConnection,
+  testProfileConnection,
+  updateProfile,
 } from '@/lib/api'
 
 const originalFetch = globalThis.fetch
@@ -136,6 +141,67 @@ describe('request shape', () => {
     expect(url).toBe('/api/ai/provider')
     expect(init.method).toBe('DELETE')
   })
+
+  it('lists profiles', async () => {
+    const spy = mockFetch(new Response('[]', { status: 200 }))
+
+    await expect(listProfiles()).resolves.toEqual([])
+    expect((spy.mock.calls[0] as unknown as [string])[0]).toBe('/api/profiles')
+  })
+
+  it('PUTs a profile update', async () => {
+    const spy = mockFetch(new Response(JSON.stringify({ id: 'p1' }), { status: 200 }))
+
+    await updateProfile('p1', {
+      name: 'n',
+      host: 'h',
+      port: 5432,
+      database: 'd',
+      username: 'u',
+      sslmode: 'require',
+      schemas: [],
+    })
+
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/profiles/p1')
+    expect(init.method).toBe('PUT')
+  })
+
+  it('POSTs an ad-hoc connection test', async () => {
+    const spy = mockFetch(new Response(null, { status: 204 }))
+
+    await testConnection({
+      host: 'h',
+      port: 5432,
+      database: 'd',
+      username: 'u',
+      password: 'p',
+      sslmode: 'require',
+    })
+
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/connections/test')
+    expect(init.method).toBe('POST')
+  })
+
+  it("POSTs a saved profile's connection test", async () => {
+    const spy = mockFetch(new Response(null, { status: 204 }))
+
+    await testProfileConnection('p1')
+
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/profiles/p1/test')
+    expect(init.method).toBe('POST')
+  })
+
+  it('fetches a schema', async () => {
+    const spy = mockFetch(
+      new Response(JSON.stringify({ objects: [], relationships: [] }), { status: 200 }),
+    )
+
+    await expect(fetchSchema('p1')).resolves.toEqual({ objects: [], relationships: [] })
+    expect((spy.mock.calls[0] as unknown as [string])[0]).toBe('/api/profiles/p1/schema')
+  })
 })
 
 /** Build a streaming Response whose body emits each string as its own chunk. */
@@ -200,5 +266,54 @@ describe('streamChat', () => {
     await expect(collect(streamChat('p1', [{ role: 'user', content: 'hi' }]))).rejects.toThrow(
       'No AI provider is configured.',
     )
+  })
+
+  it('yields an error frame', async () => {
+    mockFetch(sseResponse(['event: error\ndata: {"message": "unreachable"}\n\n']))
+
+    const events = await collect(streamChat('p1', [{ role: 'user', content: 'hi' }]))
+
+    expect(events).toEqual([{ type: 'error', message: 'unreachable' }])
+  })
+
+  it('skips frames with an unknown event or no data', async () => {
+    mockFetch(
+      sseResponse([
+        'event: mystery\ndata: {}\n\n', // unknown event name → dropped
+        ': just a comment\n\n', // no event/data lines → dropped
+        'event: text\ndata: {"text": "kept"}\n\n',
+      ]),
+    )
+
+    const events = await collect(streamChat('p1', [{ role: 'user', content: 'hi' }]))
+
+    expect(events).toEqual([{ type: 'text', text: 'kept' }])
+  })
+
+  it('yields nothing when the response has no body', async () => {
+    mockFetch(new Response(null, { status: 200 }))
+
+    await expect(collect(streamChat('p1', [{ role: 'user', content: 'hi' }]))).resolves.toEqual([])
+  })
+
+  it('stops and releases the stream when the caller breaks early', async () => {
+    let cancelled = false
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('event: text\ndata: {"text": "one"}\n\n'))
+        // Left open, so only a cancel ends it.
+      },
+      cancel() {
+        cancelled = true
+      },
+    })
+    mockFetch(new Response(stream, { status: 200 }))
+
+    for await (const event of streamChat('p1', [{ role: 'user', content: 'hi' }])) {
+      expect(event).toEqual({ type: 'text', text: 'one' })
+      break // Exits the generator, running its finally.
+    }
+
+    expect(cancelled).toBe(true)
   })
 })
