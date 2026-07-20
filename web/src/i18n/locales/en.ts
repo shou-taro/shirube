@@ -97,6 +97,8 @@ const en = {
     toolObject: 'Read a table’s columns and relationships',
     toolPath: 'Traced how two tables connect',
     toolSchemas: 'Listed the schemas',
+    // Tooltip on a table or view the answer named; clicking recentres the map on it.
+    showOnMap: 'Show {{name}} on the map',
     retry: 'Try again',
     you: 'You',
     clear: 'Clear conversation',

@@ -1,6 +1,7 @@
 import { ArrowUp, Globe, HardDrive, Loader2, Settings2, Sparkles, Square } from 'lucide-react'
 import {
   type KeyboardEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -16,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { AI_PRESETS, presetForConfig } from '@/lib/ai-presets'
 import { type AiProvider, type ChatMessage, streamChat } from '@/lib/api'
 import { describeDestination, isDestinationApproved } from '@/lib/destinations'
+import type { ObjectResolver } from '@/lib/schema-refs'
 import { cn } from '@/lib/utils'
 
 /** One rendered turn of the conversation. Assistant turns grow as the answer streams in. */
@@ -46,6 +48,10 @@ interface NavigatorPaneProps {
   onOpenSettings: () => void
   /** The pane's width in pixels; it is resizable, so this is set rather than fixed. */
   width: number
+  /** Recognise a schema object the answer names, so it can be linked to the map. */
+  resolveRef: ObjectResolver
+  /** Recentre the ER map on an object the user clicked in an answer. */
+  onNavigate: (objectId: string) => void
 }
 
 function newId(): string {
@@ -61,6 +67,29 @@ const TOOL_LABEL_KEYS: Record<string, string> = {
   list_schemas: 'chat.toolSchemas',
 }
 
+/** A table or view the answer named, as a link that recentres the map on it. */
+function ObjectLink({
+  objectId,
+  label,
+  onNavigate,
+}: {
+  objectId: string
+  label: ReactNode
+  onNavigate: (objectId: string) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(objectId)}
+      title={t('chat.showOnMap', { name: objectId })}
+      className="rounded bg-brand/15 px-1 py-0.5 font-mono text-[0.85em] text-brand underline decoration-dotted underline-offset-2 hover:bg-brand/25 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand"
+    >
+      {label}
+    </button>
+  )
+}
+
 /**
  * Render an answer's Markdown.
  *
@@ -68,7 +97,31 @@ const TOOL_LABEL_KEYS: Record<string, string> = {
  * rather than shown raw. The pane is narrow, so every element is styled tight and a table
  * scrolls sideways inside its own box instead of stretching the conversation.
  */
-function Answer({ text }: { text: string }) {
+function Answer({
+  text,
+  resolveRef,
+  onNavigate,
+}: {
+  text: string
+  resolveRef: ObjectResolver
+  onNavigate: (objectId: string) => void
+}) {
+  /**
+   * Link the text to the map when it names a loaded object, else render it plainly.
+   *
+   * Applied to both the spans the navigator writes object names in — code and bold — since
+   * it uses either. Only an exact schema match becomes a link, so ordinary emphasis is
+   * untouched.
+   */
+  const renderMaybeRef = (children: ReactNode, plain: (content: ReactNode) => ReactNode) => {
+    const objectId = typeof children === 'string' ? resolveRef(children) : null
+    return objectId === null ? (
+      plain(children)
+    ) : (
+      <ObjectLink objectId={objectId} label={children} onNavigate={onNavigate} />
+    )
+  }
+
   return (
     <div className="text-sm leading-relaxed [&>*+*]:mt-2">
       <Markdown
@@ -81,14 +134,22 @@ function Answer({ text }: { text: string }) {
           ul: ({ children }) => <ul className="list-disc space-y-1 pl-4">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal space-y-1 pl-4">{children}</ol>,
           code: ({ children, className }) =>
-            // A fenced block carries a language class; an inline span does not.
+            // A fenced block carries a language class; an inline span does not. Only inline
+            // spans are matched against the schema — a fenced block holds SQL or output,
+            // not a bare object name.
             className === undefined ? (
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">
-                {children}
-              </code>
+              renderMaybeRef(children, (content) => (
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">
+                  {content}
+                </code>
+              ))
             ) : (
               <code className="font-mono text-xs">{children}</code>
             ),
+          strong: ({ children }) =>
+            renderMaybeRef(children, (content) => (
+              <strong className="font-semibold">{content}</strong>
+            )),
           pre: ({ children }) => (
             <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs">{children}</pre>
           ),
@@ -127,6 +188,8 @@ export function NavigatorPane({
   onApprove,
   onOpenSettings,
   width,
+  resolveRef,
+  onNavigate,
 }: NavigatorPaneProps) {
   const { t } = useTranslation()
   const [turns, setTurns] = useState<Turn[]>([])
@@ -360,7 +423,11 @@ export function NavigatorPane({
                 )}
                 {turn.content !== '' && (
                   <div className="break-words text-foreground">
-                    <Answer text={turn.content} />
+                    <Answer
+                      text={turn.content}
+                      resolveRef={resolveRef}
+                      onNavigate={onNavigate}
+                    />
                   </div>
                 )}
                 {turn.error !== null && (

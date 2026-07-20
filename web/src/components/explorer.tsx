@@ -25,6 +25,7 @@ import { ResizeHandle } from '@/components/ui/resize-handle'
 import { type AiProvider, fetchAiProvider, fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
 import { revokeDestination, loadApprovedDestinations, approveDestination } from '@/lib/destinations'
 import { DETAIL_PANE, NAVIGATOR_PANE } from '@/lib/panes'
+import { buildObjectResolver } from '@/lib/schema-refs'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
@@ -82,6 +83,11 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
     }
   }, [readyGraph, settings.showViewDependencies])
   const centreObject = displayGraph?.objects.find((object) => object.id === centreId) ?? null
+  // Lets the navigator recognise the objects it names in an answer and link them to the map.
+  const resolveRef = useMemo(
+    () => buildObjectResolver(displayGraph?.objects ?? []),
+    [displayGraph],
+  )
 
   const loadSchema = useCallback(() => {
     setSchema({ status: 'loading' })
@@ -350,6 +356,8 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             onApprove={approve}
             onOpenSettings={() => setSettingsOpen(true)}
             width={settings.navigatorWidth}
+            resolveRef={resolveRef}
+            onNavigate={setCentreOverride}
           />
         </div>
       </div>
