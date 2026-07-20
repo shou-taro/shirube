@@ -1,0 +1,3 @@
+# Normalise line endings to LF everywhere, so Windows checkouts do not trip
+# ruff format --check (and keep diffs clean across platforms).
+* text=auto eol=lf
