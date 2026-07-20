@@ -1,5 +1,13 @@
 import { ArrowUp, Globe, HardDrive, Loader2, Settings2, Sparkles, Square } from 'lucide-react'
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -125,6 +133,7 @@ export function NavigatorPane({
   const [consenting, setConsenting] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   const destination = provider === null ? null : describeDestination(provider)
   // Name the provider as the user chose it ("Ollama"), not by its adapter kind or host.
@@ -140,6 +149,18 @@ export function NavigatorPane({
 
   // Abort any in-flight stream on unmount (e.g. disconnecting).
   useEffect(() => () => abortRef.current?.abort(), [])
+
+  // Grow the composer with what has been typed, so a long question stays fully visible
+  // rather than scrolling inside a one-line box. Measuring needs the height released first;
+  // past the max height the class-level cap takes over and the box scrolls instead.
+  useLayoutEffect(() => {
+    const field = inputRef.current
+    if (field === null) {
+      return
+    }
+    field.style.height = 'auto'
+    field.style.height = `${field.scrollHeight}px`
+  }, [input])
 
   /** Patch the fields of one turn by id. */
   const patchTurn = useCallback((id: string, patch: Partial<Turn>): void => {
@@ -367,8 +388,9 @@ export function NavigatorPane({
         </div>
       ) : (
         <div className="p-2.5">
-          <div className="flex items-end gap-2 rounded-lg border bg-background px-2.5 py-1.5 focus-within:ring-1 focus-within:ring-brand">
+          <div className="flex items-end gap-2 rounded-lg border bg-background px-2.5 py-2 focus-within:ring-1 focus-within:ring-brand">
             <textarea
+              ref={inputRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={onInputKeyDown}
@@ -376,7 +398,10 @@ export function NavigatorPane({
               rows={1}
               placeholder={t('chat.inputPlaceholder')}
               aria-label={t('chat.inputPlaceholder')}
-              className="max-h-32 flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:opacity-60"
+              // Height is driven by the content (see the auto-grow effect); the padding is
+              // zeroed so a single line sits centred against the send button rather than
+              // riding on the textarea's default inset.
+              className="block max-h-32 min-h-7 flex-1 resize-none overflow-y-auto bg-transparent p-0 text-sm leading-7 outline-none placeholder:text-muted-foreground disabled:opacity-60"
             />
             {streaming ? (
               <Button
