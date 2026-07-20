@@ -375,6 +375,8 @@ type SettingsCategory = (typeof SETTINGS_CATEGORIES)[number]['id']
 interface SettingsDialogProps {
   open: boolean
   onClose: () => void
+  /** Which group to open on; defaults to the first. Lets a caller point at its own setting. */
+  initialCategory?: SettingsCategory
   /** Destinations the user has agreed the navigator may send the schema to. */
   approved: string[]
   /** Revoke an approved destination by its identifier. */
@@ -386,7 +388,13 @@ interface SettingsDialogProps {
  * approved destinations, and an About section. Opened from the top bar's gear. A light
  * overlay; Escape or a click outside closes it.
  */
-export function SettingsDialog({ open, onClose, approved, onRevoke }: SettingsDialogProps) {
+export function SettingsDialog({
+  open,
+  onClose,
+  approved,
+  onRevoke,
+  initialCategory,
+}: SettingsDialogProps) {
   const { t } = useTranslation()
   const { settings, update } = useSettings()
   const [version, setVersion] = useState<string | null>(null)
@@ -444,6 +452,14 @@ export function SettingsDialog({ open, onClose, approved, onRevoke }: SettingsDi
       previouslyFocused?.focus?.()
     }
   }, [open, onClose])
+
+  // Open on the group the caller asked for, so arriving from a setting's own control lands
+  // on it rather than making the user hunt for it.
+  useEffect(() => {
+    if (open) {
+      setCategory(initialCategory ?? 'appearance')
+    }
+  }, [open, initialCategory])
 
   // Read the running version when the dialog opens.
   useEffect(() => {

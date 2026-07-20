@@ -1,12 +1,12 @@
 import {
   ArrowUp,
-  Eraser,
   Globe,
   HardDrive,
   Loader2,
   Settings2,
   Sparkles,
   Square,
+  Trash2,
 } from 'lucide-react'
 import {
   type KeyboardEvent,
@@ -23,7 +23,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 import { Button } from '@/components/ui/button'
-import { AI_PRESETS, presetForConfig } from '@/lib/ai-presets'
+import { presetForConfig, statusLabelKey } from '@/lib/ai-presets'
 import {
   clearChatHistory,
   loadChatHistory,
@@ -225,7 +225,7 @@ export function NavigatorPane({
   const destination = provider === null ? null : describeDestination(provider)
   // Name the provider as the user chose it ("Ollama"), not by its adapter kind or host.
   const providerLabel = useMemo(
-    () => (provider === null ? '' : t(AI_PRESETS[presetForConfig(provider)].labelKey)),
+    () => (provider === null ? '' : t(statusLabelKey(presetForConfig(provider)))),
     [provider, t],
   )
 
@@ -541,13 +541,17 @@ export function NavigatorPane({
             ) : (
               // Named the way the user picked it, with the model. The endpoint host — what
               // actually matters for privacy — is the tooltip.
-              <span
-                className="flex min-w-0 items-center gap-1.5 text-muted-foreground"
+              // A button, not a label: this is the provider setting, and pressing it is how
+              // you change it — the same move as a model name in any chat UI.
+              <button
+                type="button"
+                onClick={onOpenSettings}
                 title={
                   destination.isLocal
                     ? t('chat.destinationLocal')
                     : t('chat.destinationRemote', { host: destination.host ?? destination.label })
                 }
+                className="flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-muted-foreground hover:bg-brand/15 hover:text-foreground"
               >
                 {destination.isLocal ? (
                   <HardDrive className="size-3 shrink-0 text-brand" />
@@ -558,7 +562,7 @@ export function NavigatorPane({
                 {provider !== null && provider.model !== '' && (
                   <span className="truncate">{provider.model}</span>
                 )}
-              </span>
+              </button>
             )}
 
             {turns.length > 0 && (
@@ -569,7 +573,7 @@ export function NavigatorPane({
                 title={t('chat.clear')}
                 className="ml-auto flex shrink-0 items-center rounded p-0.5 text-muted-foreground hover:bg-brand/15 hover:text-brand"
               >
-                <Eraser className="size-3" />
+                <Trash2 className="size-3" />
               </button>
             )}
           </div>

@@ -83,7 +83,7 @@ afterEach(() => {
 describe('NavigatorPane', () => {
   it('sends straight to a local provider without asking for consent', async () => {
     const { onApprove } = renderPane(LOCAL)
-    expect(screen.getByText('settings.aiPresetOllama')).toBeInTheDocument()
+    expect(screen.getByText('settings.aiPresetOllamaShort')).toBeInTheDocument()
     expect(screen.getByText('llama3.1')).toBeInTheDocument()
 
     ask('Where do stores live?')
@@ -250,6 +250,15 @@ describe('NavigatorPane', () => {
     renderPane(LOCAL)
     expect(screen.queryByText('Hello.')).not.toBeInTheDocument()
     expect(screen.getByText('panes.chatIntro')).toBeInTheDocument()
+  })
+
+  it('opens settings from the provider shown under the composer', () => {
+    const { onOpenSettings } = renderPane(LOCAL)
+
+    // The status line is the provider setting, so pressing it is how you change it.
+    fireEvent.click(screen.getByText('settings.aiPresetOllamaShort'))
+
+    expect(onOpenSettings).toHaveBeenCalled()
   })
 
   it('offers no clear action while the conversation is empty', () => {

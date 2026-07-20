@@ -89,9 +89,9 @@ const en = {
     stop: 'Stop',
     thinking: 'Thinking…',
     lookingUp: 'Looking things up…',
-    // What the navigator consulted, in the user's terms — never the internal tool names.
-    lookedUp_one: 'Checked the schema ({{count}} look-up)',
-    lookedUp_other: 'Checked the schema ({{count}} look-ups)',
+    // That the answer is grounded in the real schema — the point a reader cares about. How
+    // many times it looked is not, so the tooltip carries what was actually consulted.
+    lookedUp: 'Checked the schema',
     // Tooltip listing what it did, one phrase per look-up.
     toolSearch: 'Searched for tables and columns',
     toolObject: 'Read a table’s columns and relationships',
@@ -171,6 +171,9 @@ const en = {
     aiPresetClaude: 'Claude',
     aiPresetOpenai: 'OpenAI',
     aiPresetOllama: 'Ollama (local)',
+    // Names for the navigator's status line, where the preset's parenthetical would clash
+    // with the indicator saying whether the endpoint is actually on this machine.
+    aiPresetOllamaShort: 'Ollama',
     aiPresetCustom: 'OpenAI-compatible',
     aiModel: 'Model',
     aiBaseUrl: 'Base URL',

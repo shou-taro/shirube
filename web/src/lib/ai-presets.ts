@@ -26,6 +26,8 @@ export interface PresetSpec {
   /** The backend adapter kind this preset saves as. */
   kind: AiProviderKind
   labelKey: string
+  /** Name for the navigator's status line; falls back to `labelKey` when the same. */
+  shortLabelKey?: string
   /** Prefilled model, and the placeholder shown when it is blank. */
   modelDefault: string
   modelPlaceholder: string
@@ -62,6 +64,7 @@ export const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
   ollama: {
     kind: 'openai_compatible',
     labelKey: 'settings.aiPresetOllama',
+    shortLabelKey: 'settings.aiPresetOllamaShort',
     modelDefault: '',
     modelPlaceholder: 'llama3.1',
     baseUrlDefault: 'http://localhost:11434/v1',
@@ -124,4 +127,10 @@ export function presetForConfig(config: SavedProvider): ProviderPreset {
     return remembered
   }
   return inferPreset(config)
+}
+
+/** The i18n key naming a preset in the navigator's status line. */
+export function statusLabelKey(preset: ProviderPreset): string {
+  const spec = AI_PRESETS[preset]
+  return spec.shortLabelKey ?? spec.labelKey
 }
