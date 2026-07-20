@@ -41,20 +41,20 @@ function streamsBack(events: ChatStreamEvent[]): void {
   })
 }
 
-function renderPane(provider: AiProvider | null, trusted: string[] = []) {
-  const onTrust = vi.fn()
+function renderPane(provider: AiProvider | null, approved: string[] = []) {
+  const onApprove = vi.fn()
   const onOpenSettings = vi.fn()
   render(
     <NavigatorPane
       profileId="p1"
       provider={provider}
       providerLoading={false}
-      trusted={trusted}
-      onTrust={onTrust}
+      approved={approved}
+      onApprove={onApprove}
       onOpenSettings={onOpenSettings}
     />,
   )
-  return { onTrust, onOpenSettings }
+  return { onApprove, onOpenSettings }
 }
 
 function ask(question: string): void {
@@ -74,7 +74,7 @@ afterEach(() => {
 
 describe('NavigatorPane', () => {
   it('sends straight to a local provider without asking for consent', async () => {
-    const { onTrust } = renderPane(LOCAL)
+    const { onApprove } = renderPane(LOCAL)
     expect(screen.getByText('chat.destinationLocal')).toBeInTheDocument()
 
     ask('Where do stores live?')
@@ -85,11 +85,11 @@ describe('NavigatorPane', () => {
       [{ role: 'user', content: 'Where do stores live?' }],
       expect.any(AbortSignal),
     )
-    expect(onTrust).not.toHaveBeenCalled()
+    expect(onApprove).not.toHaveBeenCalled()
   })
 
   it('asks for consent before a first send to a remote provider, then sends on confirm', async () => {
-    const { onTrust } = renderPane(HOSTED)
+    const { onApprove } = renderPane(HOSTED)
     expect(screen.getByText('chat.destinationHosted')).toBeInTheDocument()
 
     ask('Hi')
@@ -100,12 +100,12 @@ describe('NavigatorPane', () => {
 
     fireEvent.click(screen.getByText('chat.consentConfirm'))
 
-    expect(onTrust).toHaveBeenCalledWith('anthropic')
+    expect(onApprove).toHaveBeenCalledWith('anthropic')
     expect(await screen.findByText('Hello.')).toBeInTheDocument()
     expect(mockStreamChat).toHaveBeenCalledTimes(1)
   })
 
-  it('does not ask again once the remote destination is trusted', async () => {
+  it('does not ask again once the remote destination is approved', async () => {
     renderPane(HOSTED, ['anthropic'])
 
     ask('Hi')

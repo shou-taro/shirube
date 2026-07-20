@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { AiProvider } from '@/lib/api'
 import {
   describeDestination,
-  forgetDestination,
-  isDestinationTrusted,
+  revokeDestination,
+  isDestinationApproved,
   labelForDestinationId,
-  loadTrustedDestinations,
-  trustDestination,
+  loadApprovedDestinations,
+  approveDestination,
 } from '@/lib/destinations'
 
 function provider(patch: Partial<AiProvider>): AiProvider {
@@ -46,37 +46,37 @@ describe('describeDestination', () => {
   })
 })
 
-describe('trust store', () => {
+describe('approval store', () => {
   it('remembers and forgets destinations, ignoring duplicates', () => {
-    expect(loadTrustedDestinations()).toEqual([])
-    const one = trustDestination([], 'anthropic')
+    expect(loadApprovedDestinations()).toEqual([])
+    const one = approveDestination([], 'anthropic')
     expect(one).toEqual(['anthropic'])
-    // A repeat trust does not duplicate the entry.
-    expect(trustDestination(one, 'anthropic')).toEqual(['anthropic'])
-    const two = trustDestination(one, 'openai:host')
+    // A repeat approval does not duplicate the entry.
+    expect(approveDestination(one, 'anthropic')).toEqual(['anthropic'])
+    const two = approveDestination(one, 'openai:host')
     expect(two).toEqual(['anthropic', 'openai:host'])
     // Each change is persisted, so a reload sees the same list.
-    expect(loadTrustedDestinations()).toEqual(['anthropic', 'openai:host'])
-    expect(forgetDestination(two, 'anthropic')).toEqual(['openai:host'])
-    expect(loadTrustedDestinations()).toEqual(['openai:host'])
+    expect(loadApprovedDestinations()).toEqual(['anthropic', 'openai:host'])
+    expect(revokeDestination(two, 'anthropic')).toEqual(['openai:host'])
+    expect(loadApprovedDestinations()).toEqual(['openai:host'])
   })
 
   it('tolerates a malformed stored value', () => {
-    localStorage.setItem('shirube.trustedDestinations', 'not json')
-    expect(loadTrustedDestinations()).toEqual([])
+    localStorage.setItem('shirube.approvedDestinations', 'not json')
+    expect(loadApprovedDestinations()).toEqual([])
   })
 })
 
-describe('isDestinationTrusted', () => {
-  it('trusts a local destination without any stored consent', () => {
+describe('isDestinationApproved', () => {
+  it('approves a local destination without any stored consent', () => {
     const local = describeDestination(provider({ base_url: 'http://127.0.0.1:11434/v1' }))
-    expect(isDestinationTrusted(local, [])).toBe(true)
+    expect(isDestinationApproved(local, [])).toBe(true)
   })
 
-  it('trusts a remote destination only once its identifier is stored', () => {
+  it('approves a remote destination only once its identifier is stored', () => {
     const remote = describeDestination(provider({ kind: 'anthropic', base_url: null }))
-    expect(isDestinationTrusted(remote, [])).toBe(false)
-    expect(isDestinationTrusted(remote, ['anthropic'])).toBe(true)
+    expect(isDestinationApproved(remote, [])).toBe(false)
+    expect(isDestinationApproved(remote, ['anthropic'])).toBe(true)
   })
 })
 

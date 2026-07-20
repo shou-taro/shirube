@@ -208,12 +208,12 @@ function presetForConfig(config: AiProvider): ProviderPreset {
  */
 function AiProviderSection({
   open,
-  trusted,
-  onForget,
+  approved,
+  onRevoke,
 }: {
   open: boolean
-  trusted: string[]
-  onForget: (id: string) => void
+  approved: string[]
+  onRevoke: (id: string) => void
 }) {
   const { t } = useTranslation()
   const [provider, setProvider] = useState<AiProvider | null | undefined>(undefined)
@@ -400,16 +400,16 @@ function AiProviderSection({
         ) : null}
       </div>
 
-      {/* Trusted destinations: the remote endpoints the user has agreed to send the schema
+      {/* Approved destinations: the remote endpoints the user has agreed to send the schema
           to, each revocable here — the configurable side of the navigator's one-time consent. */}
       <div className="mt-1 border-t border-border/60 pt-4">
-        <p className="text-sm">{t('settings.aiTrusted')}</p>
-        <p className="text-xs text-muted-foreground">{t('settings.aiTrustedHint')}</p>
-        {trusted.length === 0 ? (
-          <p className="mt-2 text-xs text-muted-foreground">{t('settings.aiTrustedEmpty')}</p>
+        <p className="text-sm">{t('settings.aiApproved')}</p>
+        <p className="text-xs text-muted-foreground">{t('settings.aiApprovedHint')}</p>
+        {approved.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">{t('settings.aiApprovedEmpty')}</p>
         ) : (
           <ul className="mt-2 flex flex-col gap-1.5">
-            {trusted.map((id) => (
+            {approved.map((id) => (
               <li
                 key={id}
                 className="flex items-center justify-between gap-2 rounded-md border bg-background px-2.5 py-1.5"
@@ -421,9 +421,9 @@ function AiProviderSection({
                   variant="ghost"
                   size="sm"
                   className="h-7 shrink-0 px-2 text-xs"
-                  onClick={() => onForget(id)}
+                  onClick={() => onRevoke(id)}
                 >
-                  {t('settings.aiForget')}
+                  {t('settings.aiRevoke')}
                 </Button>
               </li>
             ))}
@@ -449,17 +449,17 @@ interface SettingsDialogProps {
   open: boolean
   onClose: () => void
   /** Destinations the user has agreed the navigator may send the schema to. */
-  trusted: string[]
-  /** Forget a trusted destination by its identifier. */
-  onForget: (id: string) => void
+  approved: string[]
+  /** Revoke an approved destination by its identifier. */
+  onRevoke: (id: string) => void
 }
 
 /**
  * The settings modal: appearance (theme), ER map defaults, the AI navigator provider and
- * trusted destinations, and an About section. Opened from the top bar's gear. A light
+ * approved destinations, and an About section. Opened from the top bar's gear. A light
  * overlay; Escape or a click outside closes it.
  */
-export function SettingsDialog({ open, onClose, trusted, onForget }: SettingsDialogProps) {
+export function SettingsDialog({ open, onClose, approved, onRevoke }: SettingsDialogProps) {
   const { t } = useTranslation()
   const { settings, update } = useSettings()
   const [version, setVersion] = useState<string | null>(null)
@@ -627,7 +627,7 @@ export function SettingsDialog({ open, onClose, trusted, onForget }: SettingsDia
             ) : null}
 
             {category === 'ai' ? (
-              <AiProviderSection open={open} trusted={trusted} onForget={onForget} />
+              <AiProviderSection open={open} approved={approved} onRevoke={onRevoke} />
             ) : null}
 
             {category === 'about' ? (

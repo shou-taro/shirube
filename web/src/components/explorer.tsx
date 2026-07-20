@@ -22,7 +22,7 @@ import { SettingsDialog } from '@/components/settings-dialog'
 import { TableDetail } from '@/components/table-detail'
 import { Button } from '@/components/ui/button'
 import { type AiProvider, fetchAiProvider, fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
-import { forgetDestination, loadTrustedDestinations, trustDestination } from '@/lib/destinations'
+import { revokeDestination, loadApprovedDestinations, approveDestination } from '@/lib/destinations'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
@@ -54,7 +54,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   // a just-saved provider takes effect at once. `undefined` while first loading.
   const [provider, setProvider] = useState<AiProvider | null | undefined>(undefined)
   // Destinations the user has agreed the navigator may send the schema to (persisted).
-  const [trusted, setTrusted] = useState<string[]>(loadTrustedDestinations)
+  const [approved, setApproved] = useState<string[]>(loadApprovedDestinations)
   // Whether the bottom row-preview drawer is showing (for the current centre object).
   const [dataOpen, setDataOpen] = useState(false)
   // A table chosen via search to centre the ER map on; null lets the map pick the backbone.
@@ -106,20 +106,20 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
     loadProvider()
   }, [loadProvider])
 
-  // Reload the provider and trusted list when settings close, so any change made there —
-  // configuring a provider or forgetting a destination — shows in the navigator at once.
+  // Reload the provider and approved list when settings close, so any change made there —
+  // configuring a provider or revoking a destination — shows in the navigator at once.
   const closeSettings = useCallback(() => {
     setSettingsOpen(false)
     loadProvider()
-    setTrusted(loadTrustedDestinations())
+    setApproved(loadApprovedDestinations())
   }, [loadProvider])
 
-  const trust = useCallback(
-    (id: string) => setTrusted((current) => trustDestination(current, id)),
+  const approve = useCallback(
+    (id: string) => setApproved((current) => approveDestination(current, id)),
     [],
   )
-  const forget = useCallback(
-    (id: string) => setTrusted((current) => forgetDestination(current, id)),
+  const revoke = useCallback(
+    (id: string) => setApproved((current) => revokeDestination(current, id)),
     [],
   )
 
@@ -315,8 +315,8 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             profileId={profile.id}
             provider={provider ?? null}
             providerLoading={provider === undefined}
-            trusted={trusted}
-            onTrust={trust}
+            approved={approved}
+            onApprove={approve}
             onOpenSettings={() => setSettingsOpen(true)}
           />
         </div>
@@ -325,8 +325,8 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
       <SettingsDialog
         open={settingsOpen}
         onClose={closeSettings}
-        trusted={trusted}
-        onForget={forget}
+        approved={approved}
+        onRevoke={revoke}
       />
     </div>
   )

@@ -3,9 +3,9 @@
  *
  * The navigator talks straight from this machine to the configured provider, so before any
  * schema metadata leaves for a *remote* endpoint the user consents once. That consent is
- * remembered per destination — a trusted-destinations list the user can review and revoke in
+ * remembered per destination — an approved-destinations list the user can review and revoke in
  * Settings — so it never nags. A loopback endpoint (a local model) reaches nothing off the
- * machine and so is trusted implicitly, without ever asking.
+ * machine and so is approved implicitly, without ever asking.
  *
  * What is stored is only an identifier for a destination (`anthropic`, `openai:<host>`);
  * credentials never appear here — an API key lives in the OS keychain and is held by the
@@ -13,14 +13,14 @@
  */
 
 import type { AiProvider } from '@/lib/api'
-import { TRUSTED_DESTINATIONS_KEY } from '@/lib/storage'
+import { APPROVED_DESTINATIONS_KEY } from '@/lib/storage'
 
 /** Hostnames that mean "this machine"; these never need consent. */
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]'])
 
-/** Where a configured provider sends the schema, described for the UI and trust decisions. */
+/** Where a configured provider sends the schema, described for the UI and consent decisions. */
 export interface Destination {
-  /** Stable identifier used to remember trust — `anthropic`, or `openai:<host>` for a URL. */
+  /** Stable identifier used to remember approval — `anthropic`, or `openai:<host>` for a URL. */
   id: string
   /** Short label to show: a provider name or the endpoint's host. */
   label: string
@@ -65,12 +65,12 @@ export function labelForDestinationId(id: string): string {
 }
 
 /**
- * Read the trusted destination identifiers from storage, tolerating a missing or malformed
+ * Read the approved destination identifiers from storage, tolerating a missing or malformed
  * value. These are endpoint identifiers only — never credentials.
  */
-export function loadTrustedDestinations(): string[] {
+export function loadApprovedDestinations(): string[] {
   try {
-    const raw = localStorage.getItem(TRUSTED_DESTINATIONS_KEY)
+    const raw = localStorage.getItem(APPROVED_DESTINATIONS_KEY)
     if (raw === null) {
       return []
     }
@@ -81,8 +81,8 @@ export function loadTrustedDestinations(): string[] {
   }
 }
 
-function saveTrustedDestinations(destinations: string[]): void {
-  localStorage.setItem(TRUSTED_DESTINATIONS_KEY, JSON.stringify(destinations))
+function saveApprovedDestinations(destinations: string[]): void {
+  localStorage.setItem(APPROVED_DESTINATIONS_KEY, JSON.stringify(destinations))
 }
 
 /**
@@ -91,23 +91,23 @@ function saveTrustedDestinations(destinations: string[]): void {
  * Takes the current list rather than re-reading storage, so the caller's state stays the
  * single source of truth; the updated list is both persisted and returned.
  */
-export function trustDestination(current: string[], id: string): string[] {
+export function approveDestination(current: string[], id: string): string[] {
   if (current.includes(id)) {
     return current
   }
   const next = [...current, id]
-  saveTrustedDestinations(next)
+  saveApprovedDestinations(next)
   return next
 }
 
-/** Forget a previously trusted destination, so it will ask again next time. */
-export function forgetDestination(current: string[], id: string): string[] {
+/** Revoke a previously approved destination, so it will ask again next time. */
+export function revokeDestination(current: string[], id: string): string[] {
   const next = current.filter((existing) => existing !== id)
-  saveTrustedDestinations(next)
+  saveApprovedDestinations(next)
   return next
 }
 
-/** Whether the schema may be sent to this destination without asking — local, or trusted. */
-export function isDestinationTrusted(destination: Destination, trusted: string[]): boolean {
-  return destination.isLocal || trusted.includes(destination.id)
+/** Whether the schema may be sent to this destination without asking — local, or approved. */
+export function isDestinationApproved(destination: Destination, approved: string[]): boolean {
+  return destination.isLocal || approved.includes(destination.id)
 }

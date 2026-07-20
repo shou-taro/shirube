@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { type AiProvider, type ChatMessage, streamChat } from '@/lib/api'
-import { describeDestination, isDestinationTrusted } from '@/lib/destinations'
+import { describeDestination, isDestinationApproved } from '@/lib/destinations'
 import { cn } from '@/lib/utils'
 
 /** One rendered turn of the conversation. Assistant turns grow as the answer streams in. */
@@ -28,9 +28,9 @@ interface NavigatorPaneProps {
   /** Whether the provider configuration is still loading (avoids flashing the prompt). */
   providerLoading: boolean
   /** Destination identifiers the user has agreed to send the schema to. */
-  trusted: string[]
-  /** Remember trust for a destination identifier (persisted by the owner). */
-  onTrust: (id: string) => void
+  approved: string[]
+  /** Remember approval for a destination identifier (persisted by the owner). */
+  onApprove: (id: string) => void
   /** Open the settings dialog, so the user can configure a provider. */
   onOpenSettings: () => void
 }
@@ -52,8 +52,8 @@ export function NavigatorPane({
   profileId,
   provider,
   providerLoading,
-  trusted,
-  onTrust,
+  approved,
+  onApprove,
   onOpenSettings,
 }: NavigatorPaneProps) {
   const { t } = useTranslation()
@@ -151,25 +151,25 @@ export function NavigatorPane({
     if (question === '' || streaming || destination === null) {
       return
     }
-    // A remote, not-yet-trusted destination is confirmed once before anything is sent.
-    if (!isDestinationTrusted(destination, trusted)) {
+    // A remote, not-yet-approved destination is confirmed once before anything is sent.
+    if (!isDestinationApproved(destination, approved)) {
       setConsenting(question)
       return
     }
     setInput('')
     send(question)
-  }, [input, streaming, destination, trusted, send])
+  }, [input, streaming, destination, approved, send])
 
   const confirmConsent = useCallback((): void => {
     if (destination === null || consenting === null) {
       return
     }
-    onTrust(destination.id)
+    onApprove(destination.id)
     const question = consenting
     setConsenting(null)
     setInput('')
     send(question)
-  }, [destination, consenting, onTrust, send])
+  }, [destination, consenting, onApprove, send])
 
   const onInputKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>): void => {

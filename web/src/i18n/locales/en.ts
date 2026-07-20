@@ -169,11 +169,11 @@ const en = {
     aiSaving: 'Saving…',
     aiRemove: 'Remove',
     aiSaved: 'Saved',
-    aiTrusted: 'Trusted destinations',
-    aiTrustedHint: 'Endpoints you have agreed the navigator may send your schema to.',
-    aiTrustedEmpty:
+    aiApproved: 'Approved destinations',
+    aiApprovedHint: 'Endpoints you have agreed the navigator may send your schema to.',
+    aiApprovedEmpty:
       'None yet. You will be asked before the schema is first sent to a remote provider.',
-    aiForget: 'Forget',
+    aiRevoke: 'Revoke',
     about: 'About',
     version: 'Version',
   },
