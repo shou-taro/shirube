@@ -288,3 +288,23 @@ def test_list_style_results_are_metadata_only(tool: str) -> None:
 
     result = _tool_result(provider.requests[1], "t1")
     assert "row" not in json.dumps(result).lower().replace("row_estimate", "")
+
+
+# --- provider failure ----------------------------------------------------------------
+
+
+class RaisingProvider:
+    """Fails on the first turn — stands in for an unreachable or erroring provider."""
+
+    def stream_turn(self, request: TurnRequest) -> Iterator[ProviderEvent]:
+        raise RuntimeError("connection refused")
+        yield  # pragma: no cover  (makes this a generator function)
+
+
+def test_provider_failure_yields_a_navigator_error() -> None:
+    navigator = NavigatorService(FakeSchemaService(), RaisingProvider())  # type: ignore[arg-type]
+
+    events = list(navigator.ask("p1", [ChatMessage(ChatRole.USER, "hi")]))
+
+    assert len(events) == 1
+    assert isinstance(events[0], NavigatorError)
