@@ -103,7 +103,9 @@ const en = {
     you: 'You',
     clear: 'Clear conversation',
     // Tokens the provider reported for one answer — what a metered provider bills for.
-    usage: '{{input}} in · {{output}} out',
+    // The total leads; the split is the tooltip, since it is the rarer question.
+    usage: '{{total}} tokens',
+    usageDetail: '{{input}} sent · {{output}} received',
     // Destination indicator (always visible above the composer): which provider and model,
     // and whether the schema leaves this machine.
     destinationRemote: 'Sends your schema to {{host}}',

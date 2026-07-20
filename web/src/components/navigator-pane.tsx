@@ -386,62 +386,6 @@ export function NavigatorPane({
       style={{ width }}
       className="flex h-full shrink-0 flex-col border-l border-brand/20 bg-brand/10"
     >
-      {/* Destination indicator — always visible, so where the schema goes is never hidden. */}
-      <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 px-3 text-xs">
-        {providerLoading ? (
-          <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Loader2 className="size-3.5 animate-spin" />
-          </span>
-        ) : destination === null ? (
-          <>
-            <span className="truncate text-muted-foreground">{t('chat.noProvider')}</span>
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              className="ml-auto flex shrink-0 items-center gap-1 font-medium text-brand hover:underline"
-            >
-              <Settings2 className="size-3.5" />
-              {t('chat.configure')}
-            </button>
-          </>
-        ) : (
-          // Name the provider the way the user picked it, with the model — the endpoint host
-          // (what actually matters for privacy) sits in the tooltip.
-          <span
-            className="flex min-w-0 items-center gap-1.5"
-            title={
-              destination.isLocal
-                ? t('chat.destinationLocal')
-                : t('chat.destinationRemote', { host: destination.host ?? destination.label })
-            }
-          >
-            {destination.isLocal ? (
-              <HardDrive className="size-3.5 shrink-0 text-brand" />
-            ) : (
-              <Globe className="size-3.5 shrink-0 text-brand" />
-            )}
-            <span className="truncate font-medium">{providerLabel}</span>
-            {provider !== null && provider.model !== '' && (
-              <span className="truncate text-muted-foreground">{provider.model}</span>
-            )}
-          </span>
-        )}
-
-        {/* Clearing is what makes a kept conversation safe to keep — offered only when
-            there is one. */}
-        {turns.length > 0 && (
-          <button
-            type="button"
-            onClick={clearConversation}
-            aria-label={t('chat.clear')}
-            title={t('chat.clear')}
-            className="ml-auto flex shrink-0 items-center rounded p-1 text-muted-foreground hover:bg-brand/15 hover:text-brand"
-          >
-            <Eraser className="size-3.5" />
-          </button>
-        )}
-      </div>
-
       {/* Conversation, or the intro when empty. */}
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
         {turns.length === 0 ? (
@@ -494,12 +438,18 @@ export function NavigatorPane({
                   </div>
                 )}
                 {/* What the answer cost, when the provider says — it is what a metered
-                    provider bills for, so it is worth seeing per answer. */}
+                    provider bills for. One total reads at a glance; the split between what
+                    was sent and returned is the rarer question, so it waits in the tooltip. */}
                 {!turn.streaming && turn.usage !== null && turn.usage.input !== null && (
-                  <div className="text-[11px] text-muted-foreground">
-                    {t('chat.usage', {
+                  <div
+                    className="text-[11px] text-muted-foreground"
+                    title={t('chat.usageDetail', {
                       input: turn.usage.input.toLocaleString(),
                       output: (turn.usage.output ?? 0).toLocaleString(),
+                    })}
+                  >
+                    {t('chat.usage', {
+                      total: (turn.usage.input + (turn.usage.output ?? 0)).toLocaleString(),
                     })}
                   </div>
                 )}
@@ -567,6 +517,60 @@ export function NavigatorPane({
               >
                 <ArrowUp className={cn('size-4')} />
               </Button>
+            )}
+          </div>
+
+          {/* Where the schema goes, directly beneath Send — the moment it matters is the
+              moment of sending. Never hidden, whatever the conversation is doing. The
+              clear action shares the line, keeping the pane's meta to one row. */}
+          <div className="mt-1.5 flex h-5 items-center gap-1.5 px-0.5 text-[11px]">
+            {providerLoading ? (
+              <Loader2 className="size-3 animate-spin text-muted-foreground" />
+            ) : destination === null ? (
+              <>
+                <span className="truncate text-muted-foreground">{t('chat.noProvider')}</span>
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  className="flex shrink-0 items-center gap-1 font-medium text-brand hover:underline"
+                >
+                  <Settings2 className="size-3" />
+                  {t('chat.configure')}
+                </button>
+              </>
+            ) : (
+              // Named the way the user picked it, with the model. The endpoint host — what
+              // actually matters for privacy — is the tooltip.
+              <span
+                className="flex min-w-0 items-center gap-1.5 text-muted-foreground"
+                title={
+                  destination.isLocal
+                    ? t('chat.destinationLocal')
+                    : t('chat.destinationRemote', { host: destination.host ?? destination.label })
+                }
+              >
+                {destination.isLocal ? (
+                  <HardDrive className="size-3 shrink-0 text-brand" />
+                ) : (
+                  <Globe className="size-3 shrink-0 text-brand" />
+                )}
+                <span className="truncate font-medium text-foreground">{providerLabel}</span>
+                {provider !== null && provider.model !== '' && (
+                  <span className="truncate">{provider.model}</span>
+                )}
+              </span>
+            )}
+
+            {turns.length > 0 && (
+              <button
+                type="button"
+                onClick={clearConversation}
+                aria-label={t('chat.clear')}
+                title={t('chat.clear')}
+                className="ml-auto flex shrink-0 items-center rounded p-0.5 text-muted-foreground hover:bg-brand/15 hover:text-brand"
+              >
+                <Eraser className="size-3" />
+              </button>
             )}
           </div>
         </div>
