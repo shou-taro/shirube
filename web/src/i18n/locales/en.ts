@@ -86,14 +86,21 @@ const en = {
     stop: 'Stop',
     thinking: 'Thinking…',
     lookingUp: 'Looking things up…',
-    // {{tools}} is a comma-separated list of tool names, e.g. "search_objects, get_object".
-    lookedUp: 'Looked up {{tools}}',
+    // What the navigator consulted, in the user's terms — never the internal tool names.
+    lookedUp_one: 'Checked the schema ({{count}} look-up)',
+    lookedUp_other: 'Checked the schema ({{count}} look-ups)',
+    // Tooltip listing what it did, one phrase per look-up.
+    toolSearch: 'Searched for tables and columns',
+    toolObject: 'Read a table’s columns and relationships',
+    toolPath: 'Traced how two tables connect',
+    toolSchemas: 'Listed the schemas',
     retry: 'Try again',
     you: 'You',
     clear: 'Clear conversation',
-    // Destination indicator (always visible above the composer).
-    destinationHosted: 'Sends your schema to {{label}}',
-    destinationLocal: '{{label}} · local, nothing leaves this machine',
+    // Destination indicator (always visible above the composer): which provider and model,
+    // and whether the schema leaves this machine.
+    destinationRemote: 'Sends your schema to {{host}}',
+    destinationLocal: 'Runs on this machine — nothing is sent out',
     noProvider: 'No AI provider configured',
     configure: 'Configure',
     // One-time consent before the schema first reaches a remote provider.

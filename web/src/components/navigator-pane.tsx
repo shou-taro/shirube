@@ -1,8 +1,11 @@
 import { ArrowUp, Globe, HardDrive, Loader2, Settings2, Sparkles, Square } from 'lucide-react'
-import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 import { Button } from '@/components/ui/button'
+import { AI_PRESETS, presetForConfig } from '@/lib/ai-presets'
 import { type AiProvider, type ChatMessage, streamChat } from '@/lib/api'
 import { describeDestination, isDestinationApproved } from '@/lib/destinations'
 import { cn } from '@/lib/utils'
@@ -39,6 +42,64 @@ function newId(): string {
   return crypto.randomUUID()
 }
 
+// The look-up tools, said in the user's terms. The names the model calls are an internal
+// detail — the pane only ever reports what was consulted, in plain English.
+const TOOL_LABEL_KEYS: Record<string, string> = {
+  search_objects: 'chat.toolSearch',
+  get_object: 'chat.toolObject',
+  find_path: 'chat.toolPath',
+  list_schemas: 'chat.toolSchemas',
+}
+
+/**
+ * Render an answer's Markdown.
+ *
+ * The model replies in Markdown — headings, lists, tables and code — so it is rendered
+ * rather than shown raw. The pane is narrow, so every element is styled tight and a table
+ * scrolls sideways inside its own box instead of stretching the conversation.
+ */
+function Answer({ text }: { text: string }) {
+  return (
+    <div className="text-sm leading-relaxed [&>*+*]:mt-2">
+      <Markdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // Headings all render at one modest size — the pane is too narrow for a scale.
+          h1: ({ children }) => <p className="font-semibold">{children}</p>,
+          h2: ({ children }) => <p className="font-semibold">{children}</p>,
+          h3: ({ children }) => <p className="font-semibold">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc space-y-1 pl-4">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal space-y-1 pl-4">{children}</ol>,
+          code: ({ children, className }) =>
+            // A fenced block carries a language class; an inline span does not.
+            className === undefined ? (
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">
+                {children}
+              </code>
+            ) : (
+              <code className="font-mono text-xs">{children}</code>
+            ),
+          pre: ({ children }) => (
+            <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs">{children}</pre>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-xs">{children}</table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="border-b bg-muted/50 px-2 py-1 text-left font-medium">{children}</th>
+          ),
+          td: ({ children }) => <td className="border-b px-2 py-1 align-top">{children}</td>,
+          a: ({ children }) => <span>{children}</span>,
+        }}
+      >
+        {text}
+      </Markdown>
+    </div>
+  )
+}
+
 /**
  * The AI navigator pane: a conversation, a composer, an always-visible indicator of where
  * the schema is sent, and a one-time consent before it first reaches a remote provider.
@@ -66,6 +127,11 @@ export function NavigatorPane({
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
   const destination = provider === null ? null : describeDestination(provider)
+  // Name the provider as the user chose it ("Ollama"), not by its adapter kind or host.
+  const providerLabel = useMemo(
+    () => (provider === null ? '' : t(AI_PRESETS[presetForConfig(provider)].labelKey)),
+    [provider, t],
+  )
 
   // Keep the newest turn in view as the answer grows. (Guarded: jsdom has no scrollTo.)
   useEffect(() => {
@@ -204,19 +270,26 @@ export function NavigatorPane({
               {t('chat.configure')}
             </button>
           </>
-        ) : destination.isLocal ? (
-          <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-            <HardDrive className="size-3.5 shrink-0 text-brand" />
-            <span className="truncate" title={destination.label}>
-              {t('chat.destinationLocal', { label: destination.label })}
-            </span>
-          </span>
         ) : (
-          <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-            <Globe className="size-3.5 shrink-0 text-brand" />
-            <span className="truncate" title={destination.label}>
-              {t('chat.destinationHosted', { label: destination.label })}
-            </span>
+          // Name the provider the way the user picked it, with the model — the endpoint host
+          // (what actually matters for privacy) sits in the tooltip.
+          <span
+            className="flex min-w-0 items-center gap-1.5"
+            title={
+              destination.isLocal
+                ? t('chat.destinationLocal')
+                : t('chat.destinationRemote', { host: destination.host ?? destination.label })
+            }
+          >
+            {destination.isLocal ? (
+              <HardDrive className="size-3.5 shrink-0 text-brand" />
+            ) : (
+              <Globe className="size-3.5 shrink-0 text-brand" />
+            )}
+            <span className="truncate font-medium">{providerLabel}</span>
+            {provider !== null && provider.model !== '' && (
+              <span className="truncate text-muted-foreground">{provider.model}</span>
+            )}
           </span>
         )}
       </div>
@@ -239,11 +312,17 @@ export function NavigatorPane({
             ) : (
               <div key={turn.id} className="space-y-1.5 text-sm">
                 {turn.tools.length > 0 && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  // What it consulted, in the user's terms. The internal tool names mean
+                  // nothing to them, so only a count shows, with the plain-English list of
+                  // what was done in the tooltip.
+                  <div
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                    title={turn.tools.map((tool) => t(TOOL_LABEL_KEYS[tool] ?? '')).join('\n')}
+                  >
                     {turn.streaming && <Loader2 className="size-3 animate-spin" />}
                     {turn.streaming && turn.content === ''
                       ? t('chat.lookingUp')
-                      : t('chat.lookedUp', { tools: turn.tools.join(', ') })}
+                      : t('chat.lookedUp', { count: turn.tools.length })}
                   </div>
                 )}
                 {turn.streaming && turn.content === '' && turn.tools.length === 0 && (
@@ -253,8 +332,8 @@ export function NavigatorPane({
                   </div>
                 )}
                 {turn.content !== '' && (
-                  <div className="whitespace-pre-wrap break-words text-foreground">
-                    {turn.content}
+                  <div className="break-words text-foreground">
+                    <Answer text={turn.content} />
                   </div>
                 )}
                 {turn.error !== null && (

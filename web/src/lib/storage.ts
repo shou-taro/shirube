@@ -8,3 +8,6 @@ export const SETTINGS_KEY = 'shirube.settings'
 
 /** Destinations the user has agreed the navigator may send the schema to (see destinations). */
 export const APPROVED_DESTINATIONS_KEY = 'shirube.approvedDestinations'
+
+/** Which provider preset the user picked, so the UI names it the same way they chose it. */
+export const AI_PRESET_KEY = 'shirube.aiProviderPreset'

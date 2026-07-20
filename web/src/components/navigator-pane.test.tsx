@@ -75,7 +75,8 @@ afterEach(() => {
 describe('NavigatorPane', () => {
   it('sends straight to a local provider without asking for consent', async () => {
     const { onApprove } = renderPane(LOCAL)
-    expect(screen.getByText('chat.destinationLocal')).toBeInTheDocument()
+    expect(screen.getByText('settings.aiPresetOllama')).toBeInTheDocument()
+    expect(screen.getByText('llama3.1')).toBeInTheDocument()
 
     ask('Where do stores live?')
 
@@ -90,7 +91,8 @@ describe('NavigatorPane', () => {
 
   it('asks for consent before a first send to a remote provider, then sends on confirm', async () => {
     const { onApprove } = renderPane(HOSTED)
-    expect(screen.getByText('chat.destinationHosted')).toBeInTheDocument()
+    expect(screen.getByText('settings.aiPresetClaude')).toBeInTheDocument()
+    expect(screen.getByText('claude-opus-4-8')).toBeInTheDocument()
 
     ask('Hi')
 
@@ -112,6 +114,43 @@ describe('NavigatorPane', () => {
 
     expect(screen.queryByText('chat.consentTitle')).not.toBeInTheDocument()
     expect(await screen.findByText('Hello.')).toBeInTheDocument()
+  })
+
+  it('renders the answer as Markdown rather than raw text', async () => {
+    streamsBack([
+      {
+        type: 'text',
+        text: '**Columns**\n\n| Column | Type |\n| --- | --- |\n| `id` | integer |\n',
+      },
+      { type: 'done', usage: { input_tokens: 1, output_tokens: 1 } },
+    ])
+    renderPane(LOCAL)
+
+    ask('Hi')
+
+    // The emphasis and table became elements; no Markdown punctuation is left on screen.
+    expect(await screen.findByText('Columns')).toBeInTheDocument()
+    expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Column' })).toBeInTheDocument()
+    expect(screen.getByText('id')).toBeInTheDocument()
+    expect(screen.queryByText(/\*\*Columns\*\*/)).not.toBeInTheDocument()
+  })
+
+  it('reports look-ups by count, never by internal tool name', async () => {
+    streamsBack([
+      { type: 'tool_call', name: 'search_objects' },
+      { type: 'tool_call', name: 'get_object' },
+      { type: 'text', text: 'Done.' },
+      { type: 'done', usage: { input_tokens: 1, output_tokens: 1 } },
+    ])
+    renderPane(LOCAL)
+
+    ask('Hi')
+
+    await screen.findByText('Done.')
+    expect(screen.getByText('chat.lookedUp')).toBeInTheDocument()
+    expect(screen.queryByText(/search_objects/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/get_object/)).not.toBeInTheDocument()
   })
 
   it('surfaces a streamed error as an inline message', async () => {
