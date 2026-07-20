@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react'
 
+import { clampPaneWidth, DETAIL_PANE, NAVIGATOR_PANE } from '@/lib/panes'
 import { SETTINGS_KEY } from '@/lib/storage'
 
 /** How the app chooses light or dark: fixed, or following the operating system. */
@@ -14,12 +15,18 @@ export interface Settings {
   /** Draw the dashed view→table dependency edges (and count them in the panel). */
   showViewDependencies: boolean
   defaultView: DefaultView
+  /** Width of the floating table-detail card, in pixels (see panes). */
+  detailWidth: number
+  /** Width of the AI navigator pane, in pixels (see panes). */
+  navigatorWidth: number
 }
 
 const DEFAULTS: Settings = {
   theme: 'system',
   showViewDependencies: true,
   defaultView: 'neighbourhood',
+  detailWidth: DETAIL_PANE.default,
+  navigatorWidth: NAVIGATOR_PANE.default,
 }
 
 /** Read settings from storage, filling any missing keys with defaults. */
@@ -29,7 +36,14 @@ function loadSettings(): Settings {
     if (raw === null) {
       return DEFAULTS
     }
-    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Settings>) }
+    const stored = { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Settings>) }
+    // Pane widths come back as plain numbers, so hold them to their bounds — a stale or
+    // hand-edited value must not leave a pane unusably narrow or wide.
+    return {
+      ...stored,
+      detailWidth: clampPaneWidth(stored.detailWidth, DETAIL_PANE),
+      navigatorWidth: clampPaneWidth(stored.navigatorWidth, NAVIGATOR_PANE),
+    }
   } catch {
     return DEFAULTS
   }

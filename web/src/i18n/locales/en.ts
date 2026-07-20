@@ -79,6 +79,9 @@ const en = {
     chatIntro: 'Ask about your tables, columns and how they connect.',
     collapse: 'Collapse',
     expand: 'Expand',
+    // Drag handles on the side panes' inner edges (also arrow-key operable).
+    resizeDetail: 'Resize the table detail',
+    resizeNavigator: 'Resize the navigator',
   },
   chat: {
     inputPlaceholder: 'Ask the navigator…',
