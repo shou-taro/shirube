@@ -21,8 +21,10 @@ import { SchemaSearch } from '@/components/schema-search'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { TableDetail } from '@/components/table-detail'
 import { Button } from '@/components/ui/button'
+import { ResizeHandle } from '@/components/ui/resize-handle'
 import { type AiProvider, fetchAiProvider, fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
 import { revokeDestination, loadApprovedDestinations, approveDestination } from '@/lib/destinations'
+import { DETAIL_PANE, NAVIGATOR_PANE } from '@/lib/panes'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
@@ -46,10 +48,13 @@ interface ExplorerProps {
  */
 export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const { t } = useTranslation()
-  const { settings } = useSettings()
+  const { settings, update } = useSettings()
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
   const [navigatorOpen, setNavigatorOpen] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // True while a pane edge is being dragged, so its width follows the pointer without a
+  // transition smoothing it out.
+  const [resizing, setResizing] = useState(false)
   // The configured AI provider for the navigator pane; reloaded whenever settings close, so
   // a just-saved provider takes effect at once. `undefined` while first loading.
   const [provider, setProvider] = useState<AiProvider | null | undefined>(undefined)
@@ -236,7 +241,9 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               centreOverride={centreOverride}
               onCentreChange={setCentreId}
               defaultShowAll={settings.defaultView === 'all'}
-              resizeKey={`${navigatorOpen}:${dataOpen}`}
+              // Refit the map when the space it has changes — including after a pane drag
+              // ends, but not on every pixel of one.
+              resizeKey={`${navigatorOpen}:${dataOpen}:${resizing ? 'drag' : settings.navigatorWidth}`}
             />
           ) : null}
 
@@ -246,7 +253,18 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               empty schema, where a "select a table" prompt would contradict the centre's
               "no tables or views" message. */}
           {schema.status === 'ready' && schema.graph.objects.length > 0 && (
-          <div className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-64 flex-col overflow-hidden rounded-xl border border-brand/20 bg-card shadow-md">
+          <div
+            style={{ width: settings.detailWidth }}
+            className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-xl border border-brand/20 bg-card shadow-md"
+          >
+            {/* The card floats over the map, so its handle rides its right edge. */}
+            <ResizeHandle
+              edge="right"
+              width={settings.detailWidth}
+              size={DETAIL_PANE}
+              onResize={(detailWidth) => update({ detailWidth })}
+              label={t('panes.resizeDetail')}
+            />
             <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 bg-brand/15 px-3 text-xs font-medium text-foreground">
               {centreObject ? (
                 <>
@@ -306,11 +324,24 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
         {/* Right pane: the AI navigator (Milestone 2) — docked so chat gets the full
             height; it slides open and closed, toggled from the top bar. */}
         <div
+          style={{ width: navigatorOpen ? settings.navigatorWidth : 0 }}
           className={cn(
-            'shrink-0 overflow-hidden transition-[width] duration-200 ease-out',
-            navigatorOpen ? 'w-72' : 'w-0',
+            'relative shrink-0 overflow-hidden ease-out',
+            // The open/close slide is animated, but a drag must not lag behind the pointer.
+            resizing ? 'transition-none' : 'transition-[width] duration-200',
           )}
         >
+          {/* The pane is docked to the right, so it widens by dragging its left edge. */}
+          {navigatorOpen && (
+            <ResizeHandle
+              edge="left"
+              width={settings.navigatorWidth}
+              size={NAVIGATOR_PANE}
+              onResize={(navigatorWidth) => update({ navigatorWidth })}
+              onDragChange={setResizing}
+              label={t('panes.resizeNavigator')}
+            />
+          )}
           <NavigatorPane
             profileId={profile.id}
             provider={provider ?? null}
@@ -318,6 +349,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             approved={approved}
             onApprove={approve}
             onOpenSettings={() => setSettingsOpen(true)}
+            width={settings.navigatorWidth}
           />
         </div>
       </div>

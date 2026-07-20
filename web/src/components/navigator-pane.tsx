@@ -44,6 +44,8 @@ interface NavigatorPaneProps {
   onApprove: (id: string) => void
   /** Open the settings dialog, so the user can configure a provider. */
   onOpenSettings: () => void
+  /** The pane's width in pixels; it is resizable, so this is set rather than fixed. */
+  width: number
 }
 
 function newId(): string {
@@ -124,6 +126,7 @@ export function NavigatorPane({
   approved,
   onApprove,
   onOpenSettings,
+  width,
 }: NavigatorPaneProps) {
   const { t } = useTranslation()
   const [turns, setTurns] = useState<Turn[]>([])
@@ -272,7 +275,10 @@ export function NavigatorPane({
   const composerDisabled = provider === null
 
   return (
-    <aside className="flex h-full w-72 flex-col border-l border-brand/20 bg-brand/10">
+    <aside
+      style={{ width }}
+      className="flex h-full shrink-0 flex-col border-l border-brand/20 bg-brand/10"
+    >
       {/* Destination indicator — always visible, so where the schema goes is never hidden. */}
       <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 px-3 text-xs">
         {providerLoading ? (
