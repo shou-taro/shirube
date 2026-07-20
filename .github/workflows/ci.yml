@@ -139,6 +139,6 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: ${{ failure() }}
         with:
-          name: playwright-report
-          path: web/playwright-report/
+          name: playwright-traces
+          path: web/test-results/
           retention-days: 7
