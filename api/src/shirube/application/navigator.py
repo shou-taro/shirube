@@ -229,17 +229,27 @@ class NavigatorService:
         for _ in range(MAX_TURNS):
             text_parts: list[str] = []
             calls: list[ToolCall] = []
-            for event in self._provider.stream_turn(
-                TurnRequest(system=SYSTEM_PROMPT, messages=tuple(messages), tools=TOOL_DEFINITIONS)
-            ):
-                if isinstance(event, TextDelta):
-                    text_parts.append(event.text)
-                    yield NavigatorTextDelta(event.text)
-                elif isinstance(event, ToolUse):
-                    calls.append(ToolCall(id=event.id, name=event.name, arguments=event.arguments))
-                    yield NavigatorToolCall(event.name)
-                elif isinstance(event, TurnComplete):
-                    usage = _add_usage(usage, event.usage)
+            try:
+                for event in self._provider.stream_turn(
+                    TurnRequest(
+                        system=SYSTEM_PROMPT, messages=tuple(messages), tools=TOOL_DEFINITIONS
+                    )
+                ):
+                    if isinstance(event, TextDelta):
+                        text_parts.append(event.text)
+                        yield NavigatorTextDelta(event.text)
+                    elif isinstance(event, ToolUse):
+                        calls.append(
+                            ToolCall(id=event.id, name=event.name, arguments=event.arguments)
+                        )
+                        yield NavigatorToolCall(event.name)
+                    elif isinstance(event, TurnComplete):
+                        usage = _add_usage(usage, event.usage)
+            except Exception:
+                # A provider or network failure (unreachable endpoint, auth error, timeout)
+                # ends the turn cleanly rather than crashing the stream mid-answer.
+                yield NavigatorError("The AI provider could not be reached, or the request failed.")
+                return
 
             messages.append(
                 TurnMessage(
