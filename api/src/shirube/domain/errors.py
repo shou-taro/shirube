@@ -86,3 +86,15 @@ class InvalidProviderConfigError(ShirubeError):
 
     status_code = 400
     detail = "The AI provider configuration is incomplete"
+
+
+class ProviderNotConfiguredError(ShirubeError):
+    """Raised when the AI navigator is used before any provider has been configured.
+
+    The navigator has no default provider — the user chooses one deliberately — so a chat
+    request made before then is refused with a message pointing them at the settings, rather
+    than failing obscurely deeper in.
+    """
+
+    status_code = 400
+    detail = "No AI provider is configured. Choose one in Settings before using the navigator."
