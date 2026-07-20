@@ -18,7 +18,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from shirube import __version__
 from shirube.adapters.api.errors import register_exception_handlers
-from shirube.adapters.api.routes import ai, connections, data, health, profiles, schema
+from shirube.adapters.api.routes import ai, chat, connections, data, health, profiles, schema
 from shirube.adapters.persistence.bootstrap import bootstrap_database
 from shirube.config import get_settings
 from shirube.logging_config import get_logger
@@ -153,6 +153,7 @@ def create_app() -> FastAPI:
     app.include_router(schema.router, prefix="/api")
     app.include_router(data.router, prefix="/api")
     app.include_router(ai.router, prefix="/api")
+    app.include_router(chat.router, prefix="/api")
     if STATIC_DIR.is_dir():
         # Mounted after the API router so "/api/*" matches first; this then catches
         # every remaining path and serves index.html for "/".
