@@ -49,12 +49,16 @@ describe('describeDestination', () => {
 describe('trust store', () => {
   it('remembers and forgets destinations, ignoring duplicates', () => {
     expect(loadTrustedDestinations()).toEqual([])
-    expect(trustDestination('anthropic')).toEqual(['anthropic'])
+    const one = trustDestination([], 'anthropic')
+    expect(one).toEqual(['anthropic'])
     // A repeat trust does not duplicate the entry.
-    expect(trustDestination('anthropic')).toEqual(['anthropic'])
-    expect(trustDestination('openai:host')).toEqual(['anthropic', 'openai:host'])
+    expect(trustDestination(one, 'anthropic')).toEqual(['anthropic'])
+    const two = trustDestination(one, 'openai:host')
+    expect(two).toEqual(['anthropic', 'openai:host'])
+    // Each change is persisted, so a reload sees the same list.
     expect(loadTrustedDestinations()).toEqual(['anthropic', 'openai:host'])
-    expect(forgetDestination('anthropic')).toEqual(['openai:host'])
+    expect(forgetDestination(two, 'anthropic')).toEqual(['openai:host'])
+    expect(loadTrustedDestinations()).toEqual(['openai:host'])
   })
 
   it('tolerates a malformed stored value', () => {

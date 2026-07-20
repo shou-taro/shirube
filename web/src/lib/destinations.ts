@@ -81,24 +81,28 @@ export function loadTrustedDestinations(): string[] {
   }
 }
 
-function saveTrustedDestinations(ids: string[]): void {
-  localStorage.setItem(TRUSTED_DESTINATIONS_KEY, JSON.stringify(ids))
+function saveTrustedDestinations(destinations: string[]): void {
+  localStorage.setItem(TRUSTED_DESTINATIONS_KEY, JSON.stringify(destinations))
 }
 
-/** Remember that the user agreed the navigator may send the schema to this destination. */
-export function trustDestination(id: string): string[] {
-  const ids = loadTrustedDestinations()
-  if (ids.includes(id)) {
-    return ids
+/**
+ * Remember that the user agreed the navigator may send the schema to this destination.
+ *
+ * Takes the current list rather than re-reading storage, so the caller's state stays the
+ * single source of truth; the updated list is both persisted and returned.
+ */
+export function trustDestination(current: string[], id: string): string[] {
+  if (current.includes(id)) {
+    return current
   }
-  const next = [...ids, id]
+  const next = [...current, id]
   saveTrustedDestinations(next)
   return next
 }
 
 /** Forget a previously trusted destination, so it will ask again next time. */
-export function forgetDestination(id: string): string[] {
-  const next = loadTrustedDestinations().filter((existing) => existing !== id)
+export function forgetDestination(current: string[], id: string): string[] {
+  const next = current.filter((existing) => existing !== id)
   saveTrustedDestinations(next)
   return next
 }
