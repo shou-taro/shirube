@@ -559,9 +559,14 @@ export function NavigatorPane({
                 ) : (
                   <Globe className="size-3 shrink-0 text-brand" />
                 )}
-                <span className="truncate font-medium text-foreground">{providerLabel}</span>
+                {/* The provider name is short and identifies the line, so it keeps its
+                    width; the model — the part that runs long, as Ollama tags do — is what
+                    gives way. The cap stops a wordy preset name crowding it out entirely. */}
+                <span className="max-w-28 shrink-0 truncate font-medium text-foreground">
+                  {providerLabel}
+                </span>
                 {provider !== null && provider.model !== '' && (
-                  <span className="truncate">{provider.model}</span>
+                  <span className="min-w-0 truncate">{provider.model}</span>
                 )}
                 {/* Marks the line as a control rather than a caption — behind it is the
                     provider list, reached through the settings dialog. */}
