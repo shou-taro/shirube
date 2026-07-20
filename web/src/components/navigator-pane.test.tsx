@@ -72,6 +72,9 @@ function ask(question: string): void {
 }
 
 beforeEach(() => {
+  // The pane persists each conversation to localStorage and restores it on mount, so a
+  // test must start from a clean store or it inherits the previous one's thread.
+  localStorage.clear()
   mockStreamChat.mockReset()
   streamsBack([{ type: 'text', text: 'Hello.' }, { type: 'done', usage: { input_tokens: 1, output_tokens: 1 } }])
 })
