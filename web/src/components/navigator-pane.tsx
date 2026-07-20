@@ -1,5 +1,6 @@
 import {
   ArrowUp,
+  ChevronDown,
   Globe,
   HardDrive,
   Loader2,
@@ -562,6 +563,9 @@ export function NavigatorPane({
                 {provider !== null && provider.model !== '' && (
                   <span className="truncate">{provider.model}</span>
                 )}
+                {/* Marks the line as a control rather than a caption — behind it is the
+                    provider list, reached through the settings dialog. */}
+                <ChevronDown className="size-3 shrink-0 opacity-60" />
               </button>
             )}
 
@@ -571,9 +575,10 @@ export function NavigatorPane({
                 onClick={clearConversation}
                 aria-label={t('chat.clear')}
                 title={t('chat.clear')}
-                className="ml-auto flex shrink-0 items-center rounded p-0.5 text-muted-foreground hover:bg-brand/15 hover:text-brand"
+                className="ml-auto flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-muted-foreground hover:bg-brand/15 hover:text-brand"
               >
                 <Trash2 className="size-3" />
+                {t('chat.clearShort')}
               </button>
             )}
           </div>

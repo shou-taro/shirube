@@ -102,6 +102,8 @@ const en = {
     retry: 'Try again',
     you: 'You',
     clear: 'Clear conversation',
+    // Short form for the status line, where the full phrase would crowd the provider out.
+    clearShort: 'Clear',
     // Tokens the provider reported for one answer — what a metered provider bills for.
     // The total leads; the split is the tooltip, since it is the rarer question.
     usage: '{{total}} tokens',
