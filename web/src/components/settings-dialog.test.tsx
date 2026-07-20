@@ -44,12 +44,15 @@ afterEach(() => {
   mockClearProvider.mockReset()
 })
 
-function renderDialog(open = true, provider: AiProvider | null = null) {
+function renderDialog(open = true, provider: AiProvider | null = null, trusted: string[] = []) {
   mockHealth.mockResolvedValue({ status: 'ok', version: '9.9.9' })
   mockFetchProvider.mockResolvedValue(provider)
   const onClose = vi.fn()
-  render(<SettingsDialog open={open} onClose={onClose} />)
-  return { onClose }
+  const onForget = vi.fn()
+  render(
+    <SettingsDialog open={open} onClose={onClose} trusted={trusted} onForget={onForget} />,
+  )
+  return { onClose, onForget }
 }
 
 describe('SettingsDialog', () => {

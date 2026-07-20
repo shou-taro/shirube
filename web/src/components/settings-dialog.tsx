@@ -13,6 +13,7 @@ import {
   fetchHealth,
   saveAiProvider,
 } from '@/lib/api'
+import { labelForTrustKey } from '@/lib/destinations'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
@@ -205,7 +206,15 @@ function presetForConfig(config: AiProvider): ProviderPreset {
  * on demand. The API key is write-only — stored in the OS keychain, never read back — so a
  * saved key shows as a note and a blank field keeps it.
  */
-function AiProviderSection({ open }: { open: boolean }) {
+function AiProviderSection({
+  open,
+  trusted,
+  onForget,
+}: {
+  open: boolean
+  trusted: string[]
+  onForget: (key: string) => void
+}) {
   const { t } = useTranslation()
   const [provider, setProvider] = useState<AiProvider | null | undefined>(undefined)
   const [preset, setPreset] = useState<ProviderPreset>('claude')
@@ -390,6 +399,37 @@ function AiProviderSection({ open }: { open: boolean }) {
           </span>
         ) : null}
       </div>
+
+      {/* Trusted destinations: the remote endpoints the user has agreed to send the schema
+          to, each revocable here — the configurable side of the navigator's one-time consent. */}
+      <div className="mt-1 border-t border-border/60 pt-4">
+        <p className="text-sm">{t('settings.aiTrusted')}</p>
+        <p className="text-xs text-muted-foreground">{t('settings.aiTrustedHint')}</p>
+        {trusted.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">{t('settings.aiTrustedEmpty')}</p>
+        ) : (
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {trusted.map((key) => (
+              <li
+                key={key}
+                className="flex items-center justify-between gap-2 rounded-md border bg-background px-2.5 py-1.5"
+              >
+                <span className="min-w-0 truncate text-sm" title={labelForTrustKey(key)}>
+                  {labelForTrustKey(key)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 shrink-0 px-2 text-xs"
+                  onClick={() => onForget(key)}
+                >
+                  {t('settings.aiForget')}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </Section>
   )
 }
@@ -408,13 +448,18 @@ type SettingsCategory = (typeof SETTINGS_CATEGORIES)[number]['id']
 interface SettingsDialogProps {
   open: boolean
   onClose: () => void
+  /** Destinations the user has agreed the navigator may send the schema to. */
+  trusted: string[]
+  /** Forget a trusted destination by its key. */
+  onForget: (key: string) => void
 }
 
 /**
- * The settings modal: appearance (theme), ER map defaults and an About section. Opened
- * from the top bar's gear. A light overlay; Escape or a click outside closes it.
+ * The settings modal: appearance (theme), ER map defaults, the AI navigator provider and
+ * trusted destinations, and an About section. Opened from the top bar's gear. A light
+ * overlay; Escape or a click outside closes it.
  */
-export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ open, onClose, trusted, onForget }: SettingsDialogProps) {
   const { t } = useTranslation()
   const { settings, update } = useSettings()
   const [version, setVersion] = useState<string | null>(null)
@@ -581,7 +626,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               </Section>
             ) : null}
 
-            {category === 'ai' ? <AiProviderSection open={open} /> : null}
+            {category === 'ai' ? (
+              <AiProviderSection open={open} trusted={trusted} onForget={onForget} />
+            ) : null}
 
             {category === 'about' ? (
               <Section title={t('settings.about')}>

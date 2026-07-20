@@ -5,3 +5,6 @@ export const ACTIVE_PROFILE_KEY = 'shirube.activeProfileId'
 
 /** The user's saved settings (see settings). */
 export const SETTINGS_KEY = 'shirube.settings'
+
+/** Destinations the user has agreed the navigator may send the schema to (see destinations). */
+export const TRUSTED_DESTINATIONS_KEY = 'shirube.trustedDestinations'

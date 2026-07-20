@@ -250,3 +250,116 @@ export function fetchRows(
     body: JSON.stringify(query),
   })
 }
+
+/** One user-facing message of the navigator conversation. */
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+/** Token counts the provider reported for a turn, when available. */
+export interface TokenUsage {
+  input_tokens: number | null
+  output_tokens: number | null
+}
+
+/**
+ * One event streamed back from the navigator: a chunk of answer text, a marker that it
+ * looked something up, the final done (with token usage), or an error message. Mirrors the
+ * Server-Sent Events frames the chat endpoint emits.
+ */
+export type ChatStreamEvent =
+  | { type: 'text'; text: string }
+  | { type: 'tool_call'; name: string }
+  | { type: 'done'; usage: TokenUsage }
+  | { type: 'error'; message: string }
+
+/** Parse one SSE frame (its `event:` and `data:` lines) into a typed event, or null. */
+function parseChatFrame(frame: string): ChatStreamEvent | null {
+  let name = ''
+  let data = ''
+  for (const line of frame.split('\n')) {
+    if (line.startsWith('event:')) {
+      name = line.slice('event:'.length).trim()
+    } else if (line.startsWith('data:')) {
+      data = line.slice('data:'.length).trim()
+    }
+  }
+  if (name === '' || data === '') {
+    return null
+  }
+  const payload = JSON.parse(data) as Record<string, unknown>
+  switch (name) {
+    case 'text':
+      return { type: 'text', text: String(payload.text ?? '') }
+    case 'tool_call':
+      return { type: 'tool_call', name: String(payload.name ?? '') }
+    case 'done':
+      return {
+        type: 'done',
+        usage: (payload.usage as TokenUsage | undefined) ?? {
+          input_tokens: null,
+          output_tokens: null,
+        },
+      }
+    case 'error':
+      return { type: 'error', message: String(payload.message ?? '') }
+    default:
+      return null
+  }
+}
+
+/**
+ * Ask the navigator a question and stream its reply.
+ *
+ * Yields each Server-Sent Event as it arrives (see {@link ChatStreamEvent}). A request made
+ * before a provider is configured — or any other pre-stream failure — rejects with the
+ * backend's translated `detail`, exactly as {@link apiFetch} does; failures *during* the
+ * answer arrive as a final `error` event instead. Pass an `AbortSignal` to stop mid-stream;
+ * aborting rejects the iteration with an `AbortError`, which the caller can treat as a
+ * deliberate stop rather than a failure.
+ */
+export async function* streamChat(
+  profileId: string,
+  messages: ChatMessage[],
+  signal?: AbortSignal,
+): AsyncGenerator<ChatStreamEvent> {
+  const response = await fetch(`/api/profiles/${profileId}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
+    signal,
+  })
+  if (!response.ok) {
+    throw new Error(await errorDetail(response))
+  }
+  if (response.body === null) {
+    return
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) {
+        break
+      }
+      buffer += decoder.decode(value, { stream: true })
+      // SSE frames are terminated by a blank line; process each complete one.
+      let separator = buffer.indexOf('\n\n')
+      while (separator !== -1) {
+        const event = parseChatFrame(buffer.slice(0, separator))
+        buffer = buffer.slice(separator + 2)
+        if (event !== null) {
+          yield event
+        }
+        separator = buffer.indexOf('\n\n')
+      }
+    }
+  } finally {
+    // Release the stream on early exit (an abort, or the caller breaking the loop).
+    await reader.cancel().catch(() => undefined)
+  }
+}
