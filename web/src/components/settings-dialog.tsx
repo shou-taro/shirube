@@ -5,14 +5,21 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
+  AI_PRESET_ORDER,
+  AI_PRESETS,
+  presetForConfig,
+  type ProviderPreset,
+  saveProviderPreset,
+} from '@/lib/ai-presets'
+import {
   type AiProvider,
   type AiProviderInput,
-  type AiProviderKind,
   clearAiProvider,
   fetchAiProvider,
   fetchHealth,
   saveAiProvider,
 } from '@/lib/api'
+import { labelForDestinationId } from '@/lib/destinations'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
@@ -115,88 +122,6 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-/** A provider the user can pick from the list. Several map to the same backend adapter
- *  (`openai_compatible`) but differ in their defaults and which fields they need. */
-type ProviderPreset = 'claude' | 'openai' | 'ollama' | 'custom'
-
-interface PresetSpec {
-  /** The backend adapter kind this preset saves as. */
-  kind: AiProviderKind
-  labelKey: string
-  /** Prefilled model, and the placeholder shown when it is blank. */
-  modelDefault: string
-  modelPlaceholder: string
-  /** Endpoint used when the base-URL field is hidden, and the value seeded when shown. */
-  baseUrlDefault: string
-  /** Whether the base-URL field is shown (hidden ones use ``baseUrlDefault`` silently). */
-  showBaseUrl: boolean
-  /** How the API key is treated: hosted providers require one, a local runner needs none. */
-  key: 'required' | 'optional' | 'none'
-}
-
-// The provider presets, in the order shown in the list. Claude is the Anthropic-native
-// adapter; the rest all speak the OpenAI-compatible shape but differ in defaults and needs —
-// OpenAI is hosted (fixed endpoint, key required), Ollama is local (no key), and a custom
-// endpoint asks for its own URL.
-const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
-  claude: {
-    kind: 'anthropic',
-    labelKey: 'settings.aiPresetClaude',
-    modelDefault: 'claude-opus-4-8',
-    modelPlaceholder: 'claude-opus-4-8',
-    baseUrlDefault: '',
-    showBaseUrl: false,
-    key: 'required',
-  },
-  openai: {
-    kind: 'openai_compatible',
-    labelKey: 'settings.aiPresetOpenai',
-    modelDefault: '',
-    modelPlaceholder: 'gpt-4o',
-    baseUrlDefault: 'https://api.openai.com/v1',
-    showBaseUrl: false,
-    key: 'required',
-  },
-  ollama: {
-    kind: 'openai_compatible',
-    labelKey: 'settings.aiPresetOllama',
-    modelDefault: '',
-    modelPlaceholder: 'llama3.1',
-    baseUrlDefault: 'http://localhost:11434/v1',
-    showBaseUrl: true,
-    key: 'none',
-  },
-  custom: {
-    kind: 'openai_compatible',
-    labelKey: 'settings.aiPresetCustom',
-    modelDefault: '',
-    modelPlaceholder: '',
-    baseUrlDefault: '',
-    showBaseUrl: true,
-    key: 'optional',
-  },
-}
-
-const AI_PRESET_ORDER: ProviderPreset[] = ['claude', 'openai', 'ollama', 'custom']
-
-/**
- * Map a saved config back to the preset that produced it, so the form reopens on the right
- * one. OpenAI and Ollama are told apart by their default endpoints; any other
- * OpenAI-compatible URL is treated as a custom endpoint.
- */
-function presetForConfig(config: AiProvider): ProviderPreset {
-  if (config.kind === 'anthropic') {
-    return 'claude'
-  }
-  if (config.base_url === AI_PRESETS.openai.baseUrlDefault) {
-    return 'openai'
-  }
-  if (config.base_url === AI_PRESETS.ollama.baseUrlDefault) {
-    return 'ollama'
-  }
-  return 'custom'
-}
-
 /**
  * The AI-navigator provider settings: pick a provider from the list, then fill only the
  * fields that provider needs — a hosted one asks for an API key, a local one does not, and a
@@ -205,7 +130,15 @@ function presetForConfig(config: AiProvider): ProviderPreset {
  * on demand. The API key is write-only — stored in the OS keychain, never read back — so a
  * saved key shows as a note and a blank field keeps it.
  */
-function AiProviderSection({ open }: { open: boolean }) {
+function AiProviderSection({
+  open,
+  approved,
+  onRevoke,
+}: {
+  open: boolean
+  approved: string[]
+  onRevoke: (id: string) => void
+}) {
   const { t } = useTranslation()
   const [provider, setProvider] = useState<AiProvider | null | undefined>(undefined)
   const [preset, setPreset] = useState<ProviderPreset>('claude')
@@ -294,6 +227,9 @@ function AiProviderSection({ open }: { open: boolean }) {
         input.api_key = apiKey
       }
       const result = await saveAiProvider(input)
+      // Remember the choice, so the form and the navigator both name the provider the way
+      // the user picked it — a saved config alone cannot always tell the presets apart.
+      saveProviderPreset(preset)
       setProvider(result)
       setApiKey('')
       setSaved(true)
@@ -390,6 +326,37 @@ function AiProviderSection({ open }: { open: boolean }) {
           </span>
         ) : null}
       </div>
+
+      {/* Approved destinations: the remote endpoints the user has agreed to send the schema
+          to, each revocable here — the configurable side of the navigator's one-time consent. */}
+      <div className="mt-1 border-t border-border/60 pt-4">
+        <p className="text-sm">{t('settings.aiApproved')}</p>
+        <p className="text-xs text-muted-foreground">{t('settings.aiApprovedHint')}</p>
+        {approved.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">{t('settings.aiApprovedEmpty')}</p>
+        ) : (
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {approved.map((id) => (
+              <li
+                key={id}
+                className="flex items-center justify-between gap-2 rounded-md border bg-background px-2.5 py-1.5"
+              >
+                <span className="min-w-0 truncate text-sm" title={labelForDestinationId(id)}>
+                  {labelForDestinationId(id)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 shrink-0 px-2 text-xs"
+                  onClick={() => onRevoke(id)}
+                >
+                  {t('settings.aiRevoke')}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </Section>
   )
 }
@@ -408,13 +375,18 @@ type SettingsCategory = (typeof SETTINGS_CATEGORIES)[number]['id']
 interface SettingsDialogProps {
   open: boolean
   onClose: () => void
+  /** Destinations the user has agreed the navigator may send the schema to. */
+  approved: string[]
+  /** Revoke an approved destination by its identifier. */
+  onRevoke: (id: string) => void
 }
 
 /**
- * The settings modal: appearance (theme), ER map defaults and an About section. Opened
- * from the top bar's gear. A light overlay; Escape or a click outside closes it.
+ * The settings modal: appearance (theme), ER map defaults, the AI navigator provider and
+ * approved destinations, and an About section. Opened from the top bar's gear. A light
+ * overlay; Escape or a click outside closes it.
  */
-export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ open, onClose, approved, onRevoke }: SettingsDialogProps) {
   const { t } = useTranslation()
   const { settings, update } = useSettings()
   const [version, setVersion] = useState<string | null>(null)
@@ -581,7 +553,9 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               </Section>
             ) : null}
 
-            {category === 'ai' ? <AiProviderSection open={open} /> : null}
+            {category === 'ai' ? (
+              <AiProviderSection open={open} approved={approved} onRevoke={onRevoke} />
+            ) : null}
 
             {category === 'about' ? (
               <Section title={t('settings.about')}>

@@ -83,6 +83,34 @@ const en = {
   chat: {
     inputPlaceholder: 'Ask the navigator…',
     send: 'Send',
+    stop: 'Stop',
+    thinking: 'Thinking…',
+    lookingUp: 'Looking things up…',
+    // What the navigator consulted, in the user's terms — never the internal tool names.
+    lookedUp_one: 'Checked the schema ({{count}} look-up)',
+    lookedUp_other: 'Checked the schema ({{count}} look-ups)',
+    // Tooltip listing what it did, one phrase per look-up.
+    toolSearch: 'Searched for tables and columns',
+    toolObject: 'Read a table’s columns and relationships',
+    toolPath: 'Traced how two tables connect',
+    toolSchemas: 'Listed the schemas',
+    retry: 'Try again',
+    you: 'You',
+    clear: 'Clear conversation',
+    // Destination indicator (always visible above the composer): which provider and model,
+    // and whether the schema leaves this machine.
+    destinationRemote: 'Sends your schema to {{host}}',
+    destinationLocal: 'Runs on this machine — nothing is sent out',
+    noProvider: 'No AI provider configured',
+    configure: 'Configure',
+    // One-time consent before the schema first reaches a remote provider.
+    consentTitle: 'Send your schema to {{label}}?',
+    consentBody:
+      'The navigator will send question-relevant schema metadata — table, view and column ' +
+      'names, types and relationships — to {{label}}. It never sends row data or values. ' +
+      'This is remembered; you can revoke it in Settings.',
+    consentConfirm: 'Send and remember',
+    consentCancel: 'Cancel',
   },
   data: {
     view: 'View data',
@@ -148,6 +176,11 @@ const en = {
     aiSaving: 'Saving…',
     aiRemove: 'Remove',
     aiSaved: 'Saved',
+    aiApproved: 'Approved destinations',
+    aiApprovedHint: 'Endpoints you have agreed the navigator may send your schema to.',
+    aiApprovedEmpty:
+      'None yet. You will be asked before the schema is first sent to a remote provider.',
+    aiRevoke: 'Revoke',
     about: 'About',
     version: 'Version',
   },

@@ -1,5 +1,4 @@
 import {
-  ArrowUp,
   Database,
   Loader2,
   PanelRightClose,
@@ -17,11 +16,13 @@ import { DataDrawer } from '@/components/data-drawer'
 import { ErDiagram } from '@/components/er/er-diagram'
 import { KindBadge } from '@/components/kind-badge'
 import { Logo } from '@/components/logo'
+import { NavigatorPane } from '@/components/navigator-pane'
 import { SchemaSearch } from '@/components/schema-search'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { TableDetail } from '@/components/table-detail'
 import { Button } from '@/components/ui/button'
-import { fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
+import { type AiProvider, fetchAiProvider, fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
+import { revokeDestination, loadApprovedDestinations, approveDestination } from '@/lib/destinations'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
 
@@ -49,6 +50,11 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
   const [navigatorOpen, setNavigatorOpen] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // The configured AI provider for the navigator pane; reloaded whenever settings close, so
+  // a just-saved provider takes effect at once. `undefined` while first loading.
+  const [provider, setProvider] = useState<AiProvider | null | undefined>(undefined)
+  // Destinations the user has agreed the navigator may send the schema to (persisted).
+  const [approved, setApproved] = useState<string[]>(loadApprovedDestinations)
   // Whether the bottom row-preview drawer is showing (for the current centre object).
   const [dataOpen, setDataOpen] = useState(false)
   // A table chosen via search to centre the ER map on; null lets the map pick the backbone.
@@ -88,6 +94,34 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   useEffect(() => {
     loadSchema()
   }, [loadSchema])
+
+  // Load the configured provider (null when none is set); a failure is treated as unset.
+  const loadProvider = useCallback(() => {
+    fetchAiProvider()
+      .then((next) => setProvider(next))
+      .catch(() => setProvider(null))
+  }, [])
+
+  useEffect(() => {
+    loadProvider()
+  }, [loadProvider])
+
+  // Reload the provider and approved list when settings close, so any change made there —
+  // configuring a provider or revoking a destination — shows in the navigator at once.
+  const closeSettings = useCallback(() => {
+    setSettingsOpen(false)
+    loadProvider()
+    setApproved(loadApprovedDestinations())
+  }, [loadProvider])
+
+  const approve = useCallback(
+    (id: string) => setApproved((current) => approveDestination(current, id)),
+    [],
+  )
+  const revoke = useCallback(
+    (id: string) => setApproved((current) => revokeDestination(current, id)),
+    [],
+  )
 
   // Clear the search/navigation override once the map has arrived at it, so selecting the
   // same table again later still re-triggers a travel (a repeated value would not).
@@ -277,32 +311,23 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             navigatorOpen ? 'w-72' : 'w-0',
           )}
         >
-          <aside className="flex h-full w-72 flex-col border-l border-brand/20 bg-brand/10">
-            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-xs text-muted-foreground">
-              <Sparkles className="size-5 text-brand" />
-              {t('panes.chatIntro')}
-            </div>
-            <div className="p-2.5">
-              <div className="flex items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5">
-                <span className="flex-1 truncate text-sm text-muted-foreground">
-                  {t('chat.inputPlaceholder')}
-                </span>
-                <Button
-                  variant="brand"
-                  size="icon"
-                  className="size-7"
-                  disabled
-                  aria-label={t('chat.send')}
-                >
-                  <ArrowUp className="size-4" />
-                </Button>
-              </div>
-            </div>
-          </aside>
+          <NavigatorPane
+            profileId={profile.id}
+            provider={provider ?? null}
+            providerLoading={provider === undefined}
+            approved={approved}
+            onApprove={approve}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
         </div>
       </div>
 
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={closeSettings}
+        approved={approved}
+        onRevoke={revoke}
+      />
     </div>
   )
 }

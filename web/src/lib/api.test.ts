@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  type ChatStreamEvent,
   clearAiProvider,
   createProfile,
   deleteProfile,
@@ -8,6 +9,7 @@ import {
   fetchHealth,
   fetchRows,
   saveAiProvider,
+  streamChat,
 } from '@/lib/api'
 
 const originalFetch = globalThis.fetch
@@ -133,5 +135,70 @@ describe('request shape', () => {
     const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('/api/ai/provider')
     expect(init.method).toBe('DELETE')
+  })
+})
+
+/** Build a streaming Response whose body emits each string as its own chunk. */
+function sseResponse(chunks: string[], status = 200): Response {
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk))
+      }
+      controller.close()
+    },
+  })
+  return new Response(stream, { status })
+}
+
+async function collect(events: AsyncGenerator<ChatStreamEvent>): Promise<ChatStreamEvent[]> {
+  const out: ChatStreamEvent[] = []
+  for await (const event of events) {
+    out.push(event)
+  }
+  return out
+}
+
+describe('streamChat', () => {
+  it('posts the messages and yields the parsed SSE events', async () => {
+    const spy = mockFetch(
+      sseResponse([
+        'event: tool_call\ndata: {"name": "search_objects"}\n\n',
+        'event: text\ndata: {"text": "The store table."}\n\n',
+        'event: done\ndata: {"usage": {"input_tokens": 12, "output_tokens": 3}}\n\n',
+      ]),
+    )
+
+    const events = await collect(
+      streamChat('p1', [{ role: 'user', content: 'Where do stores live?' }]),
+    )
+
+    expect(events).toEqual([
+      { type: 'tool_call', name: 'search_objects' },
+      { type: 'text', text: 'The store table.' },
+      { type: 'done', usage: { input_tokens: 12, output_tokens: 3 } },
+    ])
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/profiles/p1/chat')
+    expect(init.method).toBe('POST')
+    expect(init.body).toBe(JSON.stringify({ messages: [{ role: 'user', content: 'Where do stores live?' }] }))
+  })
+
+  it('reassembles a frame split across chunk boundaries', async () => {
+    mockFetch(sseResponse(['event: text\nda', 'ta: {"text": "hi"}\n\nevent: done\ndata: {}\n\n']))
+
+    const events = await collect(streamChat('p1', [{ role: 'user', content: 'hi' }]))
+
+    expect(events[0]).toEqual({ type: 'text', text: 'hi' })
+    expect(events[1]).toEqual({ type: 'done', usage: { input_tokens: null, output_tokens: null } })
+  })
+
+  it("rejects before streaming with the backend's translated detail", async () => {
+    mockFetch(new Response(JSON.stringify({ detail: 'No AI provider is configured.' }), { status: 400 }))
+
+    await expect(collect(streamChat('p1', [{ role: 'user', content: 'hi' }]))).rejects.toThrow(
+      'No AI provider is configured.',
+    )
   })
 })
