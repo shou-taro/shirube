@@ -9,10 +9,11 @@ Methods are added to a port alongside the feature that first needs them, so an
 interface never runs ahead of a real use case.
 """
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from typing import Protocol
 
 from shirube.domain.ai import AiProviderConfig
+from shirube.domain.chat import ProviderEvent, TurnRequest
 from shirube.domain.connection import ConnectionParams, ConnectionProfile
 from shirube.domain.data import RowPage, RowQuery
 from shirube.domain.schema import SchemaGraph
@@ -139,7 +140,23 @@ class AiConfigRepository(Protocol):
 
 
 class AiProvider(Protocol):
-    """Talks to an AI provider behind a common interface (Milestone 2 — AI navigator).
+    """Streams one chat turn from an AI provider (Milestone 2 — AI navigator).
 
-    Concrete adapters cover OpenAI-compatible APIs and local Ollama.
+    The port covers a **single model turn**, not the whole tool-calling loop — the loop
+    lives in :class:`~shirube.application.navigator.NavigatorService` so it stays
+    provider-agnostic. Concrete adapters (a later milestone) translate a :class:`TurnRequest`
+    into their SDK's call and yield the provider-neutral events: Anthropic-native for Claude,
+    and one OpenAI-compatible adapter for OpenAI, Ollama and other compatible endpoints.
     """
+
+    def stream_turn(self, request: TurnRequest) -> Iterator[ProviderEvent]:
+        """Stream one turn's events for the given messages and tools.
+
+        Args:
+            request: The system prompt, conversation so far, and available tools.
+
+        Yields:
+            Text deltas and any tool calls as they arrive, then a final
+            :class:`~shirube.domain.chat.TurnComplete`.
+        """
+        ...
