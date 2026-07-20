@@ -41,9 +41,14 @@ function streamsBack(events: ChatStreamEvent[]): void {
   })
 }
 
+/** Recognises the handful of objects the tests talk about. */
+const RESOLVER = (text: string): string | null =>
+  ({ 'public.rental': 'public.rental', rental: 'public.rental' })[text.trim()] ?? null
+
 function renderPane(provider: AiProvider | null, approved: string[] = []) {
   const onApprove = vi.fn()
   const onOpenSettings = vi.fn()
+  const onNavigate = vi.fn()
   render(
     <NavigatorPane
       profileId="p1"
@@ -52,9 +57,12 @@ function renderPane(provider: AiProvider | null, approved: string[] = []) {
       approved={approved}
       onApprove={onApprove}
       onOpenSettings={onOpenSettings}
+      width={288}
+      resolveRef={RESOLVER}
+      onNavigate={onNavigate}
     />,
   )
-  return { onApprove, onOpenSettings }
+  return { onApprove, onOpenSettings, onNavigate }
 }
 
 function ask(question: string): void {
@@ -151,6 +159,53 @@ describe('NavigatorPane', () => {
     expect(screen.getByText('chat.lookedUp')).toBeInTheDocument()
     expect(screen.queryByText(/search_objects/)).not.toBeInTheDocument()
     expect(screen.queryByText(/get_object/)).not.toBeInTheDocument()
+  })
+
+  it('turns a named table into a link that recentres the map', async () => {
+    streamsBack([
+      { type: 'text', text: 'Rentals live in `public.rental`, joined to `film_actor`.' },
+      { type: 'done', usage: { input_tokens: 1, output_tokens: 1 } },
+    ])
+    const { onNavigate } = renderPane(LOCAL)
+
+    ask('Hi')
+
+    const link = await screen.findByRole('button', { name: 'public.rental' })
+    fireEvent.click(link)
+    expect(onNavigate).toHaveBeenCalledWith('public.rental')
+
+    // A code span the schema does not know stays plain text, not a link.
+    expect(screen.queryByRole('button', { name: 'film_actor' })).not.toBeInTheDocument()
+    expect(screen.getByText('film_actor')).toBeInTheDocument()
+  })
+
+  it('links a table named in bold, which the navigator also uses', async () => {
+    streamsBack([
+      { type: 'text', text: 'It references the **public.rental** table, which is **large**.' },
+      { type: 'done', usage: { input_tokens: 1, output_tokens: 1 } },
+    ])
+    const { onNavigate } = renderPane(LOCAL)
+
+    ask('Hi')
+
+    fireEvent.click(await screen.findByRole('button', { name: 'public.rental' }))
+    expect(onNavigate).toHaveBeenCalledWith('public.rental')
+    // Ordinary emphasis is left alone.
+    expect(screen.queryByRole('button', { name: 'large' })).not.toBeInTheDocument()
+    expect(screen.getByText('large')).toBeInTheDocument()
+  })
+
+  it('links a bare table name to its qualified object', async () => {
+    streamsBack([
+      { type: 'text', text: 'See `rental`.' },
+      { type: 'done', usage: { input_tokens: 1, output_tokens: 1 } },
+    ])
+    const { onNavigate } = renderPane(LOCAL)
+
+    ask('Hi')
+
+    fireEvent.click(await screen.findByRole('button', { name: 'rental' }))
+    expect(onNavigate).toHaveBeenCalledWith('public.rental')
   })
 
   it('surfaces a streamed error as an inline message', async () => {
