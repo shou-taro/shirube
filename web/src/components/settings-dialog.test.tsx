@@ -290,4 +290,74 @@ describe('SettingsDialog — AI provider', () => {
 
     expect(await screen.findByText('The database took too long.')).toBeInTheDocument()
   })
+
+  it('surfaces a remove error from the backend', async () => {
+    mockClearProvider.mockRejectedValue(new Error('The keychain is locked.'))
+    await openAiSection(configuredClaude)
+
+    fireEvent.click(screen.getByRole('button', { name: 'settings.aiRemove' }))
+
+    expect(await screen.findByText('The keychain is locked.')).toBeInTheDocument()
+  })
+
+  it('edits the base URL for an OpenAI-compatible endpoint', async () => {
+    mockSaveProvider.mockResolvedValue({
+      kind: 'openai_compatible',
+      model: 'llama3.1',
+      base_url: 'http://box:11434/v1',
+      has_api_key: false,
+    })
+    await openAiSection(null)
+    fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
+      target: { value: 'ollama' },
+    })
+
+    fireEvent.change(screen.getByLabelText('settings.aiBaseUrl'), {
+      target: { value: 'http://box:11434/v1' },
+    })
+    fireEvent.change(screen.getByLabelText('settings.aiModel'), { target: { value: 'llama3.1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
+
+    await screen.findByText('settings.aiSaved')
+    expect(mockSaveProvider).toHaveBeenCalledWith({
+      kind: 'openai_compatible',
+      model: 'llama3.1',
+      base_url: 'http://box:11434/v1',
+    })
+  })
+
+  it('falls back to the Claude defaults when the provider lookup fails', async () => {
+    mockHealth.mockResolvedValue({ status: 'ok', version: '9.9.9' })
+    mockFetchProvider.mockRejectedValue(new Error('offline'))
+    render(<SettingsDialog open onClose={vi.fn()} approved={[]} onRevoke={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'settings.ai' }))
+
+    await screen.findByLabelText('settings.aiProviderLabel')
+    expect(screen.getByLabelText('settings.aiProviderLabel')).toHaveValue('claude')
+  })
+
+  it('lists approved destinations and revokes one', async () => {
+    mockHealth.mockResolvedValue({ status: 'ok', version: '9.9.9' })
+    mockFetchProvider.mockResolvedValue(null)
+    const onRevoke = vi.fn()
+    render(<SettingsDialog open onClose={vi.fn()} approved={['anthropic']} onRevoke={onRevoke} />)
+    fireEvent.click(screen.getByRole('button', { name: 'settings.ai' }))
+    await screen.findByLabelText('settings.aiProviderLabel')
+
+    expect(screen.getByText('Claude')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'settings.aiRevoke' }))
+
+    expect(onRevoke).toHaveBeenCalledWith('anthropic')
+  })
+})
+
+describe('SettingsDialog — About', () => {
+  it('shows a dash for the version when the health check fails', async () => {
+    mockHealth.mockRejectedValue(new Error('down'))
+    mockFetchProvider.mockResolvedValue(null)
+    render(<SettingsDialog open onClose={vi.fn()} approved={[]} onRevoke={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'settings.about' }))
+
+    await waitFor(() => expect(screen.getByText('—')).toBeInTheDocument())
+  })
 })

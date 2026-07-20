@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Column, SchemaObject } from '@/lib/api'
@@ -112,6 +112,57 @@ describe('selection', () => {
     fireEvent.keyDown(input, { key: 'Escape' })
 
     expect(screen.queryByText('identity')).not.toBeInTheDocument()
+  })
+
+  it('wraps to the last result when arrowing up from the first', () => {
+    const orders = object('public.orders')
+    const orderItems = object('public.order_items')
+    const { input, onSelect } = renderSearch([orders, orderItems])
+    fireEvent.change(input, { target: { value: 'order' } })
+
+    // Up from the first result wraps to the last, which Enter then selects.
+    fireEvent.keyDown(input, { key: 'ArrowUp' })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(onSelect).toHaveBeenCalledWith('public.order_items')
+  })
+
+  it('highlights the result the pointer hovers, and selects it on Enter', () => {
+    const orders = object('public.orders')
+    const orderItems = object('public.order_items')
+    const { input, onSelect } = renderSearch([orders, orderItems])
+    fireEvent.change(input, { target: { value: 'order' } })
+
+    fireEvent.mouseEnter(screen.getByRole('option', { name: /order_items/ }))
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(onSelect).toHaveBeenCalledWith('public.order_items')
+  })
+
+  it('does nothing on Enter when there are no matches', () => {
+    const { input, onSelect } = renderSearch([IDENTITY])
+    fireEvent.change(input, { target: { value: 'zzz-nothing' } })
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it('closes the results shortly after the input loses focus', () => {
+    vi.useFakeTimers()
+    try {
+      const { input } = renderSearch([IDENTITY, ORDERS])
+      fireEvent.change(input, { target: { value: 'id' } })
+      expect(screen.getByText('identity')).toBeInTheDocument()
+
+      fireEvent.blur(input)
+      // The close is deferred on a timer; flush it inside act so React applies the update.
+      act(() => vi.advanceTimersByTime(200))
+
+      expect(screen.queryByText('identity')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

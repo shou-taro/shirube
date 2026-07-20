@@ -44,6 +44,22 @@ describe('describeDestination', () => {
     expect(destination.host).toBe('mac-studio.example.ts.net')
     expect(destination.id).toBe('openai:mac-studio.example.ts.net')
   })
+
+  it('handles a missing base URL without a host', () => {
+    const destination = describeDestination(provider({ base_url: null }))
+    expect(destination.host).toBeNull()
+    expect(destination.isLocal).toBe(false)
+    expect(destination.label).toBe('OpenAI-compatible')
+  })
+
+  it('handles an unparseable base URL without a host', () => {
+    const destination = describeDestination(provider({ base_url: 'not a url' }))
+    expect(destination.host).toBeNull()
+    expect(destination.isLocal).toBe(false)
+    // Falls back to the raw value for the label and a stable key.
+    expect(destination.label).toBe('not a url')
+    expect(destination.id).toBe('openai:not a url')
+  })
 })
 
 describe('approval store', () => {

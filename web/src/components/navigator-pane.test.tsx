@@ -270,6 +270,93 @@ describe('NavigatorPane', () => {
     expect(screen.queryByLabelText('chat.clear')).not.toBeInTheDocument()
   })
 
+  it('renders headings, a fenced code block and a link within an answer', async () => {
+    streamsBack([
+      {
+        type: 'text',
+        text: '# H1\n\n## H2\n\n### H3\n\nSee [the docs](https://example.com).\n\n```sql\nSELECT 1;\n```\n',
+      },
+      { type: 'done', usage: { input_tokens: 1, output_tokens: 1 } },
+    ])
+    renderPane(LOCAL)
+
+    ask('Hi')
+
+    expect(await screen.findByText('H1')).toBeInTheDocument()
+    expect(screen.getByText('H2')).toBeInTheDocument()
+    expect(screen.getByText('H3')).toBeInTheDocument()
+    // The link text shows, but as plain text (answers never carry live links out).
+    expect(screen.getByText('the docs')).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    // The fenced block keeps its SQL.
+    expect(screen.getByText(/SELECT 1;/)).toBeInTheDocument()
+  })
+
+  it('sends the prior turns as history on a follow-up question', async () => {
+    renderPane(LOCAL)
+
+    ask('First question')
+    await screen.findByText('Hello.')
+
+    mockStreamChat.mockClear()
+    streamsBack([{ type: 'text', text: 'Second answer.' }, { type: 'done', usage: { input_tokens: 1, output_tokens: 1 } }])
+    ask('Second question')
+    await screen.findByText('Second answer.')
+
+    // The follow-up carries the whole conversation, ending with the new question.
+    expect(mockStreamChat).toHaveBeenLastCalledWith(
+      'p1',
+      [
+        { role: 'user', content: 'First question' },
+        { role: 'assistant', content: 'Hello.' },
+        { role: 'user', content: 'Second question' },
+      ],
+      expect.any(AbortSignal),
+    )
+  })
+
+  it('sends on Enter but not on Shift+Enter', async () => {
+    renderPane(LOCAL)
+    const box = screen.getByLabelText('chat.inputPlaceholder')
+
+    fireEvent.change(box, { target: { value: 'via enter' } })
+    fireEvent.keyDown(box, { key: 'Enter', shiftKey: true })
+    expect(mockStreamChat).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(box, { key: 'Enter' })
+    expect(await screen.findByText('Hello.')).toBeInTheDocument()
+  })
+
+  it('ignores a submit with only whitespace', () => {
+    renderPane(LOCAL)
+    const box = screen.getByLabelText('chat.inputPlaceholder')
+
+    fireEvent.change(box, { target: { value: '   ' } })
+    fireEvent.keyDown(box, { key: 'Enter' })
+
+    expect(mockStreamChat).not.toHaveBeenCalled()
+  })
+
+  it('stops an answer in progress and keeps what streamed so far', async () => {
+    // A stream that yields one chunk then blocks until aborted.
+    mockStreamChat.mockImplementation(async function* (_profileId, _messages, signal) {
+      yield { type: 'text', text: 'Partial' }
+      await new Promise<void>((resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+      })
+    })
+    renderPane(LOCAL)
+
+    ask('Hi')
+    await screen.findByText('Partial')
+    // While streaming, the send button is replaced by stop.
+    fireEvent.click(screen.getByLabelText('chat.stop'))
+
+    // The partial answer stays, no error is shown, and sending is possible again.
+    await waitFor(() => expect(screen.getByLabelText('chat.send')).toBeInTheDocument())
+    expect(screen.getByText('Partial')).toBeInTheDocument()
+  })
+
   it('surfaces a streamed error as an inline message', async () => {
     streamsBack([{ type: 'error', message: 'The AI provider could not be reached.' }])
     renderPane(LOCAL)
@@ -277,6 +364,21 @@ describe('NavigatorPane', () => {
     ask('Hi')
 
     expect(await screen.findByText('The AI provider could not be reached.')).toBeInTheDocument()
+  })
+
+  it('shows a message when the stream itself throws mid-answer', async () => {
+    // A rejection (not an abort) surfaces as the turn's error.
+    mockStreamChat.mockImplementation(async function* () {
+      yield { type: 'text', text: 'Partial' }
+      throw new Error('connection reset')
+    })
+    renderPane(LOCAL)
+
+    ask('Hi')
+
+    expect(await screen.findByText('connection reset')).toBeInTheDocument()
+    // What streamed before the failure is kept.
+    expect(screen.getByText('Partial')).toBeInTheDocument()
   })
 
   it('disables the composer and offers to configure when no provider is set', () => {

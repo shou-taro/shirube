@@ -58,6 +58,14 @@ describe('rendering rows', () => {
     // The null label is rendered (and is not the empty string).
     expect(screen.getByText('data.null')).toBeInTheDocument()
   })
+
+  it('renders a boolean cell as true/false', async () => {
+    mockFetchRows.mockResolvedValue(pageWith(['id', 'active'], [[1, true], [2, false]]))
+    renderDrawer(objectWith(['id', 'active']))
+
+    expect(await screen.findByText('true')).toBeInTheDocument()
+    expect(screen.getByText('false')).toBeInTheDocument()
+  })
 })
 
 describe('sorting', () => {
@@ -156,6 +164,30 @@ describe('paging', () => {
       ),
     )
   })
+
+  it('steps back a page with previous', async () => {
+    renderDrawer()
+    await screen.findByText('a@example.com')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'data.next' })).toBeEnabled())
+
+    fireEvent.click(screen.getByRole('button', { name: 'data.next' }))
+    await waitFor(() =>
+      expect(mockFetchRows).toHaveBeenLastCalledWith(
+        'p1',
+        'public.users',
+        expect.objectContaining({ offset: 100 }),
+      ),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'data.previous' }))
+    await waitFor(() =>
+      expect(mockFetchRows).toHaveBeenLastCalledWith(
+        'p1',
+        'public.users',
+        expect.objectContaining({ offset: 0 }),
+      ),
+    )
+  })
 })
 
 describe('filters', () => {
@@ -196,6 +228,26 @@ describe('filters', () => {
         'p1',
         'public.users',
         expect.objectContaining({ filters: [] }),
+      ),
+    )
+  })
+
+  it('changes the filter column and operator', async () => {
+    renderDrawer(objectWith(['id', 'email']))
+    await screen.findByText('a@example.com')
+    fireEvent.click(screen.getByRole('button', { name: /data.addFilter/ }))
+    await screen.findByLabelText('data.filterColumn')
+
+    fireEvent.change(screen.getByLabelText('data.filterColumn'), { target: { value: 'email' } })
+    fireEvent.change(screen.getByLabelText('data.filterOperator'), { target: { value: 'eq' } })
+
+    await waitFor(() =>
+      expect(mockFetchRows).toHaveBeenLastCalledWith(
+        'p1',
+        'public.users',
+        expect.objectContaining({
+          filters: [{ column: 'email', operator: 'eq', value: '' }],
+        }),
       ),
     )
   })
