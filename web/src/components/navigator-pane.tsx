@@ -1,4 +1,14 @@
-import { ArrowUp, Globe, HardDrive, Loader2, Settings2, Sparkles, Square } from 'lucide-react'
+import {
+  ArrowUp,
+  ChevronDown,
+  Globe,
+  HardDrive,
+  Loader2,
+  Settings2,
+  Sparkles,
+  Square,
+  Trash2,
+} from 'lucide-react'
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -14,7 +24,13 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 import { Button } from '@/components/ui/button'
-import { AI_PRESETS, presetForConfig } from '@/lib/ai-presets'
+import { presetForConfig, statusLabelKey } from '@/lib/ai-presets'
+import {
+  clearChatHistory,
+  loadChatHistory,
+  saveChatHistory,
+  type StoredUsage,
+} from '@/lib/chat-history'
 import { type AiProvider, type ChatMessage, streamChat } from '@/lib/api'
 import { describeDestination, isDestinationApproved } from '@/lib/destinations'
 import type { ObjectResolver } from '@/lib/schema-refs'
@@ -29,6 +45,8 @@ interface Turn {
   tools: string[]
   /** A user-safe error that ended this turn, if any (assistant turns only). */
   error: string | null
+  /** Token usage the provider reported for this answer, when it did. */
+  usage: StoredUsage | null
   /** Whether this assistant turn is still streaming. */
   streaming: boolean
 }
@@ -192,7 +210,11 @@ export function NavigatorPane({
   onNavigate,
 }: NavigatorPaneProps) {
   const { t } = useTranslation()
-  const [turns, setTurns] = useState<Turn[]>([])
+  // Seeded from this profile's stored conversation; the pane is keyed by profile, so a
+  // switch remounts it and picks up that profile's thread.
+  const [turns, setTurns] = useState<Turn[]>(() =>
+    loadChatHistory(profileId).map((turn) => ({ ...turn, streaming: false })),
+  )
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   // The pending question held back while the consent gate is shown; null when not gating.
@@ -204,7 +226,7 @@ export function NavigatorPane({
   const destination = provider === null ? null : describeDestination(provider)
   // Name the provider as the user chose it ("Ollama"), not by its adapter kind or host.
   const providerLabel = useMemo(
-    () => (provider === null ? '' : t(AI_PRESETS[presetForConfig(provider)].labelKey)),
+    () => (provider === null ? '' : t(statusLabelKey(presetForConfig(provider)))),
     [provider, t],
   )
 
@@ -215,6 +237,17 @@ export function NavigatorPane({
 
   // Abort any in-flight stream on unmount (e.g. disconnecting).
   useEffect(() => () => abortRef.current?.abort(), [])
+
+  // Store the conversation once it settles. Writing while streaming would put the whole
+  // history to disk on every token, so it waits for the answer to finish.
+  useEffect(() => {
+    if (!streaming) {
+      saveChatHistory(
+        profileId,
+        turns.map(({ streaming: _streaming, ...turn }) => turn),
+      )
+    }
+  }, [profileId, turns, streaming])
 
   // Grow the composer with what has been typed, so a long question stays fully visible
   // rather than scrolling inside a one-line box. Measuring needs the height released first;
@@ -252,6 +285,10 @@ export function NavigatorPane({
             patchTurn(assistantId, { tools: [...tools] })
           } else if (event.type === 'error') {
             patchTurn(assistantId, { error: event.message })
+          } else if (event.type === 'done') {
+            patchTurn(assistantId, {
+              usage: { input: event.usage.input_tokens, output: event.usage.output_tokens },
+            })
           }
         }
       } catch (error) {
@@ -278,6 +315,7 @@ export function NavigatorPane({
         content: question,
         tools: [],
         error: null,
+        usage: null,
         streaming: false,
       }
       const assistantTurn: Turn = {
@@ -286,6 +324,7 @@ export function NavigatorPane({
         content: '',
         tools: [],
         error: null,
+        usage: null,
         streaming: true,
       }
       // The history sent up is the prior user/assistant text plus this new question.
@@ -324,6 +363,12 @@ export function NavigatorPane({
     send(question)
   }, [destination, consenting, onApprove, send])
 
+  const clearConversation = useCallback((): void => {
+    abortRef.current?.abort()
+    setTurns([])
+    clearChatHistory(profileId)
+  }, [profileId])
+
   const onInputKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>): void => {
       // Enter sends; Shift+Enter inserts a newline.
@@ -342,48 +387,6 @@ export function NavigatorPane({
       style={{ width }}
       className="flex h-full shrink-0 flex-col border-l border-brand/20 bg-brand/10"
     >
-      {/* Destination indicator — always visible, so where the schema goes is never hidden. */}
-      <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-brand/20 px-3 text-xs">
-        {providerLoading ? (
-          <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Loader2 className="size-3.5 animate-spin" />
-          </span>
-        ) : destination === null ? (
-          <>
-            <span className="truncate text-muted-foreground">{t('chat.noProvider')}</span>
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              className="ml-auto flex shrink-0 items-center gap-1 font-medium text-brand hover:underline"
-            >
-              <Settings2 className="size-3.5" />
-              {t('chat.configure')}
-            </button>
-          </>
-        ) : (
-          // Name the provider the way the user picked it, with the model — the endpoint host
-          // (what actually matters for privacy) sits in the tooltip.
-          <span
-            className="flex min-w-0 items-center gap-1.5"
-            title={
-              destination.isLocal
-                ? t('chat.destinationLocal')
-                : t('chat.destinationRemote', { host: destination.host ?? destination.label })
-            }
-          >
-            {destination.isLocal ? (
-              <HardDrive className="size-3.5 shrink-0 text-brand" />
-            ) : (
-              <Globe className="size-3.5 shrink-0 text-brand" />
-            )}
-            <span className="truncate font-medium">{providerLabel}</span>
-            {provider !== null && provider.model !== '' && (
-              <span className="truncate text-muted-foreground">{provider.model}</span>
-            )}
-          </span>
-        )}
-      </div>
-
       {/* Conversation, or the intro when empty. */}
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
         {turns.length === 0 ? (
@@ -433,6 +436,22 @@ export function NavigatorPane({
                 {turn.error !== null && (
                   <div className="rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
                     {turn.error}
+                  </div>
+                )}
+                {/* What the answer cost, when the provider says — it is what a metered
+                    provider bills for. One total reads at a glance; the split between what
+                    was sent and returned is the rarer question, so it waits in the tooltip. */}
+                {!turn.streaming && turn.usage !== null && turn.usage.input !== null && (
+                  <div
+                    className="text-[11px] text-muted-foreground"
+                    title={t('chat.usageDetail', {
+                      input: turn.usage.input.toLocaleString(),
+                      output: (turn.usage.output ?? 0).toLocaleString(),
+                    })}
+                  >
+                    {t('chat.usage', {
+                      total: (turn.usage.input + (turn.usage.output ?? 0)).toLocaleString(),
+                    })}
                   </div>
                 )}
               </div>
@@ -499,6 +518,73 @@ export function NavigatorPane({
               >
                 <ArrowUp className={cn('size-4')} />
               </Button>
+            )}
+          </div>
+
+          {/* Where the schema goes, directly beneath Send — the moment it matters is the
+              moment of sending. Never hidden, whatever the conversation is doing. The
+              clear action shares the line, keeping the pane's meta to one row. */}
+          <div className="mt-1.5 flex h-5 items-center gap-1.5 px-0.5 text-[11px]">
+            {providerLoading ? (
+              <Loader2 className="size-3 animate-spin text-muted-foreground" />
+            ) : destination === null ? (
+              <>
+                <span className="truncate text-muted-foreground">{t('chat.noProvider')}</span>
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  className="flex shrink-0 items-center gap-1 font-medium text-brand hover:underline"
+                >
+                  <Settings2 className="size-3" />
+                  {t('chat.configure')}
+                </button>
+              </>
+            ) : (
+              // Named the way the user picked it, with the model. The endpoint host — what
+              // actually matters for privacy — is the tooltip.
+              // A button, not a label: this is the provider setting, and pressing it is how
+              // you change it — the same move as a model name in any chat UI.
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                title={
+                  destination.isLocal
+                    ? t('chat.destinationLocal')
+                    : t('chat.destinationRemote', { host: destination.host ?? destination.label })
+                }
+                className="flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-muted-foreground hover:bg-brand/15 hover:text-foreground"
+              >
+                {destination.isLocal ? (
+                  <HardDrive className="size-3 shrink-0 text-brand" />
+                ) : (
+                  <Globe className="size-3 shrink-0 text-brand" />
+                )}
+                {/* The provider name is short and identifies the line, so it keeps its
+                    width; the model — the part that runs long, as Ollama tags do — is what
+                    gives way. The cap stops a wordy preset name crowding it out entirely. */}
+                <span className="max-w-28 shrink-0 truncate font-medium text-foreground">
+                  {providerLabel}
+                </span>
+                {provider !== null && provider.model !== '' && (
+                  <span className="min-w-0 truncate">{provider.model}</span>
+                )}
+                {/* Marks the line as a control rather than a caption — behind it is the
+                    provider list, reached through the settings dialog. */}
+                <ChevronDown className="size-3 shrink-0 opacity-60" />
+              </button>
+            )}
+
+            {turns.length > 0 && (
+              <button
+                type="button"
+                onClick={clearConversation}
+                aria-label={t('chat.clear')}
+                title={t('chat.clear')}
+                className="ml-auto flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-muted-foreground hover:bg-brand/15 hover:text-brand"
+              >
+                <Trash2 className="size-3" />
+                {t('chat.clearShort')}
+              </button>
             )}
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AiProvider, ChatStreamEvent } from '@/lib/api'
@@ -83,7 +83,7 @@ afterEach(() => {
 describe('NavigatorPane', () => {
   it('sends straight to a local provider without asking for consent', async () => {
     const { onApprove } = renderPane(LOCAL)
-    expect(screen.getByText('settings.aiPresetOllama')).toBeInTheDocument()
+    expect(screen.getByText('settings.aiPresetOllamaShort')).toBeInTheDocument()
     expect(screen.getByText('llama3.1')).toBeInTheDocument()
 
     ask('Where do stores live?')
@@ -206,6 +206,65 @@ describe('NavigatorPane', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'rental' }))
     expect(onNavigate).toHaveBeenCalledWith('public.rental')
+  })
+
+  it('shows what an answer cost when the provider reports it', async () => {
+    streamsBack([
+      { type: 'text', text: 'Done.' },
+      { type: 'done', usage: { input_tokens: 2147, output_tokens: 376 } },
+    ])
+    renderPane(LOCAL)
+
+    ask('Hi')
+
+    await screen.findByText('Done.')
+    expect(screen.getByText('chat.usage')).toBeInTheDocument()
+  })
+
+  it('keeps the conversation and reads it back for the same profile', async () => {
+    renderPane(LOCAL)
+
+    ask('Where do stores live?')
+    await screen.findByText('Hello.')
+
+    // Remount as the same profile: the thread is still there, without asking again.
+    cleanup()
+    mockStreamChat.mockClear()
+    renderPane(LOCAL)
+
+    expect(screen.getByText('Where do stores live?')).toBeInTheDocument()
+    expect(screen.getByText('Hello.')).toBeInTheDocument()
+    expect(mockStreamChat).not.toHaveBeenCalled()
+  })
+
+  it('clears the conversation, and it stays cleared', async () => {
+    renderPane(LOCAL)
+    ask('Hi')
+    await screen.findByText('Hello.')
+
+    fireEvent.click(screen.getByLabelText('chat.clear'))
+
+    expect(screen.queryByText('Hello.')).not.toBeInTheDocument()
+    // The intro is back, and a remount does not resurrect the thread.
+    cleanup()
+    renderPane(LOCAL)
+    expect(screen.queryByText('Hello.')).not.toBeInTheDocument()
+    expect(screen.getByText('panes.chatIntro')).toBeInTheDocument()
+  })
+
+  it('opens settings from the provider shown under the composer', () => {
+    const { onOpenSettings } = renderPane(LOCAL)
+
+    // The status line is the provider setting, so pressing it is how you change it.
+    fireEvent.click(screen.getByText('settings.aiPresetOllamaShort'))
+
+    expect(onOpenSettings).toHaveBeenCalled()
+  })
+
+  it('offers no clear action while the conversation is empty', () => {
+    renderPane(LOCAL)
+
+    expect(screen.queryByLabelText('chat.clear')).not.toBeInTheDocument()
   })
 
   it('surfaces a streamed error as an inline message', async () => {

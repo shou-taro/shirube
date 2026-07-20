@@ -52,7 +52,9 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const { settings, update } = useSettings()
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
   const [navigatorOpen, setNavigatorOpen] = useState(true)
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  // Which settings group to open on — the navigator's provider line points straight at its
+  // own setting rather than dropping the user at the top of the dialog.
+  const [settingsOpen, setSettingsOpen] = useState<false | 'appearance' | 'ai'>(false)
   // True while a pane edge is being dragged, so its width follows the pointer without a
   // transition smoothing it out.
   const [resizing, setResizing] = useState(false)
@@ -193,7 +195,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           className="hover:bg-brand/15 hover:text-brand"
           aria-label={t('settings.title')}
           title={t('settings.title')}
-          onClick={() => setSettingsOpen(true)}
+          onClick={() => setSettingsOpen('appearance')}
         >
           <Settings className="size-4" />
         </Button>
@@ -349,12 +351,15 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             />
           )}
           <NavigatorPane
+            // Keyed by profile so switching connections remounts the pane on that
+            // profile's own conversation rather than carrying one across.
+            key={profile.id}
             profileId={profile.id}
             provider={provider ?? null}
             providerLoading={provider === undefined}
             approved={approved}
             onApprove={approve}
-            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenSettings={() => setSettingsOpen('ai')}
             width={settings.navigatorWidth}
             resolveRef={resolveRef}
             onNavigate={setCentreOverride}
@@ -363,7 +368,8 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
       </div>
 
       <SettingsDialog
-        open={settingsOpen}
+        open={settingsOpen !== false}
+        initialCategory={settingsOpen === false ? undefined : settingsOpen}
         onClose={closeSettings}
         approved={approved}
         onRevoke={revoke}

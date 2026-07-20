@@ -11,3 +11,6 @@ export const APPROVED_DESTINATIONS_KEY = 'shirube.approvedDestinations'
 
 /** Which provider preset the user picked, so the UI names it the same way they chose it. */
 export const AI_PRESET_KEY = 'shirube.aiProviderPreset'
+
+/** Prefix for a profile's navigator conversation; the profile id completes it (see chat-history). */
+export const CHAT_HISTORY_PREFIX = 'shirube.chat.'
