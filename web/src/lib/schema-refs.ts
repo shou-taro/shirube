@@ -36,7 +36,10 @@ export function buildObjectResolver(objects: SchemaObject[]): ObjectResolver {
     // navigator uses — `public.customer(customer_id)` and `public.customer.customer_id`. The
     // object is what the map can travel to, so each is tried with the column removed.
     const parenthesised = /^(.+?)\s*\([^()]*\)$/.exec(needle)?.[1].trim()
-    const dotted = needle.split('.').length > 2 ? needle.slice(0, needle.lastIndexOf('.')) : null
+    // Dropping the last dotted part turns `public.customer.customer_id` into the object, and
+    // equally `payment.staff_id` — a bare table with its column. This is only reached once
+    // the whole string has failed, so a real `schema.table` has already matched as itself.
+    const dotted = needle.includes('.') ? needle.slice(0, needle.lastIndexOf('.')) : null
 
     for (const candidate of [needle, parenthesised, dotted]) {
       const found = candidate === undefined || candidate === null ? null : lookUp(candidate)

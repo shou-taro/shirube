@@ -349,6 +349,9 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             />
           )}
           <NavigatorPane
+            // Keyed by profile so switching connections remounts the pane on that
+            // profile's own conversation rather than carrying one across.
+            key={profile.id}
             profileId={profile.id}
             provider={provider ?? null}
             providerLoading={provider === undefined}

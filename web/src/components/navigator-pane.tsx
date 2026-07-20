@@ -1,4 +1,13 @@
-import { ArrowUp, Globe, HardDrive, Loader2, Settings2, Sparkles, Square } from 'lucide-react'
+import {
+  ArrowUp,
+  Eraser,
+  Globe,
+  HardDrive,
+  Loader2,
+  Settings2,
+  Sparkles,
+  Square,
+} from 'lucide-react'
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -15,6 +24,12 @@ import remarkGfm from 'remark-gfm'
 
 import { Button } from '@/components/ui/button'
 import { AI_PRESETS, presetForConfig } from '@/lib/ai-presets'
+import {
+  clearChatHistory,
+  loadChatHistory,
+  saveChatHistory,
+  type StoredUsage,
+} from '@/lib/chat-history'
 import { type AiProvider, type ChatMessage, streamChat } from '@/lib/api'
 import { describeDestination, isDestinationApproved } from '@/lib/destinations'
 import type { ObjectResolver } from '@/lib/schema-refs'
@@ -29,6 +44,8 @@ interface Turn {
   tools: string[]
   /** A user-safe error that ended this turn, if any (assistant turns only). */
   error: string | null
+  /** Token usage the provider reported for this answer, when it did. */
+  usage: StoredUsage | null
   /** Whether this assistant turn is still streaming. */
   streaming: boolean
 }
@@ -192,7 +209,11 @@ export function NavigatorPane({
   onNavigate,
 }: NavigatorPaneProps) {
   const { t } = useTranslation()
-  const [turns, setTurns] = useState<Turn[]>([])
+  // Seeded from this profile's stored conversation; the pane is keyed by profile, so a
+  // switch remounts it and picks up that profile's thread.
+  const [turns, setTurns] = useState<Turn[]>(() =>
+    loadChatHistory(profileId).map((turn) => ({ ...turn, streaming: false })),
+  )
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   // The pending question held back while the consent gate is shown; null when not gating.
@@ -215,6 +236,17 @@ export function NavigatorPane({
 
   // Abort any in-flight stream on unmount (e.g. disconnecting).
   useEffect(() => () => abortRef.current?.abort(), [])
+
+  // Store the conversation once it settles. Writing while streaming would put the whole
+  // history to disk on every token, so it waits for the answer to finish.
+  useEffect(() => {
+    if (!streaming) {
+      saveChatHistory(
+        profileId,
+        turns.map(({ streaming: _streaming, ...turn }) => turn),
+      )
+    }
+  }, [profileId, turns, streaming])
 
   // Grow the composer with what has been typed, so a long question stays fully visible
   // rather than scrolling inside a one-line box. Measuring needs the height released first;
@@ -252,6 +284,10 @@ export function NavigatorPane({
             patchTurn(assistantId, { tools: [...tools] })
           } else if (event.type === 'error') {
             patchTurn(assistantId, { error: event.message })
+          } else if (event.type === 'done') {
+            patchTurn(assistantId, {
+              usage: { input: event.usage.input_tokens, output: event.usage.output_tokens },
+            })
           }
         }
       } catch (error) {
@@ -278,6 +314,7 @@ export function NavigatorPane({
         content: question,
         tools: [],
         error: null,
+        usage: null,
         streaming: false,
       }
       const assistantTurn: Turn = {
@@ -286,6 +323,7 @@ export function NavigatorPane({
         content: '',
         tools: [],
         error: null,
+        usage: null,
         streaming: true,
       }
       // The history sent up is the prior user/assistant text plus this new question.
@@ -323,6 +361,12 @@ export function NavigatorPane({
     setInput('')
     send(question)
   }, [destination, consenting, onApprove, send])
+
+  const clearConversation = useCallback((): void => {
+    abortRef.current?.abort()
+    setTurns([])
+    clearChatHistory(profileId)
+  }, [profileId])
 
   const onInputKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -382,6 +426,20 @@ export function NavigatorPane({
             )}
           </span>
         )}
+
+        {/* Clearing is what makes a kept conversation safe to keep — offered only when
+            there is one. */}
+        {turns.length > 0 && (
+          <button
+            type="button"
+            onClick={clearConversation}
+            aria-label={t('chat.clear')}
+            title={t('chat.clear')}
+            className="ml-auto flex shrink-0 items-center rounded p-1 text-muted-foreground hover:bg-brand/15 hover:text-brand"
+          >
+            <Eraser className="size-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Conversation, or the intro when empty. */}
@@ -433,6 +491,16 @@ export function NavigatorPane({
                 {turn.error !== null && (
                   <div className="rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
                     {turn.error}
+                  </div>
+                )}
+                {/* What the answer cost, when the provider says — it is what a metered
+                    provider bills for, so it is worth seeing per answer. */}
+                {!turn.streaming && turn.usage !== null && turn.usage.input !== null && (
+                  <div className="text-[11px] text-muted-foreground">
+                    {t('chat.usage', {
+                      input: turn.usage.input.toLocaleString(),
+                      output: (turn.usage.output ?? 0).toLocaleString(),
+                    })}
                   </div>
                 )}
               </div>

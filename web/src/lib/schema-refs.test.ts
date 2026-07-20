@@ -42,8 +42,16 @@ describe('buildObjectResolver', () => {
     expect(RESOLVE('public.rental(rental_id)')).toBe('public.rental')
     expect(RESOLVE('rental (rental_id)')).toBe('public.rental')
     expect(RESOLVE('public.rental.rental_id')).toBe('public.rental')
+    // A bare table with its column, which is how a "referenced by" list reads.
+    expect(RESOLVE('rental.rental_id')).toBe('public.rental')
     // An ambiguous bare name stays ambiguous with a column attached.
     expect(RESOLVE('store(store_id)')).toBeNull()
+    expect(RESOLVE('store.store_id')).toBeNull()
+  })
+
+  it('prefers a real qualified object over reading it as table.column', () => {
+    // `archive.store` is an object; it must not be stripped down to `archive`.
+    expect(RESOLVE('archive.store')).toBe('archive.store')
   })
 
   it('returns null for anything the schema does not name', () => {

@@ -102,6 +102,8 @@ const en = {
     retry: 'Try again',
     you: 'You',
     clear: 'Clear conversation',
+    // Tokens the provider reported for one answer — what a metered provider bills for.
+    usage: '{{input}} in · {{output}} out',
     // Destination indicator (always visible above the composer): which provider and model,
     // and whether the schema leaves this machine.
     destinationRemote: 'Sends your schema to {{host}}',
