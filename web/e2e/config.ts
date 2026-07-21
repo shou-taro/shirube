@@ -27,3 +27,10 @@ export const PORT = '7473'
 
 /** Where the built app is served during the run. */
 export const BASE_URL = `http://127.0.0.1:${PORT}`
+
+/** Port for the stub OpenAI-compatible provider the navigator test points at (see
+ *  `stub-provider.mjs`) — it passes the reachability check but serves no real model. */
+export const STUB_PROVIDER_PORT = '59998'
+
+/** Base URL the navigator test configures as its provider. */
+export const STUB_PROVIDER_URL = `http://127.0.0.1:${STUB_PROVIDER_PORT}/v1`
