@@ -8,6 +8,26 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.2.0b2] — 2026-07-21
+
+### Changed
+
+- The AI provider is now verified before it is saved: a wrong base URL, an unreachable model
+  server or a rejected API key is reported in **Settings → AI navigator** straight away,
+  rather than only surfacing when the navigator is first asked a question. The check lists
+  the provider's models, so it costs no tokens.
+
+### Added
+
+- A navigator error (for example, the provider could not be reached) now carries a warning
+  icon, so a failed answer reads as an error at a glance.
+
+### Documentation
+
+- Reworked the README and PyPI page: the hero now shows the whole tool at once — the
+  navigator, the ER map, a table's detail and a filtered data preview — and the copy reframes
+  the pitch around understanding the schema you write less SQL against by hand.
+
 ## [0.2.0b1] — 2026-07-21
 
 The AI navigator lands — the feature shirube is built around. Ask a database a question in
@@ -151,7 +171,8 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.2.0b1...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.2.0b2...HEAD
+[0.2.0b2]: https://github.com/shou-taro/shirube/compare/v0.2.0b1...v0.2.0b2
 [0.2.0b1]: https://github.com/shou-taro/shirube/compare/v0.1.0b4...v0.2.0b1
 [0.1.0b4]: https://github.com/shou-taro/shirube/compare/v0.1.0b3...v0.1.0b4
 [0.1.0b3]: https://github.com/shou-taro/shirube/compare/v0.1.0b2...v0.1.0b3
