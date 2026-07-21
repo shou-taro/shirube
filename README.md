@@ -29,17 +29,24 @@
 
 ## 🤖 Why shirube
 
-You hand-write less SQL than you used to — more and more of it is generated for you, and
-in the AI-coding era much of what you'd once have typed is written for you instead. Each
-step puts another layer between you and the schema. But the queries still run against
-**your** schema, and someone still has to understand it — to prompt the tools well, to
-check what they gave back, to reason about where the data actually lives. That
-understanding used to come for free while you wrote the queries yourself. It doesn't any
-more.
+You hand-write less SQL than you used to. Tables become models and methods in your code,
+and in the AI-coding era much of even that code is written for you. Each step puts another
+layer between you and the schema — but the schema is still there underneath, and it is
+still yours to understand.
 
-shirube is where that understanding lives — and it's just as useful in the classic case,
-dropping into a project with hundreds of undocumented tables and needing to find your
-footing fast.
+To tell whether the code an AI wrote is right, you have to know what it actually touches:
+which tables it reads, which columns it uses, which relationships it follows. And to ask
+for the right thing in the first place, you need a feel for where the data lives — whether
+that really is the table a value comes from, whether the JOIN it reached for is a sensible
+path or a detour. Those are still questions for a person.
+
+A list of tables is a poor place to answer them. Open tables one at a time and you get
+columns, not connections — not what a table references, what references it, or which hops
+lead to the data you are after. Relationships are the very thing you need to follow, and a
+plain list is where they hide. A database is easier to read as a map.
+
+shirube is where that understanding lives — and just as useful when you drop into a
+project with hundreds of undocumented tables and need your footing fast.
 
 > AI changed who writes the SQL. shirube changes how we understand databases.
 
