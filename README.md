@@ -5,8 +5,8 @@
 <h1 align="center">shirube</h1>
 
 <p align="center">
-  <strong>AI writes the SQL.<br />You still own the schema.</strong><br />
-  <sub>標べ — a signpost for reading a database as a map.</sub>
+  <strong>You hand-write less SQL than ever.<br />You still own the schema.</strong><br />
+  <sub>標べ (shirube) — Japanese for a signpost. It reads your database as a map.</sub>
 </p>
 
 <p align="center">
@@ -29,17 +29,19 @@
 
 ## 🤖 Why shirube
 
-You write less SQL by hand than you used to — an AI writes much of it for you. But that
-SQL still runs against **your** schema, and someone still has to understand that schema:
-to prompt the AI well, to check what it gave back, to reason about where the data
-actually lives. That understanding used to come for free while you wrote the queries
-yourself. It doesn't any more.
+You hand-write less SQL than you used to — more and more of it is generated for you, and
+in the AI-coding era much of what you'd once have typed is written for you instead. Each
+step puts another layer between you and the schema. But the queries still run against
+**your** schema, and someone still has to understand it — to prompt the tools well, to
+check what they gave back, to reason about where the data actually lives. That
+understanding used to come for free while you wrote the queries yourself. It doesn't any
+more.
 
 shirube is where that understanding lives — and it's just as useful in the classic case,
 dropping into a project with hundreds of undocumented tables and needing to find your
 footing fast.
 
-> AI changed how we write SQL. shirube changes how we understand databases.
+> AI changed who writes the SQL. shirube changes how we understand databases.
 
 ## 🧭 What shirube does
 
