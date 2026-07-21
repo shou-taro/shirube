@@ -5,8 +5,8 @@
 <h1 align="center">shirube</h1>
 
 <p align="center">
-  <strong>AI writes the SQL.<br />You still own the schema.</strong><br />
-  <sub>標べ — a signpost for reading a database as a map.</sub>
+  <strong>You hand-write less SQL than ever.<br />You still own the schema.</strong><br />
+  <sub>標べ (<em>shirube</em>) — Japanese for a signpost. It reads your database as a map.</sub>
 </p>
 
 <p align="center">
@@ -17,29 +17,31 @@
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
 </p>
 
-> 🚧 **Status: Beta.** Both halves are here now — the explorer core *and* the AI
-> navigator that shirube is ultimately built around. shirube is pre-1.0: things may
-> still change.
+> 🚧 **Status: Beta.** Both the explorer and the AI navigator work today. shirube is
+> pre-1.0, so things may still change.
 
-<p align="center"><em>See the whole database as a map.</em></p>
+<p align="center"><em>Ask a question — see the answer on the map.</em></p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/shou-taro/shirube/main/docs/images/home.png" alt="shirube exploring a database: an ER diagram with a table's detail and its rows" width="960" />
+  <img src="https://raw.githubusercontent.com/shou-taro/shirube/main/docs/images/home.png" alt="shirube: the AI navigator explaining how a rental links to a film, beside the ER map, a table's detail, and a filtered data preview" width="960" />
 </p>
 
 ## 🤖 Why shirube
 
-You write less SQL by hand than you used to — an AI writes much of it for you. But that
-SQL still runs against **your** schema, and someone still has to understand that schema:
-to prompt the AI well, to check what it gave back, to reason about where the data
-actually lives. That understanding used to come for free while you wrote the queries
-yourself. It doesn't any more.
+You hand-write less SQL than you used to — tables become models and methods in your code,
+and in the AI-coding era much of even that code is written for you. But the schema is still
+there underneath, and it is still yours to understand: to judge whether the code an AI
+wrote is right — which tables it reads, which columns it touches, which relationships it
+follows — and to ask the tools for the right thing in the first place.
 
-shirube is where that understanding lives — and it's just as useful in the classic case,
-dropping into a project with hundreds of undocumented tables and needing to find your
+A plain list of tables is a poor place to see that. Open them one at a time and you get
+columns, not connections — not what a table references, what references it, or which hops
+lead to the data you are after. Relationships are the very thing you need to follow, and a
+list is where they hide, so shirube lets you read a database as a map instead — just as
+useful when you drop into a project with hundreds of undocumented tables and need your
 footing fast.
 
-> AI changed how we write SQL. shirube changes how we understand databases.
+> AI changed who writes the SQL. shirube changes how we understand databases.
 
 ## 🧭 What shirube does
 
@@ -77,10 +79,10 @@ metadata to guide you and lights up the tables involved, with every object name 
 that flies the map to it. It is a **navigator, not a SQL generator** — it never writes or
 runs a query.
 
-Use your own Claude or OpenAI key, or a local model such as Ollama. The request goes
-straight from your machine to the model you chose — no shirube server in between, only
-question-relevant schema metadata leaves, and a local model sends nothing off your machine
-at all. The navigator is entirely optional; the explorer works fully without it.
+Use your own Claude or OpenAI key, or a local model such as Ollama, configured in
+**Settings → AI navigator**. Whichever you pick, the request goes straight from your
+machine to that model — never through a shirube server (see **Safe by design** below). The
+navigator is entirely optional; the explorer works fully without it.
 
 ## 🛡️ Safe by design
 
