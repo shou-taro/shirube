@@ -1,21 +1,20 @@
 import { expect, test } from '@playwright/test'
 
+import { STUB_PROVIDER_URL } from './config'
 import { connect } from './helpers'
 
 /**
  * The AI navigator, end to end, without a real model.
  *
- * No provider is reachable in CI, so the provider is pointed at a closed local port. That is
- * enough to exercise the whole stack — the chat route, the tool-calling loop, the provider
- * adapter, the SSE stream and the pane — right up to where a real model would answer: the
- * connection is refused, and the navigator surfaces that as an error in the conversation.
+ * The provider is pointed at a stub OpenAI-compatible server (see `stub-provider.mjs`) that
+ * answers the reachability check — so the provider saves — but serves no real model, so asking
+ * a question surfaces an error. That exercises the whole stack (the settings check, the chat
+ * route, the tool-calling loop, the provider adapter, the SSE stream and the pane) right up to
+ * where a real model would answer.
  *
  * A loopback endpoint counts as local, so nothing leaves the machine and the one-time consent
  * (covered in the unit tests) does not gate the send.
  */
-
-// A port nothing listens on, so the adapter's request is refused at once.
-const UNREACHABLE = 'http://127.0.0.1:59999/v1'
 
 test('configures a provider, then reports that it could not be reached', async ({ page }) => {
   await connect(page)
@@ -30,9 +29,10 @@ test('configures a provider, then reports that it could not be reached', async (
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByLabel('Provider')).toBeVisible()
 
-  // Configure a local OpenAI-compatible endpoint (no key) that nothing is listening on.
+  // Configure a local OpenAI-compatible endpoint (no key) — the stub, which the save-time
+  // reachability check reaches, so the provider saves.
   await dialog.getByLabel('Provider').selectOption({ label: 'Ollama (local)' })
-  await dialog.getByLabel('Base URL').fill(UNREACHABLE)
+  await dialog.getByLabel('Base URL').fill(STUB_PROVIDER_URL)
   await dialog.getByLabel('Model').fill('test-model')
   await dialog.getByRole('button', { name: 'Save' }).click()
   await expect(dialog.getByText('Saved')).toBeVisible()
@@ -46,7 +46,7 @@ test('configures a provider, then reports that it could not be reached', async (
   await composer.fill('Which table holds books?')
   await pane.getByRole('button', { name: 'Send' }).click()
 
-  // The question shows immediately, and the unreachable provider surfaces as an error —
+  // The question shows immediately, and the stub (no real model) surfaces as an error —
   // the whole path ran, only the model was absent. (The SDK retries, so allow time.)
   await expect(pane.getByText('Which table holds books?')).toBeVisible()
   await expect(pane.getByText(/could not be reached|request failed/i)).toBeVisible({

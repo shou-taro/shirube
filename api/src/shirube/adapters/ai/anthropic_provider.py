@@ -9,7 +9,7 @@ for testing without a network.
 from collections.abc import Iterable, Iterator
 from typing import Any
 
-from anthropic import Anthropic
+from anthropic import Anthropic, APIConnectionError, APIError, AuthenticationError
 
 from shirube.domain.chat import (
     ChatRole,
@@ -21,6 +21,7 @@ from shirube.domain.chat import (
     TurnComplete,
     TurnRequest,
 )
+from shirube.domain.errors import ProviderCheckError
 
 # The recommended default when the configured model is blank, and the per-turn output cap.
 DEFAULT_MODEL = "claude-opus-4-8"
@@ -110,3 +111,21 @@ class AnthropicProvider:
             for text in stream.text_stream:
                 yield TextDelta(text)
             yield from events_from_final_message(stream.get_final_message())
+
+    def check(self) -> None:
+        """Verify the Claude API is reachable and the key is accepted.
+
+        Lists the available models — a cheap, read-only call that costs no tokens — so a
+        rejected key or an unreachable endpoint is caught at configuration time. Raises
+        :class:`ProviderCheckError` with an actionable message on failure.
+        """
+        try:
+            self._client.models.list()
+        except AuthenticationError as exc:
+            raise ProviderCheckError("The provider rejected the API key.") from exc
+        except APIConnectionError as exc:
+            raise ProviderCheckError(
+                "Could not reach the Claude API. Check your network and any base URL."
+            ) from exc
+        except APIError as exc:
+            raise ProviderCheckError(f"The provider returned an error: {exc}") from exc

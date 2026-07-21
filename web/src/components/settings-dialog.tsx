@@ -18,6 +18,7 @@ import {
   fetchAiProvider,
   fetchHealth,
   saveAiProvider,
+  testAiProvider,
 } from '@/lib/api'
 import { labelForDestinationId } from '@/lib/destinations'
 import { useSettings } from '@/lib/settings'
@@ -205,27 +206,42 @@ function AiProviderSection({
   // A stored key only counts as "kept on blank" for the provider it was saved against.
   const keyStored = provider != null && presetForConfig(provider) === preset && provider.has_api_key
 
-  async function handleSave(): Promise<void> {
-    // A hosted provider needs a key; guard here so the miss is caught before the request.
+  // Assemble the request body from the form. A key is sent only when one was typed (and the
+  // provider takes one); a blank key keeps whatever is stored.
+  function buildInput(): AiProviderInput {
+    const resolvedBaseUrl = spec.showBaseUrl
+      ? baseUrl.trim() === ''
+        ? null
+        : baseUrl.trim()
+      : spec.baseUrlDefault || null
+    const input: AiProviderInput = { kind: spec.kind, model, base_url: resolvedBaseUrl }
+    if (spec.key !== 'none' && apiKey !== '') {
+      input.api_key = apiKey
+    }
+    return input
+  }
+
+  // True when a hosted provider is missing its key; reports the miss and stops.
+  function keyMissing(): boolean {
     if (spec.key === 'required' && apiKey === '' && !keyStored) {
       setError(t('settings.aiApiKeyMissing'))
+      return true
+    }
+    return false
+  }
+
+  async function handleSave(): Promise<void> {
+    if (keyMissing()) {
       return
     }
     setSaving(true)
     setError(null)
     setSaved(false)
     try {
-      const resolvedBaseUrl = spec.showBaseUrl
-        ? baseUrl.trim() === ''
-          ? null
-          : baseUrl.trim()
-        : spec.baseUrlDefault || null
-      const input: AiProviderInput = { kind: spec.kind, model, base_url: resolvedBaseUrl }
-      // Send a key only when one was typed (and the provider takes one); blank keeps the
-      // stored key.
-      if (spec.key !== 'none' && apiKey !== '') {
-        input.api_key = apiKey
-      }
+      const input = buildInput()
+      // Verify the provider is reachable before storing it, so a wrong endpoint or key is
+      // caught here rather than only when the navigator is first asked a question.
+      await testAiProvider(input)
       const result = await saveAiProvider(input)
       // Remember the choice, so the form and the navigator both name the provider the way
       // the user picked it — a saved config alone cannot always tell the presets apart.

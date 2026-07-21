@@ -98,3 +98,16 @@ class ProviderNotConfiguredError(ShirubeError):
 
     status_code = 400
     detail = "No AI provider is configured. Choose one in Settings before using the navigator."
+
+
+class ProviderCheckError(ShirubeError):
+    """Raised when a provider configuration cannot be reached or authenticated.
+
+    The connection check (a cheap model-listing call) failed — a wrong base URL, an
+    unreachable model server, or a rejected API key — so the settings can report the problem
+    before the configuration is saved, rather than letting it surface only when the navigator
+    is first asked a question.
+    """
+
+    status_code = 400
+    detail = "The AI provider could not be reached."

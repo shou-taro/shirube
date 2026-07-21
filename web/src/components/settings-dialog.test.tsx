@@ -19,6 +19,7 @@ vi.mock('@/lib/api', async (importOriginal) => ({
   fetchHealth: vi.fn(),
   fetchAiProvider: vi.fn(),
   saveAiProvider: vi.fn(),
+  testAiProvider: vi.fn(),
   clearAiProvider: vi.fn(),
 }))
 
@@ -29,11 +30,13 @@ import {
   fetchAiProvider,
   fetchHealth,
   saveAiProvider,
+  testAiProvider,
 } from '@/lib/api'
 
 const mockHealth = vi.mocked(fetchHealth)
 const mockFetchProvider = vi.mocked(fetchAiProvider)
 const mockSaveProvider = vi.mocked(saveAiProvider)
+const mockTestProvider = vi.mocked(testAiProvider)
 const mockClearProvider = vi.mocked(clearAiProvider)
 
 afterEach(() => {
@@ -41,6 +44,7 @@ afterEach(() => {
   mockHealth.mockReset()
   mockFetchProvider.mockReset()
   mockSaveProvider.mockReset()
+  mockTestProvider.mockReset()
   mockClearProvider.mockReset()
 })
 
@@ -264,6 +268,23 @@ describe('SettingsDialog — AI provider', () => {
       model: 'claude-sonnet-5',
       base_url: null,
     })
+  })
+
+  it('verifies the provider before saving, and does not save when the check fails', async () => {
+    mockTestProvider.mockRejectedValue(new Error('The provider rejected the API key.'))
+    await openAiSection(null)
+
+    fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
+      target: { value: 'openai' },
+    })
+    fireEvent.change(screen.getByLabelText('settings.aiModel'), { target: { value: 'gpt-4o' } })
+    fireEvent.change(screen.getByLabelText('settings.aiApiKey'), { target: { value: 'sk-typed' } })
+    fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
+
+    expect(await screen.findByText('The provider rejected the API key.')).toBeInTheDocument()
+    // The check ran but failed, so nothing is stored.
+    expect(mockTestProvider).toHaveBeenCalled()
+    expect(mockSaveProvider).not.toHaveBeenCalled()
   })
 
   it('removes the provider', async () => {

@@ -13,7 +13,7 @@ import json
 from collections.abc import Iterable, Iterator
 from typing import Any
 
-from openai import OpenAI
+from openai import APIConnectionError, APIError, AuthenticationError, OpenAI
 
 from shirube.domain.chat import (
     ChatRole,
@@ -25,6 +25,7 @@ from shirube.domain.chat import (
     TurnComplete,
     TurnRequest,
 )
+from shirube.domain.errors import ProviderCheckError
 
 # The openai SDK requires a non-empty API key even for a local, keyless endpoint; this
 # placeholder is sent when the provider needs no key (e.g. Ollama).
@@ -137,3 +138,22 @@ class OpenAiCompatibleProvider:
             stream_options={"include_usage": True},
         )
         yield from parse_openai_stream(stream)
+
+    def check(self) -> None:
+        """Verify the endpoint is reachable and the key (if any) is accepted.
+
+        Lists the available models — a cheap, read-only call that costs no tokens — so a
+        wrong base URL, an unreachable server or a rejected key is caught at configuration
+        time. Raises :class:`ProviderCheckError` with an actionable message on failure.
+        """
+        try:
+            self._client.models.list()
+        except AuthenticationError as exc:
+            raise ProviderCheckError("The provider rejected the API key.") from exc
+        except APIConnectionError as exc:
+            raise ProviderCheckError(
+                "Could not reach the provider. Check the base URL and that the model server "
+                "is running."
+            ) from exc
+        except APIError as exc:
+            raise ProviderCheckError(f"The provider returned an error: {exc}") from exc
