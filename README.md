@@ -175,9 +175,8 @@ connection in shirube and start exploring.
 
 shirube's development runs in two phases.
 
-- **Now — Explore & navigate (beta).** The ER diagram, table detail, relationship
-  navigation, data preview and search — plus the AI navigator that answers plain-language
-  questions on the map. Everything described above.
+- **Now — Explore & navigate (beta).** Everything described above — the ER-map explorer
+  and the AI navigator — on PostgreSQL.
 - **Later — broadening reach.** More databases beyond PostgreSQL (SQLite and MySQL), a
   fully localised interface, and maps you can shape yourself — saved layouts and your own
   relationship links.
