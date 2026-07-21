@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>You hand-write less SQL than ever.<br />You still own the schema.</strong><br />
-  <sub>標べ (shirube) — Japanese for a signpost. It reads your database as a map.</sub>
+  <sub>標べ (<em>shirube</em>) — Japanese for a signpost. It reads your database as a map.</sub>
 </p>
 
 <p align="center">
@@ -29,24 +29,18 @@
 
 ## 🤖 Why shirube
 
-You hand-write less SQL than you used to. Tables become models and methods in your code,
-and in the AI-coding era much of even that code is written for you. Each step puts another
-layer between you and the schema — but the schema is still there underneath, and it is
-still yours to understand.
+You hand-write less SQL than you used to — tables become models and methods in your code,
+and in the AI-coding era much of even that code is written for you. But the schema is still
+there underneath, and it is still yours to understand: to judge whether the code an AI
+wrote is right — which tables it reads, which columns it touches, which relationships it
+follows — and to ask the tools for the right thing in the first place.
 
-To tell whether the code an AI wrote is right, you have to know what it actually touches:
-which tables it reads, which columns it uses, which relationships it follows. And to ask
-for the right thing in the first place, you need a feel for where the data lives — whether
-that really is the table a value comes from, whether the JOIN it reached for is a sensible
-path or a detour. Those are still questions for a person.
-
-A list of tables is a poor place to answer them. Open tables one at a time and you get
+A plain list of tables is a poor place to see that. Open them one at a time and you get
 columns, not connections — not what a table references, what references it, or which hops
 lead to the data you are after. Relationships are the very thing you need to follow, and a
-plain list is where they hide. A database is easier to read as a map.
-
-shirube is where that understanding lives — and just as useful when you drop into a
-project with hundreds of undocumented tables and need your footing fast.
+list is where they hide, so shirube lets you read a database as a map instead — just as
+useful when you drop into a project with hundreds of undocumented tables and need your
+footing fast.
 
 > AI changed who writes the SQL. shirube changes how we understand databases.
 
