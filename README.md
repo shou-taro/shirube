@@ -20,7 +20,7 @@
 > 🚧 **Status: Beta.** Both the explorer and the AI navigator work today. shirube is
 > pre-1.0, so things may still change — see the [roadmap](#-roadmap).
 
-<p align="center"><em>See the whole database as a map.</em></p>
+<p align="center"><em>Ask a question — see the answer on the map.</em></p>
 
 <p align="center">
   <img src="docs/images/home.png" alt="shirube: the AI navigator explaining how a rental links to a film, beside the ER map, a table's detail, and a filtered data preview" width="960" />
