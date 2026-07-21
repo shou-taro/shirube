@@ -23,7 +23,7 @@
 <p align="center"><em>See the whole database as a map.</em></p>
 
 <p align="center">
-  <img src="docs/images/home.png" alt="shirube exploring a database: an ER diagram with a table's detail and its rows" width="960" />
+  <img src="docs/images/home.png" alt="shirube: the AI navigator explaining how a rental links to a film, beside the ER map, a table's detail, and a filtered data preview" width="960" />
 </p>
 
 ## 🤖 Why shirube
