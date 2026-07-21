@@ -17,9 +17,9 @@
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
 </p>
 
-> 🚧 **Status: Beta.** The explorer core is here and usable today. The AI navigator — the
-> feature shirube is ultimately built around — is the next milestone. shirube is pre-1.0:
-> things may still change.
+> 🚧 **Status: Beta.** Both halves are here now — the explorer core *and* the AI
+> navigator that shirube is ultimately built around. shirube is pre-1.0: things may
+> still change.
 
 <p align="center"><em>See the whole database as a map.</em></p>
 
@@ -43,9 +43,11 @@ footing fast.
 
 ## 🧭 What shirube does
 
-shirube opens on an interactive ER diagram and lets you explore a database like a map:
-search for a table, focus on it, and follow its relationships outward — so you can see
-how everything connects without reading DDL or writing a single query.
+shirube turns a database into a map you can read. It opens on an interactive ER diagram
+and gives you two ways to find your footing: **steer it yourself** — search for a table,
+focus on it, follow its relationships outward — or **just ask**, and the AI navigator
+answers on the map. Either way you see how everything connects without reading DDL or
+writing a single query.
 
 It is **not** another SQL IDE or database administration console — there is no query
 editor, and nothing that ever writes. shirube is a tool for *understanding* a database.
@@ -54,6 +56,8 @@ editor, and nothing that ever writes. shirube is a tool for *understanding* a da
 
 Everything below works today, in the beta:
 
+- 🔮 **AI navigator** — ask in plain language and get an answer on the map, lighting up the
+  tables involved. Bring your own Claude or OpenAI key, or point it at a local model.
 - 🗺️ **ER diagram home** — auto-generated and centred on the most-connected table; see a
   table and its immediate neighbours, and travel outward one hop at a time.
 - 📋 **Table detail** — columns with their types, primary keys and nullability, plus
@@ -66,6 +70,18 @@ Everything below works today, in the beta:
   a config file.
 - 🌗 **Light and dark themes.**
 
+## 🔮 The AI navigator
+
+Ask in plain language and get your answer *on the map*: the navigator reads your schema
+metadata to guide you and lights up the tables involved, with every object name a link
+that flies the map to it. It is a **navigator, not a SQL generator** — it never writes or
+runs a query.
+
+Use your own Claude or OpenAI key, or a local model such as Ollama. The request goes
+straight from your machine to the model you chose — no shirube server in between, only
+question-relevant schema metadata leaves, and a local model sends nothing off your machine
+at all. The navigator is entirely optional; the explorer works fully without it.
+
 ## 🛡️ Safe by design
 
 - 🔒 **Read-only** — every connection is opened read-only with a statement timeout. shirube
@@ -74,13 +90,14 @@ Everything below works today, in the beta:
   credentials and data never leave your computer.
 - 📝 **Metadata-only logging** — the local log records errors and request timings, but
   never the values in your data.
+- 🤖 **Your data, your provider** — the AI navigator talks straight from your machine to the
+  model you chose; only question-relevant schema metadata is sent, and a local model sends
+  nothing off your machine at all.
 
 ## 🚀 Getting started
 
 You'll need a PostgreSQL database to point shirube at, and a way to run a Python
 application without installing it permanently.
-
-> The beta is tested on **macOS** and **Windows**. Linux support is planned.
 
 ```bash
 pipx run shirube   # with pipx
@@ -95,9 +112,13 @@ diagram.
 > 💡 shirube connects with whatever credentials you give it. A read-only role with
 > `CONNECT` and `SELECT` is all it needs — and all it should have.
 
+> 🔮 To use the AI navigator, add a provider in **Settings → AI navigator** — your own
+> Claude or OpenAI key, or a local model. It's optional; the explorer works fully without
+> it.
+
 ## 📚 Learn more
 
-- **Full README, roadmap and the AI-navigator preview** —
+- **Full README and roadmap** —
   <https://github.com/shou-taro/shirube>
 - **Contributing** —
   <https://github.com/shou-taro/shirube/blob/main/CONTRIBUTING.md>
