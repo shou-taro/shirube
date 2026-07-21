@@ -17,9 +17,8 @@
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
 </p>
 
-> 🚧 **Status: Beta.** Both halves are here now — the explorer core *and* the AI
-> navigator that shirube is ultimately built around, usable today (see the
-> [roadmap](#-roadmap)). shirube is pre-1.0: things may still change.
+> 🚧 **Status: Beta.** Both the explorer and the AI navigator work today. shirube is
+> pre-1.0, so things may still change — see the [roadmap](#-roadmap).
 
 <p align="center"><em>See the whole database as a map.</em></p>
 
