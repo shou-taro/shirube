@@ -10,9 +10,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
-from shirube.adapters.api.dependencies import get_ai_config_service
-from shirube.application.ai_config import AiConfigService, ProviderStatus
+from shirube.adapters.ai.factory import check_provider
+from shirube.adapters.api.dependencies import get_ai_config_service, get_secret_store
+from shirube.application.ai_config import AI_PROVIDER_SECRET_ID, AiConfigService, ProviderStatus
 from shirube.domain.ai import AiProviderConfig, AiProviderKind
+from shirube.ports.repositories import SecretStore
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -55,7 +57,14 @@ class AiProviderWrite(BaseModel):
         return AiProviderConfig(kind=self.kind, model=self.model, base_url=self.base_url)
 
 
+class ProviderTestResult(BaseModel):
+    """The result of a successful provider connection check."""
+
+    ok: bool = True
+
+
 ServiceDep = Annotated[AiConfigService, Depends(get_ai_config_service)]
+SecretsDep = Annotated[SecretStore, Depends(get_secret_store)]
 
 
 @router.get("/provider", response_model=AiProviderRead | None)
@@ -68,6 +77,19 @@ def get_provider(service: ServiceDep) -> AiProviderRead | None:
 def set_provider(body: AiProviderWrite, service: ServiceDep) -> AiProviderRead | None:
     """Configure the AI provider; the API key is replaced only when one is supplied."""
     return AiProviderRead.from_status(service.set(body.to_config(), body.api_key))
+
+
+@router.post("/provider/test", response_model=ProviderTestResult)
+def test_provider(body: AiProviderWrite, secrets: SecretsDep) -> ProviderTestResult:
+    """Check that a provider configuration can be reached and authenticated.
+
+    Uses the supplied API key, or the stored one when none is given — so a saved provider
+    can be re-checked without re-entering its key. Returns ``{"ok": true}`` on success; a
+    failure surfaces as a 400 with a translated, actionable message.
+    """
+    api_key = body.api_key or secrets.get_password(AI_PROVIDER_SECRET_ID)
+    check_provider(body.to_config(), api_key)
+    return ProviderTestResult()
 
 
 @router.delete("/provider", status_code=status.HTTP_204_NO_CONTENT)

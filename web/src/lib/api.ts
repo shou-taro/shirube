@@ -234,6 +234,16 @@ export function saveAiProvider(input: AiProviderInput): Promise<AiProvider> {
   return apiFetch<AiProvider>('/ai/provider', { method: 'PUT', body: JSON.stringify(input) })
 }
 
+/**
+ * Check that a provider configuration can be reached and authenticated.
+ *
+ * Resolves when the endpoint is reachable and the key (if any) is accepted; rejects with the
+ * backend's translated message otherwise. Omit `api_key` to check against the stored one.
+ */
+export function testAiProvider(input: AiProviderInput): Promise<void> {
+  return apiFetch<void>('/ai/provider/test', { method: 'POST', body: JSON.stringify(input) })
+}
+
 /** Unconfigure the AI provider and remove any stored API key. */
 export function clearAiProvider(): Promise<void> {
   return apiFetch<void>('/ai/provider', { method: 'DELETE' })

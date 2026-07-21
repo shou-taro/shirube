@@ -12,6 +12,7 @@ import {
   listProfiles,
   saveAiProvider,
   streamChat,
+  testAiProvider,
   testConnection,
   testProfileConnection,
   updateProfile,
@@ -140,6 +141,25 @@ describe('request shape', () => {
     const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('/api/ai/provider')
     expect(init.method).toBe('DELETE')
+  })
+
+  it('POSTs an AI provider connection test', async () => {
+    const spy = mockFetch(new Response(JSON.stringify({ ok: true }), { status: 200 }))
+
+    await testAiProvider({ kind: 'openai_compatible', model: 'llama3.1', base_url: 'http://x/v1' })
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/ai/provider/test')
+    expect(init.method).toBe('POST')
+  })
+
+  it('rejects with the translated detail when the provider test fails', async () => {
+    mockFetch(new Response(JSON.stringify({ detail: 'The provider rejected the API key.' }), {
+      status: 400,
+    }))
+
+    await expect(
+      testAiProvider({ kind: 'anthropic', model: 'claude-opus-4-8' }),
+    ).rejects.toThrow('The provider rejected the API key.')
   })
 
   it('lists profiles', async () => {

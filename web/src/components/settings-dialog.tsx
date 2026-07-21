@@ -18,6 +18,7 @@ import {
   fetchAiProvider,
   fetchHealth,
   saveAiProvider,
+  testAiProvider,
 } from '@/lib/api'
 import { labelForDestinationId } from '@/lib/destinations'
 import { useSettings } from '@/lib/settings'
@@ -146,8 +147,10 @@ function AiProviderSection({
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [tested, setTested] = useState(false)
 
   // Seed the form for a preset: the saved values when that preset is the configured provider,
   // otherwise the preset's defaults. Always clears the key field — the stored key is never
@@ -160,6 +163,7 @@ function AiProviderSection({
     setApiKey('')
     setError(null)
     setSaved(false)
+    setTested(false)
   }
 
   // Load the configured provider each time the dialog opens, selecting its preset (or Claude
@@ -205,27 +209,60 @@ function AiProviderSection({
   // A stored key only counts as "kept on blank" for the provider it was saved against.
   const keyStored = provider != null && presetForConfig(provider) === preset && provider.has_api_key
 
-  async function handleSave(): Promise<void> {
-    // A hosted provider needs a key; guard here so the miss is caught before the request.
+  // Assemble the request body from the form. A key is sent only when one was typed (and the
+  // provider takes one); a blank key keeps whatever is stored.
+  function buildInput(): AiProviderInput {
+    const resolvedBaseUrl = spec.showBaseUrl
+      ? baseUrl.trim() === ''
+        ? null
+        : baseUrl.trim()
+      : spec.baseUrlDefault || null
+    const input: AiProviderInput = { kind: spec.kind, model, base_url: resolvedBaseUrl }
+    if (spec.key !== 'none' && apiKey !== '') {
+      input.api_key = apiKey
+    }
+    return input
+  }
+
+  // True when a hosted provider is missing its key; reports the miss and stops.
+  function keyMissing(): boolean {
     if (spec.key === 'required' && apiKey === '' && !keyStored) {
       setError(t('settings.aiApiKeyMissing'))
+      return true
+    }
+    return false
+  }
+
+  async function handleTest(): Promise<void> {
+    if (keyMissing()) {
+      return
+    }
+    setTesting(true)
+    setError(null)
+    setTested(false)
+    try {
+      await testAiProvider(buildInput())
+      setTested(true)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught))
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  async function handleSave(): Promise<void> {
+    if (keyMissing()) {
       return
     }
     setSaving(true)
     setError(null)
     setSaved(false)
+    setTested(false)
     try {
-      const resolvedBaseUrl = spec.showBaseUrl
-        ? baseUrl.trim() === ''
-          ? null
-          : baseUrl.trim()
-        : spec.baseUrlDefault || null
-      const input: AiProviderInput = { kind: spec.kind, model, base_url: resolvedBaseUrl }
-      // Send a key only when one was typed (and the provider takes one); blank keeps the
-      // stored key.
-      if (spec.key !== 'none' && apiKey !== '') {
-        input.api_key = apiKey
-      }
+      const input = buildInput()
+      // Verify the provider is reachable before storing it, so a wrong endpoint or key is
+      // caught here rather than only when the navigator is first asked a question.
+      await testAiProvider(input)
       const result = await saveAiProvider(input)
       // Remember the choice, so the form and the navigator both name the provider the way
       // the user picked it — a saved config alone cannot always tell the presets apart.
@@ -311,11 +348,14 @@ function AiProviderSection({
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex items-center gap-2">
-        <Button variant="brand" size="sm" onClick={handleSave} disabled={saving}>
+        <Button variant="brand" size="sm" onClick={handleSave} disabled={saving || testing}>
           {saving ? t('settings.aiSaving') : t('settings.aiSave')}
         </Button>
+        <Button variant="ghost" size="sm" onClick={handleTest} disabled={saving || testing}>
+          {testing ? t('settings.aiTesting') : t('settings.aiTest')}
+        </Button>
         {configured ? (
-          <Button variant="ghost" size="sm" onClick={handleRemove} disabled={saving}>
+          <Button variant="ghost" size="sm" onClick={handleRemove} disabled={saving || testing}>
             {t('settings.aiRemove')}
           </Button>
         ) : null}
@@ -323,6 +363,11 @@ function AiProviderSection({
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Check className="size-3.5" />
             {t('settings.aiSaved')}
+          </span>
+        ) : tested ? (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Check className="size-3.5" />
+            {t('settings.aiTestOk')}
           </span>
         ) : null}
       </div>

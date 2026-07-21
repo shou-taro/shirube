@@ -8,7 +8,10 @@ live behaviour of a real endpoint is proven separately by the gated Ollama integ
 import json
 from types import SimpleNamespace
 
+import httpx
 import pytest
+from anthropic import APIConnectionError as AnthropicConnectionError
+from openai import APIConnectionError as OpenAIConnectionError
 
 from shirube.adapters.ai.anthropic_provider import (
     AnthropicProvider,
@@ -16,7 +19,7 @@ from shirube.adapters.ai.anthropic_provider import (
     to_anthropic_messages,
     to_anthropic_tools,
 )
-from shirube.adapters.ai.factory import build_provider
+from shirube.adapters.ai.factory import build_provider, check_provider
 from shirube.adapters.ai.openai_provider import (
     OpenAiCompatibleProvider,
     parse_openai_stream,
@@ -35,7 +38,7 @@ from shirube.domain.chat import (
     TurnMessage,
     TurnRequest,
 )
-from shirube.domain.errors import InvalidProviderConfigError
+from shirube.domain.errors import InvalidProviderConfigError, ProviderCheckError
 
 _TOOL = ToolDefinition("search_objects", "Find objects.", {"type": "object", "properties": {}})
 
@@ -202,3 +205,51 @@ def test_factory_rejects_openai_compatible_without_base_url() -> None:
 def test_factory_builds_anthropic() -> None:
     config = AiProviderConfig(AiProviderKind.ANTHROPIC, "claude-opus-4-8", None)
     assert isinstance(build_provider(config, "sk-ant-test"), AnthropicProvider)
+
+
+# --- connection check ----------------------------------------------------------------
+
+
+def _models(list_fn: object) -> SimpleNamespace:
+    """A stand-in SDK client exposing ``client.models.list``."""
+    return SimpleNamespace(models=SimpleNamespace(list=list_fn))
+
+
+def test_openai_check_passes_when_models_list_succeeds() -> None:
+    provider = OpenAiCompatibleProvider("m", "http://localhost:11434/v1")
+    provider._client = _models(lambda: [])  # type: ignore[assignment]
+    provider.check()  # no raise
+
+
+def test_openai_check_translates_a_connection_failure() -> None:
+    provider = OpenAiCompatibleProvider("m", "http://localhost:9/v1")
+
+    def _fail() -> None:
+        raise OpenAIConnectionError(request=httpx.Request("GET", "http://localhost:9/v1"))
+
+    provider._client = _models(_fail)  # type: ignore[assignment]
+    with pytest.raises(ProviderCheckError, match="Could not reach"):
+        provider.check()
+
+
+def test_anthropic_check_translates_a_connection_failure() -> None:
+    provider = AnthropicProvider("claude-opus-4-8", api_key="sk-ant-test")
+
+    def _fail() -> None:
+        raise AnthropicConnectionError(request=httpx.Request("GET", "https://api.anthropic.com"))
+
+    provider._client = _models(_fail)  # type: ignore[assignment]
+    with pytest.raises(ProviderCheckError, match="Could not reach"):
+        provider.check()
+
+
+def test_check_provider_anthropic_needs_a_key() -> None:
+    config = AiProviderConfig(AiProviderKind.ANTHROPIC, "claude-opus-4-8", None)
+    with pytest.raises(ProviderCheckError, match="API key"):
+        check_provider(config, None)
+
+
+def test_check_provider_openai_compatible_needs_a_base_url() -> None:
+    config = AiProviderConfig(AiProviderKind.OPENAI_COMPATIBLE, "m", None)
+    with pytest.raises(InvalidProviderConfigError):
+        check_provider(config, None)

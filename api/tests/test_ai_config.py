@@ -13,7 +13,8 @@ from fastapi.testclient import TestClient
 from shirube.adapters.api.app import create_app
 from shirube.adapters.api.dependencies import get_secret_store
 from shirube.application.ai_config import AI_PROVIDER_SECRET_ID
-from shirube.domain.errors import SecretStoreError
+from shirube.domain.ai import AiProviderConfig
+from shirube.domain.errors import ProviderCheckError, SecretStoreError
 
 
 class FakeSecretStore:
@@ -148,6 +149,56 @@ def test_delete_unconfigures_and_removes_key(
     assert client.delete("/api/ai/provider").status_code == 204
     assert client.get("/api/ai/provider").json() is None
     assert secrets.get_password(AI_PROVIDER_SECRET_ID) is None
+
+
+def test_test_provider_returns_ok_on_success(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A reachable provider returns {"ok": true} without saving anything."""
+    monkeypatch.setattr(
+        "shirube.adapters.api.routes.ai.check_provider",
+        lambda config, api_key: None,
+    )
+    response = client.post("/api/ai/provider/test", json=_ollama())
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    # Testing must not configure the provider.
+    assert client.get("/api/ai/provider").json() is None
+
+
+def test_test_provider_reports_a_failure(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _fail(config: AiProviderConfig, api_key: str | None) -> None:
+        raise ProviderCheckError("The provider rejected the API key.")
+
+    monkeypatch.setattr("shirube.adapters.api.routes.ai.check_provider", _fail)
+    response = client.post("/api/ai/provider/test", json=_claude())
+    assert response.status_code == 400
+    assert "rejected the API key" in response.json()["detail"]
+
+
+def test_test_provider_falls_back_to_the_stored_key(
+    client: TestClient,
+    secrets: FakeSecretStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Re-testing a saved provider without re-entering the key uses the stored one."""
+    secrets.set_password(AI_PROVIDER_SECRET_ID, "sk-stored")
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(
+        "shirube.adapters.api.routes.ai.check_provider",
+        lambda config, api_key: seen.update(api_key=api_key),
+    )
+    # No api_key in the body → the route must supply the stored one.
+    response = client.post(
+        "/api/ai/provider/test",
+        json={"kind": "anthropic", "model": "claude-opus-4-8"},
+    )
+    assert response.status_code == 200
+    assert seen["api_key"] == "sk-stored"
 
 
 class FailingSecretStore(FakeSecretStore):
