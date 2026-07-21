@@ -8,6 +8,7 @@ import {
   Sparkles,
   Square,
   Trash2,
+  TriangleAlert,
 } from 'lucide-react'
 import {
   type KeyboardEvent,
@@ -434,8 +435,9 @@ export function NavigatorPane({
                   </div>
                 )}
                 {turn.error !== null && (
-                  <div className="rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
-                    {turn.error}
+                  <div className="flex items-start gap-1.5 rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
+                    <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                    <span>{turn.error}</span>
                   </div>
                 )}
                 {/* What the answer cost, when the provider says — it is what a metered
