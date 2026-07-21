@@ -19,7 +19,7 @@
 
 > 🚧 **Status: Beta.** Both halves are here now — the explorer core *and* the AI
 > navigator that shirube is ultimately built around, usable today (see the
-> [roadmap](#roadmap)). shirube is pre-1.0: things may still change.
+> [roadmap](#-roadmap)). shirube is pre-1.0: things may still change.
 
 <p align="center"><em>See the whole database as a map.</em></p>
 
@@ -107,11 +107,10 @@ The AI is a **navigator, not a SQL generator**: it reads schema metadata to guid
 and it never changes anything.
 
 **You bring the model.** Use your own Claude or OpenAI key, or run a local model such as
-[Ollama](https://ollama.com) — configured in **Settings → AI navigator**. The request
-goes straight from your machine to the provider you chose; no shirube server sits in
-between, only the schema metadata relevant to your question is ever sent, and a local
-model sends nothing off your machine at all. The explorer works fully without any of
-this — the navigator is entirely optional.
+[Ollama](https://ollama.com), configured in **Settings → AI navigator**. Whichever you
+pick, the request goes straight from your machine to that model — never through a shirube
+server ([more below](#-safe-by-design)). The navigator is entirely optional; the explorer
+works fully without it.
 
 ## 🛡️ Safe by design
 
