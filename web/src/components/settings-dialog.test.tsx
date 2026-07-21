@@ -270,40 +270,7 @@ describe('SettingsDialog — AI provider', () => {
     })
   })
 
-  it('checks the provider with Test and reports it reachable, without saving', async () => {
-    mockTestProvider.mockResolvedValue()
-    await openAiSection(null)
-
-    fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
-      target: { value: 'ollama' },
-    })
-    fireEvent.change(screen.getByLabelText('settings.aiModel'), { target: { value: 'llama3.1' } })
-    fireEvent.click(screen.getByRole('button', { name: 'settings.aiTest' }))
-
-    expect(await screen.findByText('settings.aiTestOk')).toBeInTheDocument()
-    expect(mockTestProvider).toHaveBeenCalledWith({
-      kind: 'openai_compatible',
-      model: 'llama3.1',
-      base_url: 'http://localhost:11434/v1',
-    })
-    // Testing checks reachability only; it must not configure the provider.
-    expect(mockSaveProvider).not.toHaveBeenCalled()
-  })
-
-  it('surfaces a failed Test as an error', async () => {
-    mockTestProvider.mockRejectedValue(new Error('Could not reach the provider.'))
-    await openAiSection(null)
-
-    fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
-      target: { value: 'ollama' },
-    })
-    fireEvent.change(screen.getByLabelText('settings.aiModel'), { target: { value: 'llama3.1' } })
-    fireEvent.click(screen.getByRole('button', { name: 'settings.aiTest' }))
-
-    expect(await screen.findByText('Could not reach the provider.')).toBeInTheDocument()
-  })
-
-  it('does not save when the pre-save check fails', async () => {
+  it('verifies the provider before saving, and does not save when the check fails', async () => {
     mockTestProvider.mockRejectedValue(new Error('The provider rejected the API key.'))
     await openAiSection(null)
 

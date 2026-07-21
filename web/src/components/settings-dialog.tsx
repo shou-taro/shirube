@@ -147,10 +147,8 @@ function AiProviderSection({
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-  const [tested, setTested] = useState(false)
 
   // Seed the form for a preset: the saved values when that preset is the configured provider,
   // otherwise the preset's defaults. Always clears the key field — the stored key is never
@@ -163,7 +161,6 @@ function AiProviderSection({
     setApiKey('')
     setError(null)
     setSaved(false)
-    setTested(false)
   }
 
   // Load the configured provider each time the dialog opens, selecting its preset (or Claude
@@ -233,23 +230,6 @@ function AiProviderSection({
     return false
   }
 
-  async function handleTest(): Promise<void> {
-    if (keyMissing()) {
-      return
-    }
-    setTesting(true)
-    setError(null)
-    setTested(false)
-    try {
-      await testAiProvider(buildInput())
-      setTested(true)
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught))
-    } finally {
-      setTesting(false)
-    }
-  }
-
   async function handleSave(): Promise<void> {
     if (keyMissing()) {
       return
@@ -257,7 +237,6 @@ function AiProviderSection({
     setSaving(true)
     setError(null)
     setSaved(false)
-    setTested(false)
     try {
       const input = buildInput()
       // Verify the provider is reachable before storing it, so a wrong endpoint or key is
@@ -348,14 +327,11 @@ function AiProviderSection({
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex items-center gap-2">
-        <Button variant="brand" size="sm" onClick={handleSave} disabled={saving || testing}>
+        <Button variant="brand" size="sm" onClick={handleSave} disabled={saving}>
           {saving ? t('settings.aiSaving') : t('settings.aiSave')}
         </Button>
-        <Button variant="ghost" size="sm" onClick={handleTest} disabled={saving || testing}>
-          {testing ? t('settings.aiTesting') : t('settings.aiTest')}
-        </Button>
         {configured ? (
-          <Button variant="ghost" size="sm" onClick={handleRemove} disabled={saving || testing}>
+          <Button variant="ghost" size="sm" onClick={handleRemove} disabled={saving}>
             {t('settings.aiRemove')}
           </Button>
         ) : null}
@@ -363,11 +339,6 @@ function AiProviderSection({
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Check className="size-3.5" />
             {t('settings.aiSaved')}
-          </span>
-        ) : tested ? (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Check className="size-3.5" />
-            {t('settings.aiTestOk')}
           </span>
         ) : null}
       </div>
