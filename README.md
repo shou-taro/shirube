@@ -17,8 +17,8 @@
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
 </p>
 
-> 🚧 **Status: Beta.** The explorer core is here and usable today. The AI navigator — the
-> feature shirube is ultimately built around — is the next milestone (see the
+> 🚧 **Status: Beta.** Both halves are here now — the explorer core *and* the AI
+> navigator that shirube is ultimately built around, usable today (see the
 > [roadmap](#roadmap)). shirube is pre-1.0: things may still change.
 
 <p align="center"><em>See the whole database as a map.</em></p>
@@ -43,10 +43,16 @@ footing fast.
 
 ## 🧭 What shirube does
 
-shirube opens on an interactive ER diagram and lets you explore a database like a map:
-search for a table, focus on it, and follow its relationships outward — so you can see
-how everything connects without reading DDL or writing a single query. It answers the
-questions you actually have about a schema:
+shirube turns a database into a map you can read. It opens on an interactive ER diagram,
+centred where it matters, and gives you two ways to find your footing:
+
+- 🗺️ **Steer it yourself** — search for a table, focus on it, and follow its
+  relationships outward, one hop at a time.
+- 🔮 **Or just ask** — put a question in plain language and the AI navigator answers on
+  the map, lighting the path to what you were after.
+
+Either way you see how everything connects — without reading DDL or writing a single
+query. These are the questions shirube is built to answer:
 
 - **Where does this data live**, and which table owns this column?
 - **How are these two tables related?** Where does this foreign key lead?
@@ -62,6 +68,10 @@ editor, and nothing that ever writes. shirube is a tool for *understanding* a da
 
 Everything below works today, in the beta:
 
+- 🔮 **AI navigator.** Ask in plain language — *"which tables would I join to get a
+  customer's orders?"* — and shirube answers on the map, lighting up the tables involved.
+  Bring your own Claude or OpenAI key, or point it at a local model; it reads schema
+  metadata to guide you and never writes a line of SQL. [More below.](#-the-ai-navigator)
 - 🗺️ **ER diagram home.** shirube generates the diagram automatically and centres it on
   the most-connected table. You see a table and its immediate neighbours — not a wall of
   hundreds — and travel outward one hop at a time.
@@ -78,12 +88,12 @@ Everything below works today, in the beta:
   operating system's keychain, never in a config file.
 - 🌗 **Light and dark themes.**
 
-## 🔮 The AI navigator — coming next
+## 🔮 The AI navigator
 
-> Not built yet. This is the next milestone (see the [roadmap](#roadmap)).
-
-Today you steer the map yourself. Next, you'll be able to ask in plain language, and
-shirube will lead you there — highlighting the answer directly on the map:
+Ask in plain language; get your answer *on the map.* The navigator reads your schema and
+walks you to what you asked about, explaining as it goes and lighting up the tables
+involved — so the answer isn't a wall of text, it's a place you can see. Every object
+name in its reply is a link: click one and the map flies straight to it.
 
 - *"My AI wrote this JOIN through `invoice` — why does it go there?"*
 - *"Where does a customer's email address come from?"*
@@ -92,6 +102,13 @@ shirube will lead you there — highlighting the answer directly on the map:
 
 The AI is a **navigator, not a SQL generator**: it reads schema metadata to guide you,
 and it never changes anything.
+
+**You bring the model.** Use your own Claude or OpenAI key, or run a local model such as
+[Ollama](https://ollama.com) — configured in **Settings → AI navigator**. The request
+goes straight from your machine to the provider you chose; no shirube server sits in
+between, only the schema metadata relevant to your question is ever sent, and a local
+model sends nothing off your machine at all. The explorer works fully without any of
+this — the navigator is entirely optional.
 
 ## 🛡️ Safe by design
 
@@ -103,6 +120,10 @@ shirube is meant never to feel dangerous.
   credentials and data never leave your computer; passwords live in the OS keychain.
 - 📝 **Metadata-only logging.** The local log records what is needed to diagnose a problem
   (errors, request timings) but never the values in your data.
+- 🤖 **Your data, your provider.** The AI navigator talks straight from your machine to
+  the model you chose — nothing routes through a shirube server. Only the schema metadata
+  relevant to your question is sent, and a local model sends nothing off your machine at
+  all. The navigator reads metadata to guide you; it never runs or writes SQL.
 
 ## 🚀 Getting started
 
@@ -110,9 +131,6 @@ shirube is meant never to feel dangerous.
 application without installing it permanently. Most developers already have
 [pipx](https://pipx.pypa.io/); if you prefer [uv](https://docs.astral.sh/uv/), that
 works just as well.
-
-> The beta is tested on **macOS** and **Windows**. Linux support is planned (see the
-> [roadmap](#roadmap)).
 
 ```bash
 pipx run shirube   # with pipx
@@ -132,6 +150,10 @@ Your database can be local or remote.
 > 💡 shirube connects with whatever credentials you give it. A read-only role with
 > `CONNECT` and `SELECT` is all it needs — and all it should have.
 
+To turn on the [AI navigator](#-the-ai-navigator), open **Settings → AI navigator** and
+add a provider — your own Claude or OpenAI key, or a local model. It's optional; the
+explorer works fully without it.
+
 ### 🧪 Try it with a sample database
 
 No PostgreSQL to hand? You can take shirube for a spin against a sample database
@@ -149,15 +171,14 @@ connection in shirube and start exploring.
 
 ## 🛣️ Roadmap
 
-shirube's development runs in three phases.
+shirube's development runs in two phases.
 
-- **Now — Explore (beta).** The ER diagram, table detail, relationship navigation, data
-  preview and search described above.
-- **Next — the AI navigator.** Plain-language questions answered on the map, as described
-  above — a *navigator*, not a SQL generator. The headline feature still to land.
-- **Later — broadening reach.** More databases beyond PostgreSQL (SQLite and MySQL),
-  Linux support, a fully localised interface, and maps you can shape yourself — saved
-  layouts and your own relationship links.
+- **Now — Explore & navigate (beta).** The ER diagram, table detail, relationship
+  navigation, data preview and search — plus the AI navigator that answers plain-language
+  questions on the map. Everything described above.
+- **Later — broadening reach.** More databases beyond PostgreSQL (SQLite and MySQL), a
+  fully localised interface, and maps you can shape yourself — saved layouts and your own
+  relationship links.
 
 ## 🤝 Contributing
 
