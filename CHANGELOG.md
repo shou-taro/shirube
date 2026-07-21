@@ -8,6 +8,44 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.2.0b1] — 2026-07-21
+
+The AI navigator lands — the feature shirube is built around. Ask a database a question in
+plain language and shirube answers on the map, lighting up the tables involved. The
+explorer from the 0.1 betas is unchanged; this release opens the 0.2 line by adding the
+navigator alongside it.
+
+### Added
+
+- **AI navigator.** Ask in plain language and get an answer *on the map*: the navigator
+  reads your schema metadata to guide you, streams its reply as it goes, and lights up the
+  tables involved. Every object name in the answer is a link that flies the map to it. It
+  is a *navigator, not a SQL generator* — it never writes or runs a query.
+- **Bring your own model.** Configure a provider in **Settings → AI navigator** — your own
+  Claude or OpenAI key, or a local OpenAI-compatible model such as Ollama. Keys are kept in
+  the OS keychain, never in a config file. The navigator is entirely optional; the explorer
+  works fully without it.
+- **Per-connection conversations.** Each saved connection keeps its own navigator history,
+  restored when you return to it, with the token usage shown for every answer and a one-tap
+  clear.
+- **Resizable panes.** The table-detail and navigator panes can be dragged to the width you
+  want, and the size is remembered.
+
+### Security
+
+- **Straight to your provider.** A navigator request goes directly from your machine to the
+  model you chose — nothing routes through a shirube server. Only the schema metadata
+  relevant to your question is sent, and a local model sends nothing off your machine at
+  all. The navigator reads metadata to guide you; it never runs or writes SQL.
+- **One-time consent per destination.** Before your schema first reaches a remote provider,
+  shirube asks you to confirm that destination and remembers the choice; a local (loopback)
+  model needs no confirmation.
+
+### Documentation
+
+- Rewrote the README around the navigator: two ways to read a database (steer the map, or
+  ask), the model and privacy story, and a two-phase roadmap.
+
 ## [0.1.0b4] — 2026-07-19
 
 ### Fixed
@@ -113,7 +151,8 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.1.0b4...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.2.0b1...HEAD
+[0.2.0b1]: https://github.com/shou-taro/shirube/compare/v0.1.0b4...v0.2.0b1
 [0.1.0b4]: https://github.com/shou-taro/shirube/compare/v0.1.0b3...v0.1.0b4
 [0.1.0b3]: https://github.com/shou-taro/shirube/compare/v0.1.0b2...v0.1.0b3
 [0.1.0b2]: https://github.com/shou-taro/shirube/compare/v0.1.0b1...v0.1.0b2
