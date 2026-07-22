@@ -228,11 +228,17 @@ function AiProviderSection({
         : baseUrl.trim()
       : spec.baseUrlDefault || null
     const input: AiProviderInput = { kind: spec.kind, model, base_url: resolvedBaseUrl }
-    if (spec.showContextWindow) {
-      // A positive integer sizes the history trimming; anything blank or invalid falls back
-      // to the backend's conservative default.
-      const parsed = Number.parseInt(contextWindow.trim(), 10)
-      input.context_window = Number.isFinite(parsed) && parsed > 0 ? parsed : null
+    if (spec.kind === 'openai_compatible') {
+      // Size the history trimming to the model's window. When the field is shown (a local or
+      // custom endpoint, whose window varies), send the typed value — a positive integer, or
+      // null to fall back to the backend's conservative default. When it is hidden (hosted
+      // OpenAI, uniformly large), send the preset's default automatically, like Claude.
+      if (spec.showContextWindow) {
+        const parsed = Number.parseInt(contextWindow.trim(), 10)
+        input.context_window = Number.isFinite(parsed) && parsed > 0 ? parsed : null
+      } else {
+        input.context_window = spec.contextWindowDefault
+      }
     }
     if (spec.key !== 'none' && apiKey !== '') {
       input.api_key = apiKey

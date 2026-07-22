@@ -10,11 +10,10 @@ may still change between releases).
 
 ### Added
 
-- **A context window for local models.** An OpenAI-compatible provider (OpenAI, a gateway or a
-  local runner such as Ollama) now takes a context-window setting in **Settings → AI
-  navigator**, so the navigator knows how much room a model has. It is seeded per provider —
-  large for hosted OpenAI, a conservative default for a local model — and Claude, whose window
-  is always large, needs none.
+- **A context window for local models.** A local or custom OpenAI-compatible provider (such as
+  Ollama) now takes a context-window setting in **Settings → AI navigator**, so the navigator
+  knows how much room the model has, seeded with a conservative default. Claude and hosted
+  OpenAI, whose windows are always large, are handled automatically and show no field.
 
 ### Changed
 

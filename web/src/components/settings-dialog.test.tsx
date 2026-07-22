@@ -286,13 +286,16 @@ describe('SettingsDialog — AI provider', () => {
     fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
       target: { value: 'openai' },
     })
+    // Hosted OpenAI hides the context-window field (like Claude); its large window is sent
+    // automatically.
+    expect(screen.queryByLabelText('settings.aiContextWindow')).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('settings.aiModel'), { target: { value: 'gpt-4o' } })
     fireEvent.change(screen.getByLabelText('settings.aiApiKey'), { target: { value: 'sk-typed' } })
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
 
     await screen.findByText('settings.aiSaved')
-    // OpenAI's base URL is fixed (the field is hidden) and included automatically, with its
-    // large default context window.
+    // OpenAI's base URL is fixed (the field is hidden) and included automatically, together
+    // with its large default context window.
     expect(mockSaveProvider).toHaveBeenCalledWith({
       kind: 'openai_compatible',
       model: 'gpt-4o',

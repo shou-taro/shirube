@@ -70,7 +70,9 @@ export const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
     baseUrlDefault: 'https://api.openai.com/v1',
     showBaseUrl: false,
     key: 'required',
-    showContextWindow: true,
+    // Hosted OpenAI's usual models all have a large window, so — like Claude — it needs no
+    // field; the default below is sent automatically.
+    showContextWindow: false,
     contextWindowDefault: 128000,
   },
   ollama: {
