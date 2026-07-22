@@ -1,6 +1,6 @@
 [project]
 name = "shirube"
-version = "0.2.0b2"
+version = "0.2.0b3"
 description = "Understand your database as a map — built for the AI-coding era."
 readme = "README.md"
 requires-python = ">=3.11"

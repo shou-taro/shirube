@@ -10,9 +10,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/shou-taro/shirube/actions/workflows/ci.yml"><img src="https://github.com/shou-taro/shirube/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/shou-taro/shirube/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/shou-taro/shirube/ci.yml?branch=main&label=CI" alt="CI" /></a>
   <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/v/shirube" alt="PyPI" /></a>
-  <img src="https://img.shields.io/badge/status-beta-a78bfa" alt="Status: beta" />
+  <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/pyversions/shirube" alt="Python versions" /></a>
+  <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue" alt="Licence: AGPL-3.0" /></a>
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
 </p>

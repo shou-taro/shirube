@@ -8,6 +8,8 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.2.0b3] — 2026-07-23
+
 ### Added
 
 - **A context window for local models.** A local or custom OpenAI-compatible provider (such as
@@ -21,6 +23,11 @@ may still change between releases).
   trimmed to fit before a question is sent, and a turn that would still overrun stops with a
   clear message rather than a failed request — so a long conversation, or a small local model,
   no longer breaks the navigator.
+
+### Documentation
+
+- Refreshed the README badges: the build status now reads from the CI workflow, and the row
+  gains the supported Python versions and a Ruff badge.
 
 ## [0.2.0b2] — 2026-07-21
 
@@ -185,7 +192,8 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.2.0b2...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.2.0b3...HEAD
+[0.2.0b3]: https://github.com/shou-taro/shirube/compare/v0.2.0b2...v0.2.0b3
 [0.2.0b2]: https://github.com/shou-taro/shirube/compare/v0.2.0b1...v0.2.0b2
 [0.2.0b1]: https://github.com/shou-taro/shirube/compare/v0.1.0b4...v0.2.0b1
 [0.1.0b4]: https://github.com/shou-taro/shirube/compare/v0.1.0b3...v0.1.0b4
