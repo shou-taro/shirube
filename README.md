@@ -27,7 +27,7 @@
   <img src="docs/images/home.png" alt="shirube: the AI navigator explaining how a rental links to a film, beside the ER map, a table's detail, and a filtered data preview" width="960" />
 </p>
 
-## 🤖 Why shirube
+## 💡 Why shirube
 
 You hand-write less SQL than you used to — tables become models and methods in your code,
 and in the AI-coding era much of even that code is written for you. But the schema is still
@@ -51,7 +51,7 @@ centred where it matters, and gives you two ways to find your footing:
 
 - 🗺️ **Steer it yourself** — search for a table, focus on it, and follow its
   relationships outward, one hop at a time.
-- 🔮 **Or just ask** — put a question in plain language and the AI navigator answers on
+- 🤖 **Or just ask** — put a question in plain language and the AI navigator answers on
   the map, lighting the path to what you were after.
 
 Either way you see how everything connects — without reading DDL or writing a single
@@ -71,7 +71,7 @@ editor, and nothing that ever writes. shirube is a tool for *understanding* a da
 
 Everything below works today, in the beta:
 
-- 🔮 **AI navigator.** Ask in plain language — *"which tables would I join to get a
+- 🤖 **AI navigator.** Ask in plain language — *"which tables would I join to get a
   customer's orders?"* — and shirube answers on the map, lighting up the tables involved.
   Bring your own Claude or OpenAI key, or point it at a local model; it reads schema
   metadata to guide you and never writes a line of SQL. [More below.](#-the-ai-navigator)
@@ -91,7 +91,7 @@ Everything below works today, in the beta:
   operating system's keychain, never in a config file.
 - 🌗 **Light and dark themes.**
 
-## 🔮 The AI navigator
+## 🤖 The AI navigator
 
 Ask in plain language; get your answer *on the map.* The navigator reads your schema and
 walks you to what you asked about, explaining as it goes and lighting up the tables
