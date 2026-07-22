@@ -27,7 +27,7 @@
   <img src="https://raw.githubusercontent.com/shou-taro/shirube/main/docs/images/home.png" alt="shirube: the AI navigator explaining how a rental links to a film, beside the ER map, a table's detail, and a filtered data preview" width="960" />
 </p>
 
-## 🤖 Why shirube
+## 💡 Why shirube
 
 You hand-write less SQL than you used to — tables become models and methods in your code,
 and in the AI-coding era much of even that code is written for you. But the schema is still
@@ -44,7 +44,7 @@ footing fast.
 
 > AI changed who writes the SQL. shirube changes how we understand databases.
 
-## 🧭 What shirube does
+## 🎯 What shirube does
 
 shirube turns a database into a map you can read. It opens on an interactive ER diagram
 and gives you two ways to find your footing: **steer it yourself** — search for a table,
@@ -59,7 +59,7 @@ editor, and nothing that ever writes. shirube is a tool for *understanding* a da
 
 Everything below works today, in the beta:
 
-- 🔮 **AI navigator** — ask in plain language and get an answer on the map, lighting up the
+- 🤖 **AI navigator** — ask in plain language and get an answer on the map, lighting up the
   tables involved. Bring your own Claude or OpenAI key, or point it at a local model.
 - 🗺️ **ER diagram home** — auto-generated and centred on the most-connected table; see a
   table and its immediate neighbours, and travel outward one hop at a time.
@@ -73,7 +73,7 @@ Everything below works today, in the beta:
   a config file.
 - 🌗 **Light and dark themes.**
 
-## 🔮 The AI navigator
+## 🤖 The AI navigator
 
 Ask in plain language and get your answer *on the map*: the navigator reads your schema
 metadata to guide you and lights up the tables involved, with every object name a link
@@ -115,7 +115,7 @@ diagram.
 > 💡 shirube connects with whatever credentials you give it. A read-only role with
 > `CONNECT` and `SELECT` is all it needs — and all it should have.
 
-> 🔮 To use the AI navigator, add a provider in **Settings → AI navigator** — your own
+> 🤖 To use the AI navigator, add a provider in **Settings → AI navigator** — your own
 > Claude or OpenAI key, or a local model. It's optional; the explorer works fully without
 > it.
 
