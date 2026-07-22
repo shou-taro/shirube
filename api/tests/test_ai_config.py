@@ -79,6 +79,7 @@ def test_configure_hosted_stores_key_and_hides_it(
         "kind": "anthropic",
         "model": "claude-opus-4-8",
         "base_url": None,
+        "context_window": None,
         "has_api_key": True,
     }
     assert secrets.get_password(AI_PROVIDER_SECRET_ID) == "sk-secret"
@@ -89,8 +90,17 @@ def test_configure_local_needs_no_key(client: TestClient, secrets: FakeSecretSto
 
     assert body["kind"] == "openai_compatible"
     assert body["base_url"] == "http://localhost:11434/v1"
+    assert body["context_window"] is None
     assert body["has_api_key"] is False
     assert secrets.get_password(AI_PROVIDER_SECRET_ID) is None
+
+
+def test_context_window_round_trips(client: TestClient) -> None:
+    # A local model's window is stored and returned so the navigator can trim history to it.
+    client.put("/api/ai/provider", json={**_ollama(), "context_window": 8192})
+
+    fetched = client.get("/api/ai/provider").json()
+    assert fetched["context_window"] == 8192
 
 
 def test_get_round_trips_after_put(client: TestClient) -> None:

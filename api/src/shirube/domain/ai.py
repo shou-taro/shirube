@@ -37,8 +37,14 @@ class AiProviderConfig:
         base_url: Where to reach the API. Required for an OpenAI-compatible provider —
             there is no single default endpoint — and optional for Anthropic, whose adapter
             defaults to the Claude API when this is ``None``.
+        context_window: The model's context window in tokens, used to trim the navigator's
+            history so it never overflows. Configured only for an OpenAI-compatible provider,
+            whose window varies from a large hosted model down to a small local one; ``None``
+            falls back to a conservative default. Ignored for Anthropic, whose window is known
+            to be large.
     """
 
     kind: AiProviderKind
     model: str
     base_url: str | None = None
+    context_window: int | None = None

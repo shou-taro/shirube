@@ -16,6 +16,14 @@ import json
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import asdict
 
+from shirube.application.context_budget import (
+    ANTHROPIC_CONTEXT_WINDOW,
+    estimate_messages,
+    estimate_tokens,
+    output_reserve_for,
+    tool_reserve_for,
+    trim_history,
+)
 from shirube.application.lookup import DEFAULT_SEARCH_LIMIT, SchemaLookup
 from shirube.application.schema import SchemaService
 from shirube.domain.chat import (
@@ -189,12 +197,43 @@ def _add_usage(total: TokenUsage, turn: TokenUsage) -> TokenUsage:
     )
 
 
+def _fixed_prompt_tokens() -> int:
+    """Estimate the tokens the fixed prompt always costs: the system prompt and tool schemas.
+
+    These are sent every turn regardless of the conversation, so they count against the
+    context window before any history does.
+    """
+    total = estimate_tokens(SYSTEM_PROMPT)
+    for tool in TOOL_DEFINITIONS:
+        total += estimate_tokens(tool.name)
+        total += estimate_tokens(tool.description)
+        total += estimate_tokens(json.dumps(tool.parameters))
+    return total
+
+
 class NavigatorService:
     """Answers a question about a connected database by driving the tool-calling loop."""
 
-    def __init__(self, schema: SchemaService, provider: AiProvider) -> None:
+    def __init__(
+        self,
+        schema: SchemaService,
+        provider: AiProvider,
+        *,
+        context_window: int = ANTHROPIC_CONTEXT_WINDOW,
+    ) -> None:
         self._schema = schema
         self._provider = provider
+        # Everything sent to the model must fit the window: the fixed prompt, the retained
+        # history, and the look-up results that accumulate within a turn, all while leaving
+        # room for the answer. Reserve the output share up front — the rest is the ceiling for
+        # the input — then hold back a further share for tool results, so the history is
+        # trimmed to what remains.
+        fixed = _fixed_prompt_tokens()
+        self._input_ceiling = context_window - output_reserve_for(context_window)
+        self._history_budget = max(
+            0, self._input_ceiling - tool_reserve_for(context_window) - fixed
+        )
+        self._fixed_tokens = fixed
 
     def ask(
         self,
@@ -221,12 +260,25 @@ class NavigatorService:
             return
 
         lookup = SchemaLookup(graph)
-        messages: list[TurnMessage] = [
-            TurnMessage(role=message.role, content=message.content) for message in history
-        ]
+        # Trim the oldest history so the prompt fits the model's context window, keeping the
+        # current question. This bounds a long conversation before the turn even starts.
+        messages: list[TurnMessage] = trim_history(
+            [TurnMessage(role=message.role, content=message.content) for message in history],
+            self._history_budget,
+        )
         usage = TokenUsage()
 
         for _ in range(MAX_TURNS):
+            # The look-up results appended below grow the prompt within a turn; stop cleanly
+            # before it overruns the window rather than letting the provider reject the call.
+            if self._fixed_tokens + estimate_messages(messages) > self._input_ceiling:
+                yield NavigatorError(
+                    "This conversation is too long for the model's context window. Clear the "
+                    "navigator history, or set a larger context window for the model, and try "
+                    "again."
+                )
+                return
+
             text_parts: list[str] = []
             calls: list[ToolCall] = []
             try:

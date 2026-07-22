@@ -180,6 +180,9 @@ const en = {
     aiModel: 'Model',
     aiBaseUrl: 'Base URL',
     aiBaseUrlHint: 'The API endpoint the provider is reached at.',
+    aiContextWindow: 'Context window',
+    aiContextWindowHint:
+      "The model's context window, in tokens. Older conversation is trimmed to fit it.",
     aiApiKey: 'API key',
     aiApiKeyEnter: 'Enter your API key',
     aiApiKeyOptionalPlaceholder: 'Optional',

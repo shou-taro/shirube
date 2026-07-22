@@ -18,6 +18,7 @@ from shirube.adapters.postgres.data_reader import PostgresDataReader
 from shirube.adapters.postgres.schema_inspector import PostgresSchemaInspector
 from shirube.application.ai_config import AI_PROVIDER_SECRET_ID, AiConfigService
 from shirube.application.connections import ConnectionService
+from shirube.application.context_budget import ANTHROPIC_CONTEXT_WINDOW, resolve_window
 from shirube.application.data import DataService
 from shirube.application.navigator import NavigatorService
 from shirube.application.profiles import ProfileService
@@ -132,6 +133,13 @@ def get_ai_provider(
 def get_navigator_service(
     schema: Annotated[SchemaService, Depends(get_schema_service)],
     provider: Annotated[AiProvider, Depends(get_ai_provider)],
+    config_service: Annotated[AiConfigService, Depends(get_ai_config_service)],
 ) -> NavigatorService:
-    """Compose the navigator from the schema service and the configured provider."""
-    return NavigatorService(schema, provider)
+    """Compose the navigator from the schema service and the configured provider.
+
+    The provider's context window sizes the navigator's history trimming; ``get_ai_provider``
+    has already ensured a provider is configured by the time this runs.
+    """
+    config = config_service.get().config
+    context_window = resolve_window(config) if config is not None else ANTHROPIC_CONTEXT_WINDOW
+    return NavigatorService(schema, provider, context_window=context_window)

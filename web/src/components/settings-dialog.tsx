@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import {
   AI_PRESET_ORDER,
   AI_PRESETS,
+  type PresetSpec,
   presetForConfig,
   type ProviderPreset,
   saveProviderPreset,
@@ -23,6 +24,15 @@ import {
 import { labelForDestinationId } from '@/lib/destinations'
 import { useSettings } from '@/lib/settings'
 import { cn } from '@/lib/utils'
+
+// Seed the context-window field: the saved window when re-showing the configured provider,
+// otherwise the preset's default. Blank for a preset that hides the field (Claude).
+function seedContextWindow(spec: PresetSpec, current: AiProvider | null): string {
+  if (!spec.showContextWindow) {
+    return ''
+  }
+  return String(current?.context_window ?? spec.contextWindowDefault)
+}
 
 /** A labelled block within the dialog. */
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -145,6 +155,7 @@ function AiProviderSection({
   const [preset, setPreset] = useState<ProviderPreset>('claude')
   const [model, setModel] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
+  const [contextWindow, setContextWindow] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -158,6 +169,7 @@ function AiProviderSection({
     const fromSaved = current !== null && presetForConfig(current) === nextPreset
     setModel(fromSaved ? current.model : spec.modelDefault)
     setBaseUrl(fromSaved ? (current.base_url ?? '') : spec.baseUrlDefault)
+    setContextWindow(seedContextWindow(spec, fromSaved ? current : null))
     setApiKey('')
     setError(null)
     setSaved(false)
@@ -182,6 +194,7 @@ function AiProviderSection({
         const fromSaved = current != null && presetForConfig(current) === nextPreset
         setModel(fromSaved ? current.model : spec.modelDefault)
         setBaseUrl(fromSaved ? (current.base_url ?? '') : spec.baseUrlDefault)
+        setContextWindow(seedContextWindow(spec, fromSaved ? current : null))
         setApiKey('')
         setError(null)
         setSaved(false)
@@ -215,6 +228,12 @@ function AiProviderSection({
         : baseUrl.trim()
       : spec.baseUrlDefault || null
     const input: AiProviderInput = { kind: spec.kind, model, base_url: resolvedBaseUrl }
+    if (spec.showContextWindow) {
+      // A positive integer sizes the history trimming; anything blank or invalid falls back
+      // to the backend's conservative default.
+      const parsed = Number.parseInt(contextWindow.trim(), 10)
+      input.context_window = Number.isFinite(parsed) && parsed > 0 ? parsed : null
+    }
     if (spec.key !== 'none' && apiKey !== '') {
       input.api_key = apiKey
     }
@@ -312,6 +331,19 @@ function AiProviderSection({
           placeholder={spec.modelPlaceholder}
         />
       </Field>
+
+      {spec.showContextWindow ? (
+        <Field label={t('settings.aiContextWindow')} hint={t('settings.aiContextWindowHint')}>
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={contextWindow}
+            onChange={(event) => setContextWindow(event.target.value)}
+            placeholder={String(spec.contextWindowDefault)}
+          />
+        </Field>
+      ) : null}
 
       {spec.key !== 'none' ? (
         <Field label={t('settings.aiApiKey')} hint={keyHint}>

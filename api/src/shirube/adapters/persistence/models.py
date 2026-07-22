@@ -48,3 +48,4 @@ class AiProviderConfigRow(Base):
     kind: Mapped[str] = mapped_column(String)
     model: Mapped[str] = mapped_column(String)
     base_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    context_window: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -153,6 +153,7 @@ describe('SettingsDialog — AI provider', () => {
     kind: 'anthropic',
     model: 'claude-sonnet-5',
     base_url: null,
+    context_window: null,
     has_api_key: true,
   }
 
@@ -186,18 +187,60 @@ describe('SettingsDialog — AI provider', () => {
 
   it('swaps to the provider-specific fields when the selection changes', async () => {
     await openAiSection(null)
-    // Claude asks for a key and hides the base URL.
+    // Claude asks for a key and hides the base URL and the context window (its window is large).
     expect(screen.getByLabelText('settings.aiApiKey')).toBeInTheDocument()
     expect(screen.queryByLabelText('settings.aiBaseUrl')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('settings.aiContextWindow')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
       target: { value: 'ollama' },
     })
 
-    // Ollama shows its base URL (prefilled), resets the model, and needs no key.
+    // Ollama shows its base URL (prefilled), resets the model, needs no key, and shows the
+    // context-window field seeded with its default.
     expect(screen.getByLabelText('settings.aiBaseUrl')).toHaveValue('http://localhost:11434/v1')
     expect(screen.getByLabelText('settings.aiModel')).toHaveValue('')
     expect(screen.queryByLabelText('settings.aiApiKey')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('settings.aiContextWindow')).toHaveValue(4096)
+  })
+
+  it('sends an edited context window, and seeds it from a saved provider', async () => {
+    mockSaveProvider.mockResolvedValue({
+      kind: 'openai_compatible',
+      model: 'llama3.1',
+      base_url: 'http://localhost:11434/v1',
+      context_window: 16384,
+      has_api_key: false,
+    })
+    await openAiSection(null)
+    fireEvent.change(screen.getByLabelText('settings.aiProviderLabel'), {
+      target: { value: 'ollama' },
+    })
+    fireEvent.change(screen.getByLabelText('settings.aiModel'), { target: { value: 'llama3.1' } })
+    fireEvent.change(screen.getByLabelText('settings.aiContextWindow'), {
+      target: { value: '16384' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
+
+    await screen.findByText('settings.aiSaved')
+    expect(mockSaveProvider).toHaveBeenCalledWith({
+      kind: 'openai_compatible',
+      model: 'llama3.1',
+      base_url: 'http://localhost:11434/v1',
+      context_window: 16384,
+    })
+  })
+
+  it('seeds the context-window field from the saved provider on load', async () => {
+    await openAiSection({
+      kind: 'openai_compatible',
+      model: 'llama3.1',
+      base_url: 'http://localhost:11434/v1',
+      context_window: 8192,
+      has_api_key: false,
+    })
+
+    expect(screen.getByLabelText('settings.aiContextWindow')).toHaveValue(8192)
   })
 
   it('requires an API key before saving a hosted provider', async () => {
@@ -215,6 +258,7 @@ describe('SettingsDialog — AI provider', () => {
       kind: 'openai_compatible',
       model: 'llama3.1',
       base_url: 'http://localhost:11434/v1',
+      context_window: 4096,
       has_api_key: false,
     })
     await openAiSection(null)
@@ -226,11 +270,12 @@ describe('SettingsDialog — AI provider', () => {
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
 
     await screen.findByText('settings.aiSaved')
-    // The local endpoint is sent with no api_key field.
+    // The local endpoint is sent with no api_key field, and Ollama's default window.
     expect(mockSaveProvider).toHaveBeenCalledWith({
       kind: 'openai_compatible',
       model: 'llama3.1',
       base_url: 'http://localhost:11434/v1',
+      context_window: 4096,
     })
   })
 
@@ -246,11 +291,13 @@ describe('SettingsDialog — AI provider', () => {
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
 
     await screen.findByText('settings.aiSaved')
-    // OpenAI's base URL is fixed (the field is hidden) and included automatically.
+    // OpenAI's base URL is fixed (the field is hidden) and included automatically, with its
+    // large default context window.
     expect(mockSaveProvider).toHaveBeenCalledWith({
       kind: 'openai_compatible',
       model: 'gpt-4o',
       base_url: 'https://api.openai.com/v1',
+      context_window: 128000,
       api_key: 'sk-typed',
     })
   })
@@ -326,6 +373,7 @@ describe('SettingsDialog — AI provider', () => {
       kind: 'openai_compatible',
       model: 'llama3.1',
       base_url: 'http://box:11434/v1',
+      context_window: 4096,
       has_api_key: false,
     })
     await openAiSection(null)
@@ -344,6 +392,7 @@ describe('SettingsDialog — AI provider', () => {
       kind: 'openai_compatible',
       model: 'llama3.1',
       base_url: 'http://box:11434/v1',
+      context_window: 4096,
     })
   })
 
