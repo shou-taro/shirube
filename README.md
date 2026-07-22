@@ -44,7 +44,7 @@ footing fast.
 
 > AI changed who writes the SQL. shirube changes how we understand databases.
 
-## 🧭 What shirube does
+## 🎯 What shirube does
 
 shirube turns a database into a map you can read. It opens on an interactive ER diagram,
 centred where it matters, and gives you two ways to find your footing:
