@@ -37,6 +37,14 @@ export interface PresetSpec {
   showBaseUrl: boolean
   /** How the API key is treated: hosted providers require one, a local runner needs none. */
   key: 'required' | 'optional' | 'none'
+  /**
+   * Whether the context-window field is shown. Claude's window is known to be large, so it
+   * is hidden there; the OpenAI-compatible presets show it because their window varies from a
+   * large hosted model to a small local one.
+   */
+  showContextWindow: boolean
+  /** The context window seeded when the field is shown — the model's typical window. */
+  contextWindowDefault: number
 }
 
 // Claude is the Anthropic-native adapter; the rest all speak the OpenAI-compatible shape but
@@ -51,6 +59,8 @@ export const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
     baseUrlDefault: '',
     showBaseUrl: false,
     key: 'required',
+    showContextWindow: false,
+    contextWindowDefault: 0,
   },
   openai: {
     kind: 'openai_compatible',
@@ -60,6 +70,10 @@ export const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
     baseUrlDefault: 'https://api.openai.com/v1',
     showBaseUrl: false,
     key: 'required',
+    // Hosted OpenAI's usual models all have a large window, so — like Claude — it needs no
+    // field; the default below is sent automatically.
+    showContextWindow: false,
+    contextWindowDefault: 128000,
   },
   ollama: {
     kind: 'openai_compatible',
@@ -70,6 +84,8 @@ export const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
     baseUrlDefault: 'http://localhost:11434/v1',
     showBaseUrl: true,
     key: 'none',
+    showContextWindow: true,
+    contextWindowDefault: 4096,
   },
   custom: {
     kind: 'openai_compatible',
@@ -79,6 +95,8 @@ export const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
     baseUrlDefault: '',
     showBaseUrl: true,
     key: 'optional',
+    showContextWindow: true,
+    contextWindowDefault: 4096,
   },
 }
 

@@ -7,6 +7,7 @@ Keeps the choice of concrete adapter at the edge: the application layer depends 
 
 from shirube.adapters.ai.anthropic_provider import AnthropicProvider
 from shirube.adapters.ai.openai_provider import OpenAiCompatibleProvider
+from shirube.application.context_budget import output_reserve_for, resolve_window
 from shirube.domain.ai import AiProviderConfig, AiProviderKind
 from shirube.domain.errors import InvalidProviderConfigError, ProviderCheckError
 from shirube.ports.repositories import AiProvider
@@ -16,7 +17,7 @@ def build_provider(config: AiProviderConfig, api_key: str | None) -> AiProvider:
     """Construct the provider adapter for a configuration.
 
     Args:
-        config: The configured provider (kind, model, base URL).
+        config: The configured provider (kind, model, base URL, context window).
         api_key: The API key from the keychain, or ``None`` for a keyless local provider.
 
     Returns:
@@ -31,7 +32,14 @@ def build_provider(config: AiProviderConfig, api_key: str | None) -> AiProvider:
 
     if not config.base_url:
         raise InvalidProviderConfigError("An OpenAI-compatible provider needs a base URL.")
-    return OpenAiCompatibleProvider(model=config.model, base_url=config.base_url, api_key=api_key)
+    # Cap the answer to the window's output reserve, so the reply cannot push a small local
+    # model's prompt-plus-answer past its context window.
+    return OpenAiCompatibleProvider(
+        model=config.model,
+        base_url=config.base_url,
+        api_key=api_key,
+        max_tokens=output_reserve_for(resolve_window(config)),
+    )
 
 
 def check_provider(

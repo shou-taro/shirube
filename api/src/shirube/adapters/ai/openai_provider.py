@@ -122,12 +122,24 @@ def parse_openai_stream(chunks: Iterable[Any]) -> Iterator[ProviderEvent]:
 class OpenAiCompatibleProvider:
     """Streams a chat turn from an OpenAI-compatible endpoint (OpenAI / Ollama / gateway)."""
 
-    def __init__(self, model: str, base_url: str, api_key: str | None = None) -> None:
+    def __init__(
+        self,
+        model: str,
+        base_url: str,
+        api_key: str | None = None,
+        max_tokens: int | None = None,
+    ) -> None:
         self._model = model
+        self._max_tokens = max_tokens
         self._client = OpenAI(base_url=base_url, api_key=api_key or _NO_KEY_PLACEHOLDER)
 
     def stream_turn(self, request: TurnRequest) -> Iterator[ProviderEvent]:
         """Stream one turn via the chat-completions API, yielding neutral events."""
+        # Cap the answer's length when a budget was set, so the prompt plus the reply fit the
+        # model's context window; a local runner with a small window relies on this.
+        extra: dict[str, Any] = {}
+        if self._max_tokens is not None:
+            extra["max_tokens"] = self._max_tokens
         # The SDK's typed overloads expect its own TypedDict params; we build plain dicts
         # (valid at the wire level) and translate the neutral turn ourselves.
         stream = self._client.chat.completions.create(  # type: ignore[call-overload]
@@ -136,6 +148,7 @@ class OpenAiCompatibleProvider:
             tools=to_openai_tools(request.tools),
             stream=True,
             stream_options={"include_usage": True},
+            **extra,
         )
         yield from parse_openai_stream(stream)
 

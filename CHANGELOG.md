@@ -8,6 +8,20 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Added
+
+- **A context window for local models.** A local or custom OpenAI-compatible provider (such as
+  Ollama) now takes a context-window setting in **Settings → AI navigator**, so the navigator
+  knows how much room the model has, seeded with a conservative default. Claude and hosted
+  OpenAI, whose windows are always large, are handled automatically and show no field.
+
+### Changed
+
+- **The navigator keeps its conversation inside the model's context window.** Older turns are
+  trimmed to fit before a question is sent, and a turn that would still overrun stops with a
+  clear message rather than a failed request — so a long conversation, or a small local model,
+  no longer breaks the navigator.
+
 ## [0.2.0b2] — 2026-07-21
 
 ### Changed

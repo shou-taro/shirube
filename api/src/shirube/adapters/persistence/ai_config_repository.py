@@ -17,6 +17,7 @@ def _to_domain(row: AiProviderConfigRow) -> AiProviderConfig:
         kind=AiProviderKind(row.kind),
         model=row.model,
         base_url=row.base_url,
+        context_window=row.context_window,
     )
 
 
@@ -47,12 +48,14 @@ class SqlAiConfigRepository:
                         kind=config.kind.value,
                         model=config.model,
                         base_url=config.base_url,
+                        context_window=config.context_window,
                     )
                 )
             else:
                 row.kind = config.kind.value
                 row.model = config.model
                 row.base_url = config.base_url
+                row.context_window = config.context_window
             session.commit()
 
     def clear(self) -> None:

@@ -146,6 +146,9 @@ export interface AiProvider {
   model: string
   /** Where to reach the API; `null` for Anthropic's default endpoint. */
   base_url: string | null
+  /** The model's context window in tokens, used to trim history; `null` when unset (Claude,
+   *  or an OpenAI-compatible provider left at its default). */
+  context_window: number | null
   /** Whether an API key is stored in the keychain (the key itself is never returned). */
   has_api_key: boolean
 }
@@ -155,6 +158,7 @@ export interface AiProviderInput {
   kind: AiProviderKind
   model: string
   base_url?: string | null
+  context_window?: number | null
   api_key?: string | null
 }
 

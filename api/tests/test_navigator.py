@@ -308,3 +308,45 @@ def test_provider_failure_yields_a_navigator_error() -> None:
 
     assert len(events) == 1
     assert isinstance(events[0], NavigatorError)
+
+
+# --- context-window budgeting --------------------------------------------------------
+
+
+def test_trims_oldest_history_to_fit_a_small_window() -> None:
+    # A one-turn answer with no tools; the point is what history reaches the provider.
+    provider = FakeProvider([[TextDelta("ok"), TurnComplete("end_turn")]])
+    navigator = NavigatorService(
+        FakeSchemaService(),
+        provider,  # type: ignore[arg-type]
+        context_window=4096,
+    )
+    history = [
+        ChatMessage(ChatRole.USER, "OLDEST " + "padding " * 500),
+        ChatMessage(ChatRole.ASSISTANT, "earlier reply " * 500),
+        ChatMessage(ChatRole.USER, "NEWEST question"),
+    ]
+    events = list(navigator.ask("p1", history))
+
+    assert isinstance(events[-1], NavigatorDone)
+    # The oldest bulk was dropped to fit the window; the current question is always kept.
+    sent = " ".join(message.content for message in provider.requests[0].messages)
+    assert "NEWEST question" in sent
+    assert "OLDEST" not in sent
+
+
+def test_conversation_too_long_for_the_window_ends_with_an_error() -> None:
+    # A tiny window the current question alone overruns: stop cleanly, never call the model.
+    provider = FakeProvider([[TextDelta("unused"), TurnComplete("end_turn")]])
+    navigator = NavigatorService(
+        FakeSchemaService(),
+        provider,  # type: ignore[arg-type]
+        context_window=512,
+    )
+    huge = ChatMessage(ChatRole.USER, "word " * 5000)
+
+    events = list(navigator.ask("p1", [huge]))
+
+    assert isinstance(events[-1], NavigatorError)
+    assert "context window" in events[-1].message.lower()
+    assert provider.requests == []

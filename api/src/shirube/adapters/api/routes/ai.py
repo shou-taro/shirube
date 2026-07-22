@@ -25,6 +25,7 @@ class AiProviderRead(BaseModel):
     kind: AiProviderKind
     model: str
     base_url: str | None
+    context_window: int | None
     has_api_key: bool
 
     @classmethod
@@ -36,6 +37,7 @@ class AiProviderRead(BaseModel):
             kind=status.config.kind,
             model=status.config.model,
             base_url=status.config.base_url,
+            context_window=status.config.context_window,
             has_api_key=status.has_api_key,
         )
 
@@ -50,11 +52,17 @@ class AiProviderWrite(BaseModel):
     kind: AiProviderKind
     model: str
     base_url: str | None = None
+    context_window: int | None = None
     api_key: str | None = None
 
     def to_config(self) -> AiProviderConfig:
         """Extract the non-secret provider settings."""
-        return AiProviderConfig(kind=self.kind, model=self.model, base_url=self.base_url)
+        return AiProviderConfig(
+            kind=self.kind,
+            model=self.model,
+            base_url=self.base_url,
+            context_window=self.context_window,
+        )
 
 
 class ProviderTestResult(BaseModel):
