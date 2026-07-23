@@ -8,6 +8,13 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A partitioned table no longer looks disconnected.** When a partitioned table's foreign
+  keys are declared on its child partitions rather than the parent (as pagila's `payment`
+  is), the map now attaches those relationships to the parent instead of dropping them with
+  the hidden children — so the table shows its links, each once, like any other.
+
 ## [0.2.0b4] — 2026-07-23
 
 ### Added

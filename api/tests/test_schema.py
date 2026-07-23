@@ -179,6 +179,64 @@ def test_build_graph_folds_partitions_onto_the_parent() -> None:
     assert payment.row_estimate == 200
 
 
+def test_build_graph_attributes_partition_child_foreign_keys_to_the_parent() -> None:
+    # pagila declares payment's foreign keys on the child partitions, not the parent. Each
+    # child key must attach to the parent that stands in for it on the map, and the several
+    # partitions' identical keys collapse into a single edge.
+    object_rows = [
+        {"schema": "public", "name": "payment", "kind": "p", "row_estimate": 0},
+        {"schema": "public", "name": "customer", "kind": "r"},
+    ]
+    partition_rows = [
+        {
+            "parent_schema": "public",
+            "parent_name": "payment",
+            "child_schema": "public",
+            "child_name": "payment_p2022_01",
+            "bound": None,
+            "row_estimate": 0,
+        },
+        {
+            "parent_schema": "public",
+            "parent_name": "payment",
+            "child_schema": "public",
+            "child_name": "payment_p2022_02",
+            "bound": None,
+            "row_estimate": 0,
+        },
+    ]
+    # The same foreign key, declared independently on each child partition.
+    relationship_rows = [
+        {
+            "constraint_name": "payment_p2022_01_customer_id_fkey",
+            "source_schema": "public",
+            "source_table": "payment_p2022_01",
+            "target_schema": "public",
+            "target_table": "customer",
+            "source_columns": ["customer_id"],
+            "target_columns": ["id"],
+        },
+        {
+            "constraint_name": "payment_p2022_02_customer_id_fkey",
+            "source_schema": "public",
+            "source_table": "payment_p2022_02",
+            "target_schema": "public",
+            "target_table": "customer",
+            "source_columns": ["customer_id"],
+            "target_columns": ["id"],
+        },
+    ]
+
+    graph = build_graph(object_rows, [], relationship_rows, partition_rows=partition_rows)
+
+    # One edge, from the parent itself (not a folded-away child) to customer.
+    assert len(graph.relationships) == 1
+    edge = graph.relationships[0]
+    assert edge.source == "public.payment"
+    assert edge.target == "public.customer"
+    assert edge.source_columns == ("customer_id",)
+
+
 # --- endpoint ------------------------------------------------------------------------
 
 
