@@ -66,6 +66,8 @@ const en = {
     hiddenReferenced_other: 'References {{count}} more tables that are off the map',
     hiddenReferencing_one: '{{count}} more table references this, off the map',
     hiddenReferencing_other: '{{count}} more tables reference this, off the map',
+    // The stub button that opens the list of off-map tables.
+    hiddenMore: '{{count}} more',
     empty: 'No tables or views found in this database.',
     objectKind: {
       table: 'Table',

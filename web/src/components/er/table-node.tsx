@@ -1,5 +1,5 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react'
-import { ArrowRight, KeyRound, Table2 } from 'lucide-react'
+import { ArrowRight, ChevronDown, KeyRound, Table2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -28,6 +28,7 @@ function HiddenStub({
   label: string
   onTravel?: (id: string) => void
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -63,10 +64,14 @@ function HiddenStub({
       }}
       aria-label={label}
       aria-expanded={open}
-      className="nopan flex items-center gap-0.5 rounded-full border border-brand/50 bg-card px-1.5 py-0.5 text-[10px] font-semibold text-brand shadow-sm hover:border-brand hover:bg-brand/10"
+      className="nopan flex items-center gap-1 rounded-full border border-brand/50 bg-card px-2 py-0.5 text-[10px] font-semibold text-brand shadow-sm hover:border-brand hover:bg-brand/10"
     >
       <Table2 className="size-2.5 shrink-0" aria-hidden />
-      {tables.length}
+      {t('schema.hiddenMore', { count: tables.length })}
+      <ChevronDown
+        className={cn('size-2.5 shrink-0 transition-transform', open && 'rotate-180')}
+        aria-hidden
+      />
     </button>
   )
   const popover = open && (
