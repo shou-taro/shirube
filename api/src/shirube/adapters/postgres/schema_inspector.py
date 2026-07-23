@@ -112,7 +112,9 @@ _RELATIONSHIPS_SQL = f"""
 # The relations each view (or materialized view) reads from. A view's SELECT lives in a
 # rewrite rule (pg_rewrite), and pg_depend records that rule's dependencies on the
 # relations it touches; DISTINCT collapses the per-column duplicates, and excluding the
-# view's own oid drops the rule's self-dependency.
+# view's own oid drops the rule's self-dependency. The referenced relation may be a
+# partitioned table ('p') — a view reading one depends on the parent — so 'p' is included;
+# build_graph then re-attributes any dependency on a child partition to that parent.
 _VIEW_DEPENDENCIES_SQL = f"""
     SELECT DISTINCT
            vn.nspname AS view_schema,
@@ -130,7 +132,7 @@ _VIEW_DEPENDENCIES_SQL = f"""
     JOIN pg_catalog.pg_class d ON d.oid = dep.refobjid
     JOIN pg_catalog.pg_namespace dn ON dn.oid = d.relnamespace
     WHERE v.relkind IN ('v', 'm')
-      AND d.relkind IN ('r', 'v', 'm')
+      AND d.relkind IN ('r', 'v', 'm', 'p')
       AND d.oid <> v.oid
       AND {_schema_filter("vn")}
     ORDER BY view_schema, view_name, ref_schema, ref_name
@@ -306,22 +308,33 @@ def build_graph(
                 target_columns=target_columns,
             )
         )
-    view_dependencies = tuple(
-        Relationship(
-            constraint_name=f"{source}->{target}",
-            source=source,
-            source_columns=(),
-            target=target,
-            target_columns=(),
-            kind=RelationshipKind.VIEW_DEPENDENCY,
+    # As with foreign keys, a dependency on a partition child is re-attributed to its
+    # parent, and the resulting duplicates collapsed. A view that reads a partitioned table
+    # depends on the parent directly, so this mainly guards the rare child reference.
+    view_dependencies: list[Relationship] = []
+    seen_deps: set[tuple[str, str]] = set()
+    for row in dependency_rows:
+        source = _resolve(f"{row['view_schema']}.{row['view_name']}")
+        target = _resolve(f"{row['ref_schema']}.{row['ref_name']}")
+        if source not in known_ids or target not in known_ids or source == target:
+            continue
+        if (source, target) in seen_deps:
+            continue
+        seen_deps.add((source, target))
+        view_dependencies.append(
+            Relationship(
+                constraint_name=f"{source}->{target}",
+                source=source,
+                source_columns=(),
+                target=target,
+                target_columns=(),
+                kind=RelationshipKind.VIEW_DEPENDENCY,
+            )
         )
-        for row in dependency_rows
-        if (source := f"{row['view_schema']}.{row['view_name']}") in known_ids
-        and (target := f"{row['ref_schema']}.{row['ref_name']}") in known_ids
-        and source != target
-    )
 
-    return SchemaGraph(objects=objects, relationships=tuple(foreign_keys) + view_dependencies)
+    return SchemaGraph(
+        objects=objects, relationships=tuple(foreign_keys) + tuple(view_dependencies)
+    )
 
 
 class PostgresSchemaInspector:

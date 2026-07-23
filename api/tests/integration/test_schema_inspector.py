@@ -334,6 +334,32 @@ def test_partition_foreign_keys_declared_on_children_attach_to_the_parent(
     assert all("payment_2022_" not in edge.source for edge in graph.relationships)
 
 
+def test_view_dependency_on_a_partitioned_table(
+    params: ConnectionParams,
+    admin_connection: psycopg.Connection,
+    make_schema: Callable[[], str],
+) -> None:
+    # A view (or materialized view) reading a partitioned table depends on the parent, whose
+    # relkind is 'p'. pagila's rental_by_category reads the partitioned payment exactly this
+    # way; the dependency must survive rather than being dropped for the partitioned target.
+    schema = make_schema()
+    _run(
+        admin_connection,
+        f'CREATE TABLE "{schema}".payment (id integer, amount numeric, paid_on date) '
+        f"PARTITION BY RANGE (paid_on)",
+        f'CREATE TABLE "{schema}".payment_2022_01 PARTITION OF "{schema}".payment '
+        f"FOR VALUES FROM ('2022-01-01') TO ('2022-02-01')",
+        f'CREATE MATERIALIZED VIEW "{schema}".totals AS '
+        f'SELECT sum(amount) AS total FROM "{schema}".payment',
+    )
+
+    graph = _inspect(params, schema)
+
+    deps = _edges(graph.relationships, f"{schema}.totals", f"{schema}.payment")
+    assert len(deps) == 1
+    assert deps[0].kind is RelationshipKind.VIEW_DEPENDENCY
+
+
 def test_partitioned_table_rows_are_read_through_the_parent(
     params: ConnectionParams,
     admin_connection: psycopg.Connection,
