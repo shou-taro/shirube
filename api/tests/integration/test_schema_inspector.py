@@ -301,6 +301,39 @@ def test_partitioned_table_folds_children_and_dedups_edges(
     assert len(_edges(graph.relationships, f"{schema}.payment", f"{schema}.customer")) == 1
 
 
+def test_partition_foreign_keys_declared_on_children_attach_to_the_parent(
+    params: ConnectionParams,
+    admin_connection: psycopg.Connection,
+    make_schema: Callable[[], str],
+) -> None:
+    # pagila declares payment's foreign keys on each child partition, not the parent: the
+    # children are created standalone with their own keys, then attached. The parent holds
+    # no constraint of its own, yet must still show the relationship (once) — otherwise the
+    # partitioned table looks connected to nothing on the map.
+    schema = make_schema()
+    _run(
+        admin_connection,
+        f'CREATE TABLE "{schema}".customer (id integer PRIMARY KEY)',
+        f'CREATE TABLE "{schema}".payment (id integer, customer_id integer, paid_on date) '
+        f"PARTITION BY RANGE (paid_on)",
+        f'CREATE TABLE "{schema}".payment_2022_01 '
+        f'(id integer, customer_id integer REFERENCES "{schema}".customer, paid_on date)',
+        f'ALTER TABLE "{schema}".payment ATTACH PARTITION "{schema}".payment_2022_01 '
+        f"FOR VALUES FROM ('2022-01-01') TO ('2022-02-01')",
+        f'CREATE TABLE "{schema}".payment_2022_02 '
+        f'(id integer, customer_id integer REFERENCES "{schema}".customer, paid_on date)',
+        f'ALTER TABLE "{schema}".payment ATTACH PARTITION "{schema}".payment_2022_02 '
+        f"FOR VALUES FROM ('2022-02-01') TO ('2022-03-01')",
+    )
+
+    graph = _inspect(params, schema)
+
+    # The key re-attaches to the parent, once, even though it lives only on the children.
+    assert len(_edges(graph.relationships, f"{schema}.payment", f"{schema}.customer")) == 1
+    # No edge is left pointing at a folded-away child partition.
+    assert all("payment_2022_" not in edge.source for edge in graph.relationships)
+
+
 def test_partitioned_table_rows_are_read_through_the_parent(
     params: ConnectionParams,
     admin_connection: psycopg.Connection,

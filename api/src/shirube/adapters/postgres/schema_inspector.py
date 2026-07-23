@@ -144,6 +144,7 @@ _VIEW_DEPENDENCIES_SQL = f"""
 _PARTITIONS_SQL = f"""
     SELECT pn.nspname AS parent_schema,
            p.relname  AS parent_name,
+           cn.nspname AS child_schema,
            c.relname  AS child_name,
            pg_catalog.pg_get_expr(c.relpartbound, c.oid) AS bound,
            c.reltuples::bigint AS row_estimate
@@ -151,6 +152,7 @@ _PARTITIONS_SQL = f"""
     JOIN pg_catalog.pg_class p ON p.oid = i.inhparent
     JOIN pg_catalog.pg_namespace pn ON pn.oid = p.relnamespace
     JOIN pg_catalog.pg_class c ON c.oid = i.inhrelid
+    JOIN pg_catalog.pg_namespace cn ON cn.oid = c.relnamespace
     WHERE p.relkind = 'p' AND {_schema_filter("pn")}
     ORDER BY pn.nspname, p.relname, c.relname
 """  # nosec B608
@@ -209,7 +211,10 @@ def build_graph(
         dependency_rows: Rows of ``view_schema``, ``view_name``, ``ref_schema`` and
             ``ref_name`` — one per relation a view reads from.
         partition_rows: Rows of ``parent_schema``, ``parent_name``, ``child_name``,
-            ``bound`` and ``row_estimate`` — one per child partition of a partitioned table.
+            ``bound`` and ``row_estimate`` — one per child partition of a partitioned
+            table. An optional ``child_schema`` places the child (it defaults to the
+            parent's schema); it lets a key declared on the child be re-attributed to the
+            parent.
 
     Returns:
         The assembled schema graph.
@@ -229,8 +234,11 @@ def build_graph(
 
     # Group each partitioned table's children under it, and sum their estimates — the
     # parent's own reltuples is 0, so the children's sizes are what give it a row count.
+    # Each child is also mapped to its parent so a foreign key declared on a child (as
+    # pagila's are) can be re-attributed to the parent that stands in for it on the map.
     partitions_by_object: dict[tuple[str, str], list[Partition]] = {}
     partition_estimate: dict[tuple[str, str], int] = {}
+    parent_of: dict[str, str] = {}
     for row in partition_rows:
         key = (row["parent_schema"], row["parent_name"])
         partitions_by_object.setdefault(key, []).append(
@@ -239,6 +247,19 @@ def build_graph(
         child_estimate = _row_estimate(row.get("row_estimate"))
         if child_estimate is not None:
             partition_estimate[key] = partition_estimate.get(key, 0) + child_estimate
+        child_schema = row.get("child_schema") or row["parent_schema"]
+        child_id = f"{child_schema}.{row['child_name']}"
+        parent_of[child_id] = f"{row['parent_schema']}.{row['parent_name']}"
+
+    def _resolve(object_id: str) -> str:
+        # Climb the partition tree to the top-level table the map actually shows, so a
+        # child's relationships attach to the parent standing in for it. Guarded against
+        # cycles, which the catalogue should never contain.
+        seen: set[str] = set()
+        while object_id in parent_of and object_id not in seen:
+            seen.add(object_id)
+            object_id = parent_of[object_id]
+        return object_id
 
     def _estimate(row: dict[str, Any], key: tuple[str, str]) -> int | None:
         # A partitioned parent reports no rows of its own, so fall back to its children's sum.
@@ -259,18 +280,32 @@ def build_graph(
     )
 
     known_ids = {obj.id for obj in objects}
-    foreign_keys = tuple(
-        Relationship(
-            constraint_name=row["constraint_name"],
-            source=source,
-            source_columns=tuple(row["source_columns"] or ()),
-            target=target,
-            target_columns=tuple(row["target_columns"] or ()),
+    # A foreign key is kept only when both endpoints are among the loaded objects, after
+    # folding any partition child onto its parent. That re-attribution can turn several
+    # partitions' identical keys (or a parent key plus its inherited child copies) into one
+    # edge, so duplicates — same endpoints and columns — are collapsed.
+    foreign_keys: list[Relationship] = []
+    seen_edges: set[tuple[str, str, tuple[str, ...], tuple[str, ...]]] = set()
+    for row in relationship_rows:
+        source = _resolve(f"{row['source_schema']}.{row['source_table']}")
+        target = _resolve(f"{row['target_schema']}.{row['target_table']}")
+        if source not in known_ids or target not in known_ids:
+            continue
+        source_columns = tuple(row["source_columns"] or ())
+        target_columns = tuple(row["target_columns"] or ())
+        edge = (source, target, source_columns, target_columns)
+        if edge in seen_edges:
+            continue
+        seen_edges.add(edge)
+        foreign_keys.append(
+            Relationship(
+                constraint_name=row["constraint_name"],
+                source=source,
+                source_columns=source_columns,
+                target=target,
+                target_columns=target_columns,
+            )
         )
-        for row in relationship_rows
-        if (source := f"{row['source_schema']}.{row['source_table']}") in known_ids
-        and (target := f"{row['target_schema']}.{row['target_table']}") in known_ids
-    )
     view_dependencies = tuple(
         Relationship(
             constraint_name=f"{source}->{target}",
@@ -286,7 +321,7 @@ def build_graph(
         and source != target
     )
 
-    return SchemaGraph(objects=objects, relationships=foreign_keys + view_dependencies)
+    return SchemaGraph(objects=objects, relationships=tuple(foreign_keys) + view_dependencies)
 
 
 class PostgresSchemaInspector:
