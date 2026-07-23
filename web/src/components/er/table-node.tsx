@@ -46,14 +46,8 @@ function HiddenStub({
     return () => document.removeEventListener('mousedown', close)
   }, [open])
 
+  // A short stem tying the button to the node it belongs to.
   const line = <span className="h-3 w-0.5 bg-brand" aria-hidden />
-  // A solid triangle points at the referenced table, matching the edge markers: for a
-  // top stub that is the off-map table above; for a bottom stub it is this node, above.
-  const arrow = (
-    <svg viewBox="0 0 12 8" className="h-2 w-3 fill-brand" aria-hidden="true">
-      <path d="M6 0 L12 8 L0 8 Z" />
-    </svg>
-  )
   // stopPropagation keeps a click on the stub from also travelling to the node it sits on.
   const chip = (
     <button
@@ -121,7 +115,6 @@ function HiddenStub({
       {side === 'top' ? (
         <>
           {popover}
-          {arrow}
           {chip}
           {line}
         </>
@@ -129,7 +122,6 @@ function HiddenStub({
         <>
           {line}
           {chip}
-          {arrow}
           {popover}
         </>
       )}
