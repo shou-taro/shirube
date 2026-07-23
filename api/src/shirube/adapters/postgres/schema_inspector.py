@@ -16,18 +16,22 @@ from shirube.domain.connection import ConnectionParams
 from shirube.domain.schema import (
     Column,
     ObjectKind,
+    Partition,
     Relationship,
     RelationshipKind,
     SchemaGraph,
     SchemaObject,
 )
 
-# PostgreSQL ``relkind`` codes for the objects shown on the map. Foreign tables ('f')
-# and partition parents ('p') are intentionally left out.
+# PostgreSQL ``relkind`` codes for the objects shown on the map. A partitioned table ('p')
+# is shown as a single node standing in for the whole table — its child partitions are
+# excluded (they carry the same relationships as the parent and would only flood the map).
+# Foreign tables ('f') are still left out.
 _KIND_BY_RELKIND = {
     "r": ObjectKind.TABLE,
     "v": ObjectKind.VIEW,
     "m": ObjectKind.MATERIALIZED_VIEW,
+    "p": ObjectKind.PARTITIONED_TABLE,
 }
 
 
@@ -53,7 +57,9 @@ _OBJECTS_SQL = f"""
            c.reltuples::bigint AS row_estimate
     FROM pg_catalog.pg_class c
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-    WHERE c.relkind IN ('r', 'v', 'm') AND {_schema_filter("n")}
+    WHERE c.relkind IN ('r', 'v', 'm', 'p')
+      AND NOT c.relispartition
+      AND {_schema_filter("n")}
     ORDER BY n.nspname, c.relname
 """  # nosec B608
 
@@ -73,7 +79,8 @@ _COLUMNS_SQL = f"""
         FROM pg_catalog.pg_constraint
         WHERE contype = 'p'
     ) pk ON pk.conrelid = a.attrelid AND pk.attnum = a.attnum
-    WHERE c.relkind IN ('r', 'v', 'm')
+    WHERE c.relkind IN ('r', 'v', 'm', 'p')
+      AND NOT c.relispartition
       AND a.attnum > 0 AND NOT a.attisdropped
       AND {_schema_filter("n")}
     ORDER BY n.nspname, c.relname, a.attnum
@@ -129,6 +136,25 @@ _VIEW_DEPENDENCIES_SQL = f"""
     ORDER BY view_schema, view_name, ref_schema, ref_name
 """  # nosec B608
 
+# The child partitions of each partitioned table, with the range/list/hash each holds.
+# ``pg_get_expr(relpartbound)`` renders the bound exactly as PostgreSQL would (the same
+# form pg_dump emits), so it covers every partitioning strategy; a child's own reltuples
+# gives the per-partition size, summed into the parent's estimate. Only declarative
+# partitions (parent relkind 'p') are covered — legacy inheritance has no bound to read.
+_PARTITIONS_SQL = f"""
+    SELECT pn.nspname AS parent_schema,
+           p.relname  AS parent_name,
+           c.relname  AS child_name,
+           pg_catalog.pg_get_expr(c.relpartbound, c.oid) AS bound,
+           c.reltuples::bigint AS row_estimate
+    FROM pg_catalog.pg_inherits i
+    JOIN pg_catalog.pg_class p ON p.oid = i.inhparent
+    JOIN pg_catalog.pg_namespace pn ON pn.oid = p.relnamespace
+    JOIN pg_catalog.pg_class c ON c.oid = i.inhrelid
+    WHERE p.relkind = 'p' AND {_schema_filter("pn")}
+    ORDER BY pn.nspname, p.relname, c.relname
+"""  # nosec B608
+
 
 def _row_estimate(value: Any) -> int | None:
     """Normalise a ``reltuples`` estimate: a negative value means "unknown" → ``None``.
@@ -143,11 +169,26 @@ def _row_estimate(value: Any) -> int | None:
     return estimate if estimate >= 0 else None
 
 
+def _partition_bound(value: Any) -> str | None:
+    """Tidy a raw ``pg_get_expr(relpartbound)`` value for display.
+
+    PostgreSQL renders a bound as ``FOR VALUES <clause>`` (or the bare word ``DEFAULT``);
+    the ``FOR VALUES`` prefix is noise once it sits under a "Partitions" heading, so it is
+    dropped, leaving just the range, list or hash.
+    """
+    if not value:
+        return None
+    text = str(value).strip()
+    prefix = "FOR VALUES "
+    return text[len(prefix) :] if text.startswith(prefix) else text
+
+
 def build_graph(
     object_rows: Sequence[dict[str, Any]],
     column_rows: Sequence[dict[str, Any]],
     relationship_rows: Sequence[dict[str, Any]],
     dependency_rows: Sequence[dict[str, Any]] = (),
+    partition_rows: Sequence[dict[str, Any]] = (),
 ) -> SchemaGraph:
     """Assemble query rows into a :class:`SchemaGraph`.
 
@@ -167,6 +208,8 @@ def build_graph(
             table, and ``source_columns``/``target_columns`` arrays.
         dependency_rows: Rows of ``view_schema``, ``view_name``, ``ref_schema`` and
             ``ref_name`` — one per relation a view reads from.
+        partition_rows: Rows of ``parent_schema``, ``parent_name``, ``child_name``,
+            ``bound`` and ``row_estimate`` — one per child partition of a partitioned table.
 
     Returns:
         The assembled schema graph.
@@ -184,13 +227,32 @@ def build_graph(
             )
         )
 
+    # Group each partitioned table's children under it, and sum their estimates — the
+    # parent's own reltuples is 0, so the children's sizes are what give it a row count.
+    partitions_by_object: dict[tuple[str, str], list[Partition]] = {}
+    partition_estimate: dict[tuple[str, str], int] = {}
+    for row in partition_rows:
+        key = (row["parent_schema"], row["parent_name"])
+        partitions_by_object.setdefault(key, []).append(
+            Partition(name=row["child_name"], bound=_partition_bound(row.get("bound")))
+        )
+        child_estimate = _row_estimate(row.get("row_estimate"))
+        if child_estimate is not None:
+            partition_estimate[key] = partition_estimate.get(key, 0) + child_estimate
+
+    def _estimate(row: dict[str, Any], key: tuple[str, str]) -> int | None:
+        # A partitioned parent reports no rows of its own, so fall back to its children's sum.
+        own = _row_estimate(row.get("row_estimate"))
+        return own if own else partition_estimate.get(key, own)
+
     objects = tuple(
         SchemaObject(
             schema=row["schema"],
             name=row["name"],
             kind=_KIND_BY_RELKIND[row["kind"]],
             columns=tuple(columns_by_object.get((row["schema"], row["name"]), ())),
-            row_estimate=_row_estimate(row.get("row_estimate")),
+            row_estimate=_estimate(row, (row["schema"], row["name"])),
+            partitions=tuple(partitions_by_object.get((row["schema"], row["name"]), ())),
         )
         for row in object_rows
         if row["kind"] in _KIND_BY_RELKIND
@@ -254,4 +316,8 @@ class PostgresSchemaInspector:
                 relationship_rows = cursor.fetchall()
                 cursor.execute(_VIEW_DEPENDENCIES_SQL, query_params)
                 dependency_rows = cursor.fetchall()
-        return build_graph(object_rows, column_rows, relationship_rows, dependency_rows)
+                cursor.execute(_PARTITIONS_SQL, query_params)
+                partition_rows = cursor.fetchall()
+        return build_graph(
+            object_rows, column_rows, relationship_rows, dependency_rows, partition_rows
+        )

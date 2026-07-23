@@ -49,7 +49,7 @@ _RESOLVE_OBJECT_SQL = f"""
     FROM pg_catalog.pg_attribute a
     JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-    WHERE c.relkind IN ('r', 'v', 'm')
+    WHERE c.relkind IN ('r', 'v', 'm', 'p')
       AND a.attnum > 0 AND NOT a.attisdropped
       AND n.nspname || '.' || c.relname = %(object_id)s
       AND {_schema_filter("n")}

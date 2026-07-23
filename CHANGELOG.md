@@ -8,6 +8,14 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Added
+
+- **Partitioned tables read as one.** A partitioned table now shows as a single node on the
+  map — badged *Partitioned* — instead of scattering its child partitions across it. The
+  detail card gains a **Partitions** section listing each child and the range, list or hash it
+  holds, and the table's data preview reads across every partition, exactly like any other
+  table.
+
 ## [0.2.0b3] — 2026-07-23
 
 ### Added

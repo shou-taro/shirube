@@ -25,8 +25,15 @@ class ColumnRead(BaseModel):
     is_primary_key: bool
 
 
+class PartitionRead(BaseModel):
+    """One child partition of a partitioned table."""
+
+    name: str
+    bound: str | None
+
+
 class ObjectRead(BaseModel):
-    """A table, view or materialized view — one node on the map."""
+    """A table, view, materialized view or partitioned table — one node on the map."""
 
     # ``schema`` shadows a BaseModel attribute, so hold it under a safe name and expose
     # it as "schema" in the JSON.
@@ -37,6 +44,7 @@ class ObjectRead(BaseModel):
     name: str
     kind: ObjectKind
     columns: list[ColumnRead]
+    partitions: list[PartitionRead]
 
     @classmethod
     def from_domain(cls, obj: SchemaObject) -> "ObjectRead":
@@ -54,6 +62,10 @@ class ObjectRead(BaseModel):
                     is_primary_key=column.is_primary_key,
                 )
                 for column in obj.columns
+            ],
+            partitions=[
+                PartitionRead(name=partition.name, bound=partition.bound)
+                for partition in obj.partitions
             ],
         )
 

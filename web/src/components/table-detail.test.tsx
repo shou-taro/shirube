@@ -20,6 +20,7 @@ const ORDERS: SchemaObject = {
     { name: 'id', data_type: 'integer', nullable: false, is_primary_key: true },
     { name: 'email', data_type: 'text', nullable: true, is_primary_key: false },
   ],
+  partitions: [],
 }
 
 function renderDetail(graph: SchemaGraph, onNavigate = vi.fn()) {
@@ -107,5 +108,33 @@ describe('relationships', () => {
 
     // The related row carries the "view" badge (tables get none).
     expect(screen.getByText('schema.badgeView')).toBeInTheDocument()
+  })
+})
+
+describe('partitions', () => {
+  const payment = makeObject('public.payment', 1, 'partitioned_table', [
+    { name: 'payment_p2022_01', bound: "FROM ('2022-01-01') TO ('2022-02-01')" },
+    { name: 'payment_p2022_02', bound: "FROM ('2022-02-01') TO ('2022-03-01')" },
+  ])
+
+  it('lists a partitioned table’s children and their bounds under a collapsed section', () => {
+    render(<TableDetail object={payment} graph={makeGraph([payment])} onNavigate={vi.fn()} />)
+
+    const heading = screen.getByRole('button', { name: /schema.partitions/ })
+    // Starts collapsed, like the relationship sections.
+    expect(heading).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('payment_p2022_01')).not.toBeInTheDocument()
+
+    fireEvent.click(heading)
+
+    expect(screen.getByText('payment_p2022_01')).toBeInTheDocument()
+    expect(screen.getByText("FROM ('2022-01-01') TO ('2022-02-01')")).toBeInTheDocument()
+    expect(screen.getByText('payment_p2022_02')).toBeInTheDocument()
+  })
+
+  it('shows no partitions section for a plain table', () => {
+    renderDetail(makeGraph([ORDERS]))
+
+    expect(screen.queryByRole('button', { name: /schema.partitions/ })).not.toBeInTheDocument()
   })
 })
