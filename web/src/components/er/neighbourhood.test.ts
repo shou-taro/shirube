@@ -4,7 +4,8 @@ import { makeFk, makeGraph, makeObject } from '@/test/factories'
 
 import {
   buildAdjacency,
-  hiddenByReference,
+  hiddenNeighbours,
+  NEIGHBOUR_CAP,
   pickCentre,
   selectNeighbourhood,
 } from './neighbourhood'
@@ -66,40 +67,43 @@ describe('pickCentre', () => {
   })
 })
 
-describe('hiddenByReference', () => {
-  it('counts off-map neighbours split by foreign-key direction', () => {
-    const graph = makeGraph(
-      [makeObject('a'), makeObject('b'), makeObject('c'), makeObject('d')],
-      [makeFk('a', 'b'), makeFk('a', 'c'), makeFk('d', 'a')],
-    )
-
-    // Only `a` is visible: it references b and c (above), and d references it (below).
-    const counts = hiddenByReference(graph, 'a', new Set(['a']))
-
-    expect(counts).toEqual({ referenced: 2, referencing: 1 })
+describe('hiddenNeighbours', () => {
+  const ids = ({ referenced, referencing }: ReturnType<typeof hiddenNeighbours>) => ({
+    referenced: referenced.map((o) => o.id),
+    referencing: referencing.map((o) => o.id),
   })
 
-  it('does not count neighbours that are already visible', () => {
+  it('lists off-map neighbours split by foreign-key direction, name-sorted', () => {
     const graph = makeGraph(
-      [makeObject('a'), makeObject('b')],
-      [makeFk('a', 'b')],
+      [makeObject('c'), makeObject('b'), makeObject('a'), makeObject('d')],
+      [makeFk('a', 'c'), makeFk('a', 'b'), makeFk('d', 'a')],
     )
 
-    expect(hiddenByReference(graph, 'a', new Set(['a', 'b']))).toEqual({
-      referenced: 0,
-      referencing: 0,
+    // Only `a` is visible: it references b and c (above, sorted), and d references it (below).
+    expect(ids(hiddenNeighbours(graph, 'a', new Set(['a'])))).toEqual({
+      referenced: ['b', 'c'],
+      referencing: ['d'],
     })
   })
 
-  it('counts a repeatedly-referenced table only once, and ignores self-references', () => {
+  it('excludes neighbours that are already visible', () => {
+    const graph = makeGraph([makeObject('a'), makeObject('b')], [makeFk('a', 'b')])
+
+    expect(ids(hiddenNeighbours(graph, 'a', new Set(['a', 'b'])))).toEqual({
+      referenced: [],
+      referencing: [],
+    })
+  })
+
+  it('lists a repeatedly-referenced table once, and ignores self-references', () => {
     const graph = makeGraph(
       [makeObject('a'), makeObject('b')],
       [makeFk('a', 'b', 'fk1'), makeFk('a', 'b', 'fk2'), makeFk('a', 'a')],
     )
 
-    expect(hiddenByReference(graph, 'a', new Set(['a']))).toEqual({
-      referenced: 1,
-      referencing: 0,
+    expect(ids(hiddenNeighbours(graph, 'a', new Set(['a'])))).toEqual({
+      referenced: ['b'],
+      referencing: [],
     })
   })
 })
@@ -124,5 +128,27 @@ describe('selectNeighbourhood', () => {
     const graph = makeGraph([makeObject('a')], [])
 
     expect(selectNeighbourhood(graph, 'missing')).toEqual({ objects: [], relationships: [] })
+  })
+
+  it('caps each direction to the alphabetically-first NEIGHBOUR_CAP neighbours', () => {
+    // A hub referencing 8 tables and referenced by 8 — each direction keeps only the cap.
+    const out = ['o1', 'o2', 'o3', 'o4', 'o5', 'o6', 'o7', 'o8']
+    const inc = ['i1', 'i2', 'i3', 'i4', 'i5', 'i6', 'i7', 'i8']
+    const graph = makeGraph(
+      [makeObject('hub'), ...out.map((id) => makeObject(id)), ...inc.map((id) => makeObject(id))],
+      [...out.map((id) => makeFk('hub', id)), ...inc.map((id) => makeFk(id, 'hub'))],
+    )
+
+    const kept = new Set(selectNeighbourhood(graph, 'hub').objects.map((o) => o.id))
+
+    // The first six of each direction are kept (o7/o8 and i7/i8 fold into the stubs).
+    expect(kept.size).toBe(1 + 2 * NEIGHBOUR_CAP)
+    expect(kept.has('o6') && kept.has('i6')).toBe(true)
+    expect(kept.has('o7') || kept.has('i7')).toBe(false)
+
+    // The capped-out neighbours surface as off-map, listed by the stub.
+    const hidden = hiddenNeighbours(graph, 'hub', kept)
+    expect(hidden.referenced.map((o) => o.id)).toEqual(['o7', 'o8'])
+    expect(hidden.referencing.map((o) => o.id)).toEqual(['i7', 'i8'])
   })
 })

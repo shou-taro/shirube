@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import type { SchemaGraph } from '@/lib/api'
 
 import { layoutGraph, type TableFlowNode, type TableNodeData } from './layout'
-import { hiddenByReference, pickCentre, selectNeighbourhood } from './neighbourhood'
+import { hiddenNeighbours, pickCentre, selectNeighbourhood } from './neighbourhood'
 import { RoutedEdge } from './routed-edge'
 import { TableNode } from './table-node'
 
@@ -137,8 +137,9 @@ export function ErDiagram({
     const laid = layoutGraph(subgraph)
     const nodes = laid.nodes.map((node) => {
       // Off-map neighbours are marked with vertical stubs (above/below), clear of the
-      // horizontal foreign-key edges, split by reference direction.
-      const { referenced, referencing } = hiddenByReference(graph, node.id, visibleIds)
+      // horizontal foreign-key edges, split by reference direction. The stub lists them
+      // and travels there on click, so a capped hub loses nothing.
+      const { referenced, referencing } = hiddenNeighbours(graph, node.id, visibleIds)
       return {
         ...node,
         data: {
@@ -146,11 +147,12 @@ export function ErDiagram({
           isCentre: node.id === centreId,
           hiddenReferenced: referenced,
           hiddenReferencing: referencing,
+          onTravel: travelTo,
         },
       }
     })
     return { nodes, edges: laid.edges }
-  }, [showAll, graph, centreId])
+  }, [showAll, graph, centreId, travelTo])
 
   // Clicking a neighbour travels the centre to it; clicking the centre does nothing.
   const handleNodeClick = useCallback<NodeMouseHandler>(

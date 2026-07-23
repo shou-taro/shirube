@@ -16,6 +16,14 @@ may still change between releases).
   holds, and the table's data preview reads across every partition, exactly like any other
   table.
 
+### Changed
+
+- **Hub tables stay readable.** A table with many relationships no longer stacks all its
+  neighbours into an unreadable vertical strip: the map now draws up to six per direction and
+  folds the rest into the off-map stub above and below it. That stub is now a button — click it
+  to see the folded tables listed by name and travel to any one. Nothing is lost; the detail
+  card still lists every relationship too.
+
 ## [0.2.0b3] — 2026-07-23
 
 ### Added
