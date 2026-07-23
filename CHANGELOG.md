@@ -14,6 +14,10 @@ may still change between releases).
   keys are declared on its child partitions rather than the parent (as pagila's `payment`
   is), the map now attaches those relationships to the parent instead of dropping them with
   the hidden children — so the table shows its links, each once, like any other.
+- **A view that reads a partitioned table now shows the dependency.** The dashed link from a
+  view or materialized view to a partitioned table it reads was being dropped (pagila's
+  `rental_by_category` reads the partitioned `payment`); it is now drawn like any other view
+  dependency.
 
 ## [0.2.0b4] — 2026-07-23
 

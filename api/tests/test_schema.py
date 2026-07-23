@@ -237,6 +237,41 @@ def test_build_graph_attributes_partition_child_foreign_keys_to_the_parent() -> 
     assert edge.source_columns == ("customer_id",)
 
 
+def test_build_graph_attributes_a_view_dependency_on_a_child_to_the_parent() -> None:
+    # A view reading a specific child partition should depend on the parent that stands in
+    # for it on the map — the folded-away child is not an object the edge could point to.
+    object_rows = [
+        {"schema": "public", "name": "payment", "kind": "p", "row_estimate": 0},
+        {"schema": "public", "name": "totals", "kind": "m"},
+    ]
+    partition_rows = [
+        {
+            "parent_schema": "public",
+            "parent_name": "payment",
+            "child_schema": "public",
+            "child_name": "payment_p2022_01",
+            "bound": None,
+            "row_estimate": 0,
+        },
+    ]
+    dependency_rows = [
+        {
+            "view_schema": "public",
+            "view_name": "totals",
+            "ref_schema": "public",
+            "ref_name": "payment_p2022_01",
+        },
+    ]
+
+    graph = build_graph(object_rows, [], [], dependency_rows, partition_rows=partition_rows)
+
+    assert len(graph.relationships) == 1
+    dependency = graph.relationships[0]
+    assert dependency.kind is RelationshipKind.VIEW_DEPENDENCY
+    assert dependency.source == "public.totals"
+    assert dependency.target == "public.payment"
+
+
 # --- endpoint ------------------------------------------------------------------------
 
 
