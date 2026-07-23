@@ -55,7 +55,7 @@ export interface ConnectionTestParams {
 }
 
 /** The kind of schema object shown on the ER map. */
-export type ObjectKind = 'table' | 'view' | 'materialized_view'
+export type ObjectKind = 'table' | 'view' | 'materialized_view' | 'partitioned_table'
 
 /** A column of a table or view. */
 export interface Column {
@@ -65,7 +65,15 @@ export interface Column {
   is_primary_key: boolean
 }
 
-/** A table, view or materialized view — one node on the map. */
+/** One child partition of a partitioned table. */
+export interface Partition {
+  name: string
+  /** The range, list or hash the partition holds (e.g. `FROM ('2022-01-01') TO
+   *  ('2022-02-01')`), or `null` when unknown. */
+  bound: string | null
+}
+
+/** A table, view, materialized view or partitioned table — one node on the map. */
 export interface SchemaObject {
   /** Stable `schema.name` identifier. */
   id: string
@@ -73,6 +81,9 @@ export interface SchemaObject {
   name: string
   kind: ObjectKind
   columns: Column[]
+  /** For a partitioned table, its child partitions (folded behind this node); empty
+   *  otherwise. */
+  partitions: Partition[]
 }
 
 /** What an edge represents: a foreign key, or a view reading a relation. */

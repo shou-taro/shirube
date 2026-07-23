@@ -5,13 +5,14 @@
  * rather than repeating the full API shapes inline.
  */
 
-import type { Column, Relationship, SchemaGraph, SchemaObject } from '@/lib/api'
+import type { Column, Partition, Relationship, SchemaGraph, SchemaObject } from '@/lib/api'
 
 /** A schema object with `columns` generic columns (the first is the primary key). */
 export function makeObject(
   id: string,
   columns = 0,
   kind: SchemaObject['kind'] = 'table',
+  partitions: Partition[] = [],
 ): SchemaObject {
   const dot = id.indexOf('.')
   const schema = dot === -1 ? 'public' : id.slice(0, dot)
@@ -30,6 +31,7 @@ export function makeObject(
         is_primary_key: i === 0,
       }),
     ),
+    partitions,
   }
 }
 

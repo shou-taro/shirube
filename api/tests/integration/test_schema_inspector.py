@@ -14,8 +14,10 @@ from collections.abc import Callable, Sequence
 import psycopg
 import pytest
 
+from shirube.adapters.postgres.data_reader import PostgresDataReader
 from shirube.adapters.postgres.schema_inspector import PostgresSchemaInspector
 from shirube.domain.connection import ConnectionParams
+from shirube.domain.data import RowQuery
 from shirube.domain.schema import (
     ObjectKind,
     Relationship,
@@ -257,3 +259,70 @@ def test_legacy_schema_without_foreign_keys(
 
     assert {o.id for o in graph.objects} == {f"{schema}.a", f"{schema}.b"}
     assert graph.relationships == ()
+
+
+def test_partitioned_table_folds_children_and_dedups_edges(
+    params: ConnectionParams,
+    admin_connection: psycopg.Connection,
+    make_schema: Callable[[], str],
+) -> None:
+    schema = make_schema()
+    _run(
+        admin_connection,
+        f'CREATE TABLE "{schema}".customer (id integer PRIMARY KEY)',
+        f'CREATE TABLE "{schema}".payment ('
+        f"  id integer,"
+        f'  customer_id integer REFERENCES "{schema}".customer,'
+        f"  paid_on date"
+        f") PARTITION BY RANGE (paid_on)",
+        f'CREATE TABLE "{schema}".payment_2022_01 PARTITION OF "{schema}".payment '
+        f"FOR VALUES FROM ('2022-01-01') TO ('2022-02-01')",
+        f'CREATE TABLE "{schema}".payment_2022_02 PARTITION OF "{schema}".payment '
+        f"FOR VALUES FROM ('2022-02-01') TO ('2022-03-01')",
+    )
+
+    graph = _inspect(params, schema)
+    objects = _by_id(graph.objects)
+
+    # The partitioned parent is a single node of its own kind.
+    payment = objects[f"{schema}.payment"]
+    assert payment.kind is ObjectKind.PARTITIONED_TABLE
+    # Its children are folded away, not shown as separate nodes on the map.
+    assert f"{schema}.payment_2022_01" not in objects
+    assert f"{schema}.payment_2022_02" not in objects
+    # They are listed under the parent, each with its range (the "FOR VALUES " prefix gone).
+    bounds = {p.name: p.bound for p in payment.partitions}
+    assert bounds == {
+        "payment_2022_01": "FROM ('2022-01-01') TO ('2022-02-01')",
+        "payment_2022_02": "FROM ('2022-02-01') TO ('2022-03-01')",
+    }
+    # The foreign key to customer appears once, on the parent — the children's inherited
+    # copies do not double the edge.
+    assert len(_edges(graph.relationships, f"{schema}.payment", f"{schema}.customer")) == 1
+
+
+def test_partitioned_table_rows_are_read_through_the_parent(
+    params: ConnectionParams,
+    admin_connection: psycopg.Connection,
+    make_schema: Callable[[], str],
+) -> None:
+    # The parent is the single "View data" entry point: PostgreSQL reads it transparently
+    # across every partition, so the data reader must accept it like any table.
+    schema = make_schema()
+    _run(
+        admin_connection,
+        f'CREATE TABLE "{schema}".payment (id integer, paid_on date) PARTITION BY RANGE (paid_on)',
+        f'CREATE TABLE "{schema}".payment_jan PARTITION OF "{schema}".payment '
+        f"FOR VALUES FROM ('2022-01-01') TO ('2022-02-01')",
+        f'CREATE TABLE "{schema}".payment_feb PARTITION OF "{schema}".payment '
+        f"FOR VALUES FROM ('2022-02-01') TO ('2022-03-01')",
+        f"INSERT INTO \"{schema}\".payment VALUES (1, '2022-01-15'), (2, '2022-02-15')",
+    )
+
+    page = PostgresDataReader().read_rows(
+        params, [schema], f"{schema}.payment", RowQuery(limit=100, offset=0)
+    )
+
+    assert list(page.columns) == ["id", "paid_on"]
+    # Both rows come back, each living in a different partition.
+    assert len(page.rows) == 2

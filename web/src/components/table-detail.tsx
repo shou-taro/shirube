@@ -11,6 +11,7 @@ interface OpenSections {
   columns: boolean
   references: boolean
   referencedBy: boolean
+  partitions: boolean
 }
 
 /**
@@ -118,6 +119,7 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
     columns: true,
     references: false,
     referencedBy: false,
+    partitions: false,
   })
 
   function toggle(section: keyof OpenSections): void {
@@ -224,6 +226,35 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
                 dependency={relationship.kind === 'view_dependency'}
                 onNavigate={() => onNavigate(relationship.source)}
               />
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {object.partitions.length > 0 && (
+        <Section
+          label={t('schema.partitions')}
+          count={object.partitions.length}
+          open={openSections.partitions}
+          onToggle={() => toggle('partitions')}
+        >
+          <ul>
+            {object.partitions.map((partition) => (
+              // Name and bound stack, so the name — whose distinguishing suffix would be
+              // truncated away beside a long bound — stays readable, with the range beneath.
+              <li key={partition.name} className="px-3 py-1 text-xs leading-[18px]">
+                <div className="truncate" title={partition.name}>
+                  {partition.name}
+                </div>
+                {partition.bound !== null && (
+                  <div
+                    className="truncate font-mono text-[11px] text-muted-foreground"
+                    title={partition.bound}
+                  >
+                    {partition.bound}
+                  </div>
+                )}
+              </li>
             ))}
           </ul>
         </Section>

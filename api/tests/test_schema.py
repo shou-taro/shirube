@@ -141,6 +141,44 @@ def test_build_graph_adds_view_dependencies_with_known_endpoints() -> None:
     assert dependency.target_columns == ()
 
 
+def test_build_graph_folds_partitions_onto_the_parent() -> None:
+    # A partitioned parent (relkind 'p') reports no rows of its own; its children arrive
+    # separately and are folded under it, their sizes summed into the parent's estimate.
+    object_rows = [
+        {"schema": "public", "name": "payment", "kind": "p", "row_estimate": 0},
+    ]
+    partition_rows = [
+        {
+            "parent_schema": "public",
+            "parent_name": "payment",
+            "child_name": "payment_p2022_01",
+            "bound": "FOR VALUES FROM ('2022-01-01') TO ('2022-02-01')",
+            "row_estimate": 120,
+        },
+        {
+            "parent_schema": "public",
+            "parent_name": "payment",
+            "child_name": "payment_p2022_02",
+            "bound": "FOR VALUES FROM ('2022-02-01') TO ('2022-03-01')",
+            "row_estimate": 80,
+        },
+    ]
+
+    graph = build_graph(object_rows, [], [], partition_rows=partition_rows)
+
+    (payment,) = graph.objects
+    assert payment.kind is ObjectKind.PARTITIONED_TABLE
+    # Children are folded under the parent, not added as separate nodes.
+    assert [partition.name for partition in payment.partitions] == [
+        "payment_p2022_01",
+        "payment_p2022_02",
+    ]
+    # The "FOR VALUES " prefix is stripped for display.
+    assert payment.partitions[0].bound == "FROM ('2022-01-01') TO ('2022-02-01')"
+    # The parent has no rows of its own, so it inherits its children's summed estimate.
+    assert payment.row_estimate == 200
+
+
 # --- endpoint ------------------------------------------------------------------------
 
 

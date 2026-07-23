@@ -12,12 +12,15 @@ from enum import StrEnum
 class ObjectKind(StrEnum):
     """The kind of schema object shown on the map.
 
-    Foreign tables and partition parents are deliberately out of scope for now.
+    A partitioned table is shown as a single node standing in for the whole table; its
+    child partitions are folded away (see :class:`Partition`). Foreign tables are still
+    out of scope for now.
     """
 
     TABLE = "table"
     VIEW = "view"
     MATERIALIZED_VIEW = "materialized_view"
+    PARTITIONED_TABLE = "partitioned_table"
 
 
 class RelationshipKind(StrEnum):
@@ -52,17 +55,38 @@ class Column:
 
 
 @dataclass(frozen=True, slots=True)
+class Partition:
+    """One child partition of a partitioned table.
+
+    A partitioned table is shown as a single node, so its children never appear on the
+    map; they are listed against the parent instead, to show *how* it is split.
+
+    Attributes:
+        name: The child partition's table name.
+        bound: The range, list or hash the partition holds, as PostgreSQL renders it
+            (e.g. ``FROM ('2022-01-01') TO ('2022-02-01')``, ``IN ('a', 'b')``,
+            ``WITH (modulus 4, remainder 0)`` or ``DEFAULT``), or ``None`` if unknown.
+    """
+
+    name: str
+    bound: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class SchemaObject:
     """A table, view or materialized view — one node on the map.
 
     Attributes:
         schema: The schema (namespace) the object lives in.
         name: The object's name, unique within its schema.
-        kind: Whether it is a table, view or materialized view.
+        kind: Whether it is a table, view, materialized view or partitioned table.
         columns: The object's columns, in definition order.
         row_estimate: The catalogue's estimated row count (``pg_class.reltuples``), or
             ``None`` when unknown (e.g. never analysed, or a plain view). An estimate, not
             a scan — the only numeric signal the AI navigator is given, and never exact.
+            For a partitioned table it is the sum of its children's estimates.
+        partitions: For a partitioned table, its child partitions; empty otherwise. The
+            children are folded behind this node rather than shown separately.
     """
 
     schema: str
@@ -70,6 +94,7 @@ class SchemaObject:
     kind: ObjectKind
     columns: tuple[Column, ...] = field(default_factory=tuple)
     row_estimate: int | None = None
+    partitions: tuple[Partition, ...] = field(default_factory=tuple)
 
     @property
     def id(self) -> str:
