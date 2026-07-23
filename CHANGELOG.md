@@ -8,6 +8,8 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.2.0b5] — 2026-07-23
+
 ### Fixed
 
 - **A partitioned table no longer looks disconnected.** When a partitioned table's foreign
@@ -221,7 +223,8 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.2.0b4...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.2.0b5...HEAD
+[0.2.0b5]: https://github.com/shou-taro/shirube/compare/v0.2.0b4...v0.2.0b5
 [0.2.0b4]: https://github.com/shou-taro/shirube/compare/v0.2.0b3...v0.2.0b4
 [0.2.0b3]: https://github.com/shou-taro/shirube/compare/v0.2.0b2...v0.2.0b3
 [0.2.0b2]: https://github.com/shou-taro/shirube/compare/v0.2.0b1...v0.2.0b2
