@@ -46,8 +46,17 @@ function HiddenStub({
     return () => document.removeEventListener('mousedown', close)
   }, [open])
 
-  // A short stem tying the button to the node it belongs to.
-  const line = <span className="h-3 w-0.5 bg-brand" aria-hidden />
+  // The connectors follow the foreign key, like the horizontal edges do left-to-right: the
+  // flow runs up from a referencing table into the node, then up from the node into a
+  // referenced table — so both arrowheads point *up*. A bottom stub is referencing, so its
+  // arrowhead lands on the node; a top stub is referenced, so its arrowhead lands on the stub.
+  const stem = <span className="h-2 w-0.5 bg-brand" aria-hidden />
+  const arrow = (
+    <span
+      className="h-0 w-0 border-x-[5px] border-x-transparent border-b-[6px] border-b-brand"
+      aria-hidden
+    />
+  )
   // stopPropagation keeps a click on the stub from also travelling to the node it sits on.
   const chip = (
     <button
@@ -116,11 +125,13 @@ function HiddenStub({
         <>
           {popover}
           {chip}
-          {line}
+          {arrow}
+          {stem}
         </>
       ) : (
         <>
-          {line}
+          {arrow}
+          {stem}
           {chip}
           {popover}
         </>
