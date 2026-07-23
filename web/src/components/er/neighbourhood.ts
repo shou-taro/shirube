@@ -61,53 +61,96 @@ function isPreferredTieBreak(candidate: SchemaObject, current: SchemaObject): bo
 }
 
 /**
- * The subgraph shown around a centre: the centre and its immediate (one-hop) neighbours,
- * with the relationships that run between those visible objects. Navigation is
- * map-like — clicking a neighbour makes it the new centre — so only ever one hop is
- * drawn, regardless of how large the whole schema is.
- *
- * @param graph - The full introspected schema.
- * @param centreId - The focal object; if it is missing from the graph an empty graph is returned.
- * @returns A `SchemaGraph` containing only the centre, its neighbours and their edges.
+ * The most neighbours drawn per direction before the rest fold into an off-map stub. A
+ * hub table can have dozens of one-hop neighbours; drawing them all stacks them into an
+ * unreadable vertical strip (they share a layout rank). Capping each direction keeps the
+ * map legible, and nothing is lost — the overflow is reachable from the stub and the
+ * detail card. Applied per direction because the layout already splits the two.
  */
+export const NEIGHBOUR_CAP = 6
+
+/** Order two object ids by their object's name, then id, for a stable alphabetical sort. */
+function byObjectName(byId: ReadonlyMap<string, SchemaObject>) {
+  return (a: string, b: string): number => {
+    const nameA = byId.get(a)?.name ?? a
+    const nameB = byId.get(b)?.name ?? b
+    return nameA.localeCompare(nameB) || a.localeCompare(b)
+  }
+}
+
 /**
- * Count an object's off-map neighbours split by foreign-key direction: tables it
- * references (its FKs point out to these) and tables that reference it. The horizontal
- * axis already lays visible edges out left-to-right by this same direction, so these
- * hidden counts are drawn on the *vertical* axis instead — a stub above and below the
- * node — which never collides with the visible edges or points at a neighbour.
- *
- * @returns Distinct hidden counts: `referenced` (drawn above), `referencing` (below).
+ * An object's neighbours, split by foreign-key direction: tables it references (its FKs
+ * point out to these) and tables that reference it. Self-references and repeats collapse
+ * to one entry. Used both to choose which neighbours to draw and to list the off-map rest.
  */
-export function hiddenByReference(
+function neighboursByDirection(
   graph: SchemaGraph,
   id: string,
-  visibleIds: ReadonlySet<string>,
-): { referenced: number; referencing: number } {
-  const referenced = new Set<string>() // tables `id` references (id -> target), hidden
-  const referencing = new Set<string>() // tables that reference `id` (source -> id), hidden
+): { referenced: Set<string>; referencing: Set<string> } {
+  const referenced = new Set<string>() // tables `id` references (id -> target)
+  const referencing = new Set<string>() // tables that reference `id` (source -> id)
   for (const relationship of graph.relationships) {
     if (relationship.source === relationship.target) {
       continue
     }
-    if (relationship.source === id && !visibleIds.has(relationship.target)) {
+    if (relationship.source === id) {
       referenced.add(relationship.target)
     }
-    if (relationship.target === id && !visibleIds.has(relationship.source)) {
+    if (relationship.target === id) {
       referencing.add(relationship.source)
     }
   }
-  return { referenced: referenced.size, referencing: referencing.size }
+  return { referenced, referencing }
 }
 
+/**
+ * An object's *off-map* neighbours, split by foreign-key direction — the neighbours not
+ * drawn on the current map, so they can be listed under the stub above (tables it
+ * references) or below (tables that reference it) the node. The horizontal axis already
+ * lays visible edges left-to-right by direction, so these hidden ones sit on the vertical
+ * axis instead, never colliding with a visible edge. Each list is name-sorted.
+ *
+ * @returns The hidden objects: `referenced` (drawn above), `referencing` (below).
+ */
+export function hiddenNeighbours(
+  graph: SchemaGraph,
+  id: string,
+  visibleIds: ReadonlySet<string>,
+): { referenced: SchemaObject[]; referencing: SchemaObject[] } {
+  const byId = new Map(graph.objects.map((object) => [object.id, object]))
+  const { referenced, referencing } = neighboursByDirection(graph, id)
+  const toObjects = (ids: Set<string>): SchemaObject[] =>
+    [...ids]
+      .filter((neighbourId) => !visibleIds.has(neighbourId))
+      .sort(byObjectName(byId))
+      .map((neighbourId) => byId.get(neighbourId))
+      .filter((object): object is SchemaObject => object !== undefined)
+  return { referenced: toObjects(referenced), referencing: toObjects(referencing) }
+}
+
+/**
+ * The subgraph shown around a centre: the centre and up to {@link NEIGHBOUR_CAP} of its
+ * immediate (one-hop) neighbours *per direction*, with the relationships that run between
+ * those visible objects. Navigation is map-like — clicking a neighbour makes it the new
+ * centre — so only ever one hop is drawn, regardless of how large the whole schema is; the
+ * per-direction cap keeps even a hub table's neighbourhood readable (see
+ * {@link hiddenNeighbours} for the overflow). Kept neighbours are the alphabetically-first
+ * of each direction, so the choice is stable and scannable.
+ *
+ * @param graph - The full introspected schema.
+ * @param centreId - The focal object; if it is missing from the graph an empty graph is returned.
+ * @returns A `SchemaGraph` containing only the centre, the kept neighbours and their edges.
+ */
 export function selectNeighbourhood(graph: SchemaGraph, centreId: string): SchemaGraph {
   const byId = new Map(graph.objects.map((object) => [object.id, object]))
   if (!byId.has(centreId)) {
     return { objects: [], relationships: [] }
   }
 
-  const adjacency = buildAdjacency(graph)
-  const visible = new Set<string>([centreId, ...(adjacency.get(centreId) ?? [])])
+  const { referenced, referencing } = neighboursByDirection(graph, centreId)
+  const keep = (ids: Set<string>): string[] =>
+    [...ids].filter((id) => byId.has(id)).sort(byObjectName(byId)).slice(0, NEIGHBOUR_CAP)
+  const visible = new Set<string>([centreId, ...keep(referenced), ...keep(referencing)])
 
   const objects = graph.objects.filter((object) => visible.has(object.id))
   const relationships = graph.relationships.filter(

@@ -18,10 +18,12 @@ export interface TableNodeData {
   object: SchemaObject
   /** The focal object the neighbourhood is built around; drawn with emphasis. */
   isCentre?: boolean
-  /** Off-map tables this one references — a stub above the node. */
-  hiddenReferenced?: number
-  /** Off-map tables that reference this one — a stub below the node. */
-  hiddenReferencing?: number
+  /** Off-map tables this one references — listed under a stub above the node. */
+  hiddenReferenced?: SchemaObject[]
+  /** Off-map tables that reference this one — listed under a stub below the node. */
+  hiddenReferencing?: SchemaObject[]
+  /** Travel the map to another object — used by the stub's list to hop to a hidden one. */
+  onTravel?: (id: string) => void
   [key: string]: unknown
 }
 
