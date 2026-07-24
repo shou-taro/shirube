@@ -21,6 +21,12 @@ may still change between releases).
   and menus) use a slim, brand-tinted, floating scrollbar in place of the chunky operating-
   system default, in both light and dark themes.
 
+### Fixed
+
+- **The navigator no longer sends mid-conversion for IME input.** Pressing Enter to confirm
+  a Japanese (or other IME) conversion committed the candidate *and* sent the message; it now
+  commits only, and sends on a subsequent plain Enter.
+
 ## [0.2.0b5] — 2026-07-23
 
 ### Fixed
