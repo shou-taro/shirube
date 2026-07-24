@@ -372,8 +372,15 @@ export function NavigatorPane({
 
   const onInputKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>): void => {
-      // Enter sends; Shift+Enter inserts a newline.
-      if (event.key === 'Enter' && !event.shiftKey) {
+      // Enter sends; Shift+Enter inserts a newline. While an IME composition is active —
+      // confirming a Japanese conversion, say — Enter commits the candidate and must not
+      // submit. `isComposing` covers modern browsers; keyCode 229 is the older IME signal.
+      if (
+        event.key === 'Enter' &&
+        !event.shiftKey &&
+        !event.nativeEvent.isComposing &&
+        event.keyCode !== 229
+      ) {
         event.preventDefault()
         submit()
       }

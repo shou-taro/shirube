@@ -327,6 +327,22 @@ describe('NavigatorPane', () => {
     expect(await screen.findByText('Hello.')).toBeInTheDocument()
   })
 
+  it('does not send while an IME composition is active (Japanese input)', async () => {
+    renderPane(LOCAL)
+    const box = screen.getByLabelText('chat.inputPlaceholder')
+    fireEvent.change(box, { target: { value: 'にほんご' } })
+
+    // Enter that confirms an IME conversion — the composition is still active, so it must
+    // commit the candidate rather than submit. Both the modern and the legacy signal.
+    fireEvent.keyDown(box, { key: 'Enter', isComposing: true })
+    fireEvent.keyDown(box, { key: 'Enter', keyCode: 229 })
+    expect(mockStreamChat).not.toHaveBeenCalled()
+
+    // A plain Enter, once composition has ended, still sends.
+    fireEvent.keyDown(box, { key: 'Enter' })
+    expect(await screen.findByText('Hello.')).toBeInTheDocument()
+  })
+
   it('ignores a submit with only whitespace', () => {
     renderPane(LOCAL)
     const box = screen.getByLabelText('chat.inputPlaceholder')
