@@ -8,6 +8,13 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Added
+
+- **The workspace adapts to a narrow window.** In a narrow or half-screen window the AI
+  navigator now slides in over the map (dimming and blurring it) instead of squeezing the
+  map's width, so the map stays usable; the table-detail card is kept within the viewport
+  and the top bar drops the database label first as space runs short.
+
 ## [0.2.0b5] — 2026-07-23
 
 ### Fixed

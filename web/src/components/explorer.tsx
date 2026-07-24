@@ -27,6 +27,7 @@ import { revokeDestination, loadApprovedDestinations, approveDestination } from 
 import { DETAIL_PANE, NAVIGATOR_PANE } from '@/lib/panes'
 import { buildObjectResolver } from '@/lib/schema-refs'
 import { useSettings } from '@/lib/settings'
+import { useMediaQuery } from '@/lib/use-media-query'
 import { cn } from '@/lib/utils'
 
 /** The schema load for the connected profile. */
@@ -50,6 +51,9 @@ interface ExplorerProps {
 export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const { t } = useTranslation()
   const { settings, update } = useSettings()
+  // Below this width the side panes overlay the map instead of splitting its width, so the
+  // map stays usable in a narrow or half-screen window.
+  const isNarrow = useMediaQuery('(max-width: 899px)')
   const [schema, setSchema] = useState<SchemaState>({ status: 'loading' })
   const [navigatorOpen, setNavigatorOpen] = useState(true)
   // Which settings group to open on — the navigator's provider line points straight at its
@@ -170,11 +174,14 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             type="button"
             onClick={onDisconnect}
             title={t('connection.disconnect')}
-            className="flex items-center gap-1.5 rounded-l-md py-1 pl-2.5 pr-2 hover:bg-brand/15"
+            className="flex min-w-0 items-center gap-1.5 rounded-l-md py-1 pl-2.5 pr-2 hover:bg-brand/15"
           >
-            <Database className="size-3.5 text-brand" />
-            <span className="text-sm font-medium">{profile.name}</span>
-            <span className="text-xs text-muted-foreground">{profile.database}</span>
+            <Database className="size-3.5 shrink-0 text-brand" />
+            <span className="truncate text-sm font-medium">{profile.name}</span>
+            {/* The database name is the first thing to go when the top bar runs short. */}
+            {!isNarrow && (
+              <span className="text-xs text-muted-foreground">{profile.database}</span>
+            )}
           </button>
           <span className="h-5 w-px bg-border" />
           <button
@@ -222,7 +229,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
         </Button>
       </header>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         {/* Centre: the ER map (top) above the row-preview drawer (bottom); the
             table-detail card floats over the map. */}
         <div className="flex min-w-0 flex-1 flex-col bg-background">
@@ -250,8 +257,13 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               onCentreChange={setCentreId}
               defaultShowAll={settings.defaultView === 'all'}
               // Refit the map when the space it has changes — including after a pane drag
-              // ends, but not on every pixel of one.
-              resizeKey={`${navigatorOpen}:${dataOpen}:${resizing ? 'drag' : settings.navigatorWidth}`}
+              // ends, but not on every pixel of one. When narrow, the navigator overlays
+              // rather than resizing the map, so only the drawer and the breakpoint matter.
+              resizeKey={
+                isNarrow
+                  ? `narrow:${dataOpen}`
+                  : `${navigatorOpen}:${dataOpen}:${resizing ? 'drag' : settings.navigatorWidth}`
+              }
             />
           ) : null}
 
@@ -262,7 +274,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               "no tables or views" message. */}
           {schema.status === 'ready' && schema.graph.objects.length > 0 && (
           <div
-            style={{ width: settings.detailWidth }}
+            style={{ width: settings.detailWidth, maxWidth: '85vw' }}
             className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-xl border border-brand/20 bg-card shadow-md"
           >
             {/* The card floats over the map, so its handle rides its right edge. */}
@@ -329,12 +341,30 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           />
         </div>
 
-        {/* Right pane: the AI navigator (Milestone 2) — docked so chat gets the full
-            height; it slides open and closed, toggled from the top bar. */}
+        {/* Dim the map behind the navigator while it overlays a narrow window; tapping the
+            scrim closes the pane. */}
+        {isNarrow && navigatorOpen && (
+          <button
+            type="button"
+            aria-label={t('panes.collapse')}
+            onClick={() => setNavigatorOpen(false)}
+            // A blur (not just a tint) is what separates the overlay from the map in dark
+            // mode, where a translucent black scrim would vanish into the dark canvas.
+            className="absolute inset-0 z-30 bg-black/40 backdrop-blur-sm"
+          />
+        )}
+        {/* Right pane: the AI navigator. Docked beside the map on a wide window; on a narrow
+            one it slides in as an overlay above the scrim so the map keeps its full width.
+            Either way it opens and closes from the top bar and widens by dragging its left
+            edge. */}
         <div
-          style={{ width: navigatorOpen ? settings.navigatorWidth : 0 }}
+          style={{
+            width: navigatorOpen ? settings.navigatorWidth : 0,
+            maxWidth: isNarrow ? '90vw' : undefined,
+          }}
           className={cn(
-            'relative shrink-0 overflow-hidden ease-out',
+            'shrink-0 overflow-hidden ease-out',
+            isNarrow ? 'absolute right-0 top-0 z-40 h-full border-l shadow-xl' : 'relative',
             // The open/close slide is animated, but a drag must not lag behind the pointer.
             resizing ? 'transition-none' : 'transition-[width] duration-200',
           )}
