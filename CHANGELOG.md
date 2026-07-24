@@ -15,6 +15,12 @@ may still change between releases).
   map's width, so the map stays usable; the table-detail card is kept within the viewport
   and the top bar drops the database label first as space runs short.
 
+### Changed
+
+- **Scrollbars now match the app.** Scroll areas (the detail card, navigator, data preview
+  and menus) use a slim, brand-tinted, floating scrollbar in place of the chunky operating-
+  system default, in both light and dark themes.
+
 ## [0.2.0b5] — 2026-07-23
 
 ### Fixed
