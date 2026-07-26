@@ -179,7 +179,7 @@ choose_databases() {
   # to wrap on a narrow terminal; keeping it out of the redraw loop means a wrap can't push
   # the menu down a row on every keypress. Only the short option rows are redrawn in place.
   printf 'Select databases to load\n' >/dev/tty
-  printf '↑/↓ move · space toggle · a all · enter confirm · q cancel\n' >/dev/tty
+  printf '[↑/↓] move   [space] select   [enter] confirm   [a] all   [q] cancel\n' >/dev/tty
 
   local first=1
   while true; do
