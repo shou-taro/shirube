@@ -332,7 +332,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
                 onClick={() => setDataOpen((open) => !open)}
                 aria-pressed={dataOpen}
                 className={cn(
-                  'flex shrink-0 items-center justify-center gap-1.5 border-t border-brand/20 px-3 py-2 text-xs font-medium hover:bg-brand/10',
+                  'flex shrink-0 cursor-pointer items-center justify-center gap-1.5 border-t border-brand/20 px-3 py-2 text-xs font-medium hover:bg-brand/10',
                   dataOpen && 'bg-brand/15 text-brand',
                 )}
               >
