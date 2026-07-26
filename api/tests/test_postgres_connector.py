@@ -65,6 +65,41 @@ def test_missing_database() -> None:
     assert "does not exist" in message
 
 
+def test_missing_role_names_the_user_over_the_password() -> None:
+    """A missing role is distinct from a wrong password (28P01).
+
+    The message must point at the username, not the password — and must not be swallowed by
+    the "database does not exist" branch, which also matches "does not exist".
+    """
+    message = friendly_message(
+        psycopg.OperationalError('FATAL: role "readonly" does not exist'),
+        _PARAMS,
+    )
+    assert "Role 'readonly' does not exist" in message
+    assert "username" in message.lower()
+
+
+def test_too_many_connections_points_at_the_limit() -> None:
+    """The server is reachable but at its connection cap; say so, not "could not connect"."""
+    message = friendly_message(
+        psycopg.OperationalError("FATAL: sorry, too many clients already"),
+        _PARAMS,
+    )
+    assert "connection limit" in message.lower()
+    assert "db.example.com" not in message
+
+
+def test_server_starting_up_advises_waiting() -> None:
+    """A server that is up but not yet accepting connections is a transient, wait-and-retry
+    case, distinct from an unreachable host."""
+    message = friendly_message(
+        psycopg.OperationalError("FATAL: the database system is starting up"),
+        _PARAMS,
+    )
+    assert "not ready" in message.lower()
+    assert "try again" in message.lower()
+
+
 def test_statement_timeout_is_translated() -> None:
     """A query cancelled by the statement timeout is distinct from a connection timeout.
 

@@ -8,6 +8,13 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Three more connection failures now read clearly** instead of a raw "could not connect".
+  A missing role is named as a username problem (distinct from a wrong password); a server
+  that is at its connection limit says so ("too many clients"); and a server that is up but
+  still starting up or recovering advises waiting and retrying.
+
 ## [0.2.0b6] — 2026-07-24
 
 ### Added
