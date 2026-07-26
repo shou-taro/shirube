@@ -48,6 +48,12 @@ def friendly_message(exc: psycopg.Error, params: ConnectionParams) -> str:
         return (
             f"Authentication failed for user '{params.username}'. Check the username and password."
         )
+    if sqlstate == "28000" or ("role" in text and "does not exist" in text):
+        # The role itself is missing, not merely the wrong password (28P01) — the fix is to
+        # correct the username, so say that rather than "check the password". Some servers
+        # mask this as 28P01 to avoid revealing which roles exist; that path is fine and stays
+        # on the message above.
+        return f"Role '{params.username}' does not exist on this server. Check the username."
     if sqlstate == "3D000" or ("database" in text and "does not exist" in text):
         return f"Database '{params.database}' does not exist."
     if any(
@@ -63,6 +69,20 @@ def friendly_message(exc: psycopg.Error, params: ConnectionParams) -> str:
         return (
             f"Could not reach {params.host}:{params.port}. Check the host and port, and "
             "that the server (or SSH tunnel) is running."
+        )
+    if sqlstate == "53300" or "too many clients" in text or "connection slots" in text:
+        # Reached the server fine, but it is at its connection limit and refused a new one —
+        # nothing to do with the host, credentials or the query, so point at the limit.
+        return (
+            "The server is at its connection limit and refused a new connection "
+            "(too many clients). Close some connections, or try again shortly."
+        )
+    if sqlstate == "57P03" or "the database system is" in text:
+        # The server is up but not yet accepting connections — starting up, recovering, or
+        # shutting down. Transient, so advise waiting rather than changing anything.
+        return (
+            "The database server is not ready yet (it is starting up or recovering). "
+            "Wait a moment and try again."
         )
     if sqlstate == "57014" or "statement timeout" in text:
         # Connected fine, but a query ran past shirube's statement timeout and was
