@@ -175,12 +175,16 @@ choose_databases() {
   printf '\e[?25l' >/dev/tty # hide the cursor while the menu is live
   trap 'printf "\e[?25h" >/dev/tty' RETURN
 
+  # Draw the title and key hints once, above the redrawn area. The hint line is long enough
+  # to wrap on a narrow terminal; keeping it out of the redraw loop means a wrap can't push
+  # the menu down a row on every keypress. Only the short option rows are redrawn in place.
+  printf 'Select databases to load\n' >/dev/tty
+  printf '↑/↓ move · space toggle · a all · enter confirm · q cancel\n' >/dev/tty
+
   local first=1
   while true; do
-    [[ $first -eq 0 ]] && printf '\e[%dA' $((n + 2)) >/dev/tty
+    [[ $first -eq 0 ]] && printf '\e[%dA' "$n" >/dev/tty
     first=0
-    printf '\r\e[KSelect databases to load  (↑/↓ move · space toggle · a all · enter confirm · q cancel)\n' >/dev/tty
-    printf '\r\e[K\n' >/dev/tty
     for ((i = 0; i < n; i++)); do
       local pointer='  ' mark=' ' tag=''
       [[ $i -eq $cursor ]] && pointer='❯ '
