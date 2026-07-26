@@ -166,8 +166,8 @@ built), **Active** (an ongoing practice).
 - First launch (no profiles) opens the connection form; otherwise the saved-profiles
   list. shirube reconnects to the **last-used profile on reload**, so a refresh doesn't
   drop the user back to the connection screen — but it never connects to a *new* database
-  without the user choosing it. A sample database (pagila) is available for development
-  via `scripts/dev-db.sh`.
+  without the user choosing it. Sample databases are available for development via
+  `scripts/dev-db.sh`.
 - *(Revised: originally "never auto-connects on launch"; restoring the last profile on
   reload proved worth it, and it is scoped to the profile the user last chose.)*
 

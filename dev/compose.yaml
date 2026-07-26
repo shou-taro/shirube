@@ -1,29 +1,30 @@
 # Local development database for shirube.
 #
-# A throwaway PostgreSQL preloaded with the pagila sample schema (a DVD-rental shop:
-# films, actors, customers, rentals — lots of foreign keys), so schema introspection
-# and the ER map can be built and tested against a realistic database. Not for
-# production; the credentials here are deliberately trivial.
+# A throwaway PostgreSQL that holds several sample databases side by side (pagila,
+# chinook, lego, employees, adventureworks), so schema introspection and the ER map can
+# be built and tested against a range of realistic shapes. Not for production; the
+# credentials here are deliberately trivial.
 #
-# Drive it through scripts/dev-db.sh (up | down | reset), which also fetches pagila.
+# Drive it through scripts/dev-db.sh (list | up | down | reset), which creates and loads
+# each sample database into its own database on this server. Switch between them inside
+# shirube by picking the connection profile.
 services:
   db:
     image: postgres:17
     container_name: shirube-dev-db
     environment:
-      # pagila's schema assigns ownership to a "postgres" role, so connect as that.
+      # The sample schemas assign ownership to a "postgres" role, so connect as that. The
+      # default "postgres" database is only the maintenance database dev-db.sh connects to
+      # in order to create and load each sample; the samples live in databases of their own.
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: pagila
+      POSTGRES_DB: postgres
     ports:
       - "5432:5432"
     volumes:
       - shirube-dev-db:/var/lib/postgresql/data
-      # Postgres runs *.sql here in alphabetical order on first init, so pagila is
-      # numbered schema-then-data. Downloaded by scripts/dev-db.sh (git-ignored).
-      - ./pagila:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d pagila"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 12

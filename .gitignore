@@ -47,7 +47,8 @@ dist-ssr/
 api/src/shirube/static/
 
 # ---- Development database ----
-# pagila SQL fetched by scripts/dev-db.sh; not vendored into the repo.
+# Sample-database dumps fetched by scripts/dev-db.sh; not vendored into the repo.
+dev/samples/
 dev/pagila/
 
 # Logs
