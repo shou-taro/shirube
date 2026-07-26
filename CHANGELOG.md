@@ -12,8 +12,8 @@ may still change between releases).
 
 - **Browse the schema as a tree.** A new toolbar button opens a collapsible tree of the
   whole database — schemas, then their tables and views, each expandable to its columns
-  (primary and foreign keys marked). Filter by name, and click any object to travel the map
-  to it while the tree stays open; the map's current table is highlighted in step. It reads
+  (primary and foreign keys marked). Click any object to travel the map to it while the tree
+  stays open; the map's current table is highlighted in step. It reads
   the schema the map already has, so it complements the map and search without a fresh
   request — and comes into its own on a database with several schemas.
 
