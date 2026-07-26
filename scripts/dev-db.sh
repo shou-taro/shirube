@@ -4,10 +4,11 @@
 # once; you switch between them inside shirube by picking the connection profile.
 #
 #   scripts/dev-db.sh list            List the sample databases and whether each is loaded.
-#   scripts/dev-db.sh up              Start the container and load every sample database.
+#   scripts/dev-db.sh up              Start the container and pick databases from a menu
+#                                     (loads all when not run in a terminal, e.g. in CI).
 #   scripts/dev-db.sh up chinook lego Start the container and load only the named ones.
 #   scripts/dev-db.sh down            Stop the container (data is kept).
-#   scripts/dev-db.sh reset [names]   Wipe the data volume and reload (all, or the named).
+#   scripts/dev-db.sh reset [names]   Wipe the data volume and reload (menu, or the named).
 #
 # Each sample is loaded into its own database on the same server, so all of them share:
 #   postgresql://postgres:postgres@127.0.0.1:5432/<name>
@@ -152,16 +153,105 @@ validate_names() {
   done
 }
 
+# choose_databases — an arrow-key checklist for picking which databases to load. The menu
+# is drawn on the terminal; the chosen names are printed to stdout, one per line, so the
+# caller can capture them. Returns non-zero if the user cancels. Requires the container to
+# be running (it marks already-loaded databases). Keys: ↑/↓ or j/k move, space toggles,
+# a toggles all, enter confirms, q or esc cancels.
+choose_databases() {
+  local options=() name
+  read -ra options <<<"$ALL_DBS"
+  local n=${#options[@]} cursor=0 i key rest
+  local -a checked
+
+  # One round-trip to learn what's already loaded, then default the selection to the rest.
+  local loaded
+  loaded="$(psql_q "SELECT datname FROM pg_database")"
+  is_loaded() { printf '%s\n' "$loaded" | grep -qx "$1"; }
+  for ((i = 0; i < n; i++)); do
+    if is_loaded "${options[i]}"; then checked[i]=0; else checked[i]=1; fi
+  done
+
+  printf '\e[?25l' >/dev/tty # hide the cursor while the menu is live
+  trap 'printf "\e[?25h" >/dev/tty' RETURN
+
+  local first=1
+  while true; do
+    [[ $first -eq 0 ]] && printf '\e[%dA' $((n + 2)) >/dev/tty
+    first=0
+    printf '\r\e[KSelect databases to load  (↑/↓ move · space toggle · a all · enter confirm · q cancel)\n' >/dev/tty
+    printf '\r\e[K\n' >/dev/tty
+    for ((i = 0; i < n; i++)); do
+      local pointer='  ' mark=' ' tag=''
+      [[ $i -eq $cursor ]] && pointer='❯ '
+      [[ ${checked[i]} -eq 1 ]] && mark='x'
+      is_loaded "${options[i]}" && tag='  [loaded]'
+      printf '\r\e[K%s[%s] %-16s%s\n' "$pointer" "$mark" "${options[i]}" "$tag" >/dev/tty
+    done
+
+    IFS= read -rsn1 key </dev/tty
+    case "$key" in
+      $'\e')
+        # An escape sequence (arrow key) delivers its bytes together; a bare esc does not,
+        # so a short wait distinguishes "arrow" from "cancel".
+        read -rsn2 -t 1 rest </dev/tty || rest=''
+        case "$rest" in
+          '[A') ((cursor = (cursor - 1 + n) % n)) ;;
+          '[B') ((cursor = (cursor + 1) % n)) ;;
+          '') return 1 ;;
+        esac
+        ;;
+      k | K) ((cursor = (cursor - 1 + n) % n)) ;;
+      j | J) ((cursor = (cursor + 1) % n)) ;;
+      ' ') checked[cursor]=$((1 - checked[cursor])) ;;
+      a | A)
+        local all_on=1
+        for ((i = 0; i < n; i++)); do [[ ${checked[i]} -eq 0 ]] && all_on=0; done
+        for ((i = 0; i < n; i++)); do checked[i]=$((1 - all_on)); done
+        ;;
+      q | Q) return 1 ;;
+      '' | $'\r') break ;; # enter (empty when the newline is the read delimiter)
+    esac
+  done
+
+  for ((i = 0; i < n; i++)); do
+    [[ ${checked[i]} -eq 1 ]] && echo "${options[i]}"
+  done
+  # Return success explicitly: without this the function's status would be that of the last
+  # test above, which is false whenever the last database is unselected (read as a cancel).
+  return 0
+}
+
 # --- commands ----------------------------------------------------------------
 
 cmd_up() {
-  local targets=("$@")
+  local targets=("$@") interactive=0
   if [[ ${#targets[@]} -eq 0 ]]; then
-    read -ra targets <<<"$ALL_DBS"
+    # No names: pick from a menu when run interactively, else load everything (so CI and
+    # piped invocations don't stall waiting on a terminal).
+    if [[ -t 0 && -t 1 ]]; then
+      interactive=1
+    else
+      read -ra targets <<<"$ALL_DBS"
+    fi
   fi
-  validate_names "${targets[@]}"
+  [[ ${#targets[@]} -gt 0 ]] && validate_names "${targets[@]}"
   mkdir -p "$cache"
   "${compose[@]}" up -d --wait
+
+  if [[ $interactive -eq 1 ]]; then
+    local chosen
+    if ! chosen="$(choose_databases)"; then
+      echo "Cancelled — nothing loaded." >&2
+      return 0
+    fi
+    targets=($chosen) # names are single words, so word-splitting is safe here
+    if [[ ${#targets[@]} -eq 0 ]]; then
+      echo "Nothing selected — nothing loaded." >&2
+      return 0
+    fi
+  fi
+
   local name
   for name in "${targets[@]}"; do
     load_one "$name"
@@ -191,7 +281,7 @@ cmd_reset() {
 }
 
 usage() {
-  sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 sub="${1:-up}"
