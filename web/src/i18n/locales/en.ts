@@ -49,8 +49,6 @@ const en = {
   },
   tree: {
     open: 'Browse schema',
-    filter: 'Filter objects',
-    noMatches: 'No objects match',
     close: 'Close',
     expand: 'Show columns',
     collapse: 'Hide columns',

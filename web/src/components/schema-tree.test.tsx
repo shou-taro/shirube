@@ -61,17 +61,8 @@ describe('SchemaTree', () => {
     fireEvent.click(screen.getByRole('button', { name: /customer/ }))
 
     expect(onSelect).toHaveBeenCalledWith('public.customer')
-    // The filter input is only present while the popover is open.
-    expect(screen.getByLabelText('tree.filter')).toBeInTheDocument()
-  })
-
-  it('filters objects by name', () => {
-    open([object('public.customer'), object('sales.orders')])
-
-    fireEvent.change(screen.getByLabelText('tree.filter'), { target: { value: 'ord' } })
-
-    expect(screen.getByRole('button', { name: /orders/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /customer/ })).not.toBeInTheDocument()
+    // The close button is only present while the popover is open.
+    expect(screen.getByLabelText('tree.close')).toBeInTheDocument()
   })
 
   it('expands an object to show its columns and marks the primary key', () => {
