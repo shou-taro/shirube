@@ -37,7 +37,9 @@ The backend serving the built SPA on a single origin:
 uv run --directory api shirube    # serves UI + API on http://127.0.0.1:7472
 ```
 
-A local sample database (pagila) is available via `scripts/dev-db.sh` for development.
+Local sample databases (pagila, chinook, lego, employees, AdventureWorks) are available
+via `scripts/dev-db.sh` for development — run `scripts/dev-db.sh list` to see them, and
+`scripts/dev-db.sh up [name…]` to load all or a chosen few.
 
 ## Checks
 

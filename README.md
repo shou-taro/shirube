@@ -158,18 +158,20 @@ explorer works fully without it.
 
 ### 🧪 Try it with a sample database
 
-No PostgreSQL to hand? You can take shirube for a spin against a sample database
-([pagila](https://github.com/devrimgunduz/pagila)). This needs **Docker** and a clone of
-this repository.
+No PostgreSQL to hand? You can take shirube for a spin against a range of sample
+databases — [pagila](https://github.com/devrimgunduz/pagila) (a DVD-rental shop),
+chinook (a music store), lego, employees (large), and Microsoft's AdventureWorks (many
+tables across several schemas). This needs **Docker** and a clone of this repository.
 
 ```bash
 git clone https://github.com/shou-taro/shirube.git
 cd shirube
-./scripts/dev-db.sh up
+./scripts/dev-db.sh up          # load them all, or e.g. `up chinook lego` for a few
 ```
 
-That brings up `postgresql://postgres:postgres@127.0.0.1:5432/pagila`. Add it as a
-connection in shirube and start exploring.
+Each is loaded into its own database on `127.0.0.1:5432` (pagila, chinook, lego,
+employees, adventureworks). Add the ones you want as connections in shirube and switch
+between them there. `./scripts/dev-db.sh list` shows what's available.
 
 ## 🛣️ Roadmap
 

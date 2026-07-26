@@ -47,8 +47,8 @@ dist-ssr/
 api/src/shirube/static/
 
 # ---- Development database ----
-# pagila SQL fetched by scripts/dev-db.sh; not vendored into the repo.
-dev/pagila/
+# Sample-database dumps fetched by scripts/dev-db.sh; not vendored into the repo.
+dev/samples/
 
 # Logs
 logs/
@@ -68,7 +68,7 @@ pnpm-debug.log*
 !.vscode/settings.json
 !.vscode/extensions.json
 .idea/
-.claude/settings.local.json
+.claude/
 *.swp
 *.swo
 .DS_Store

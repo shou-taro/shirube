@@ -147,8 +147,12 @@ checks:
 One sample database is not enough, and the same data does not serve every purpose. Split
 it by intent:
 
-- **End-to-end and manual dogfooding** — pagila (via `scripts/dev-db.sh`): a realistic
-  schema with views, materialised views, partitions and foreign keys.
+- **End-to-end and manual dogfooding** — a range of sample databases via
+  `scripts/dev-db.sh` (`list` to see them, `up [name…]` to load): pagila (views,
+  materialised views, partitions and foreign keys), chinook (clean multi-hop foreign
+  keys), lego (many-to-many), employees (large, for load) and AdventureWorks (many tables
+  across several schemas — useful for the cross-schema case below). End-to-end tests target
+  pagila specifically.
 - **Integration** — small, purpose-built fixtures, created by running DDL in the test
   setup (create a temporary schema → insert known rows → yield → drop). Deterministic, so
   rows and counts can be asserted exactly, and unaffected by pagila changing.
