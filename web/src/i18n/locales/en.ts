@@ -47,6 +47,14 @@ const en = {
     noResults: 'No matching tables',
     inColumn: 'column: {{column}}',
   },
+  tree: {
+    open: 'Browse schema',
+    close: 'Close',
+    expand: 'Show columns',
+    collapse: 'Hide columns',
+    primaryKey: 'Primary key',
+    foreignKey: 'Foreign key → {{target}}',
+  },
   schema: {
     loading: 'Reading the schema…',
     error: 'Could not read the schema.',

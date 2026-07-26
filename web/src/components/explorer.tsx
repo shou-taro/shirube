@@ -18,6 +18,7 @@ import { KindBadge } from '@/components/kind-badge'
 import { Logo } from '@/components/logo'
 import { NavigatorPane } from '@/components/navigator-pane'
 import { SchemaSearch } from '@/components/schema-search'
+import { SchemaTree } from '@/components/schema-tree'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { TableDetail } from '@/components/table-detail'
 import { Button } from '@/components/ui/button'
@@ -195,6 +196,17 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             <RefreshCw className={cn('size-3.5', schema.status === 'loading' && 'animate-spin')} />
           </button>
         </div>
+
+        {/* Browse the whole schema as a collapsible tree, and travel the map from it. Needs
+            the loaded graph, so it only appears once the schema is ready. */}
+        {displayGraph && (
+          <SchemaTree
+            objects={displayGraph.objects}
+            relationships={displayGraph.relationships}
+            activeId={centreId}
+            onSelect={setCentreOverride}
+          />
+        )}
 
         <Button
           variant="ghost"
