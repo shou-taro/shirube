@@ -95,7 +95,12 @@ export function layoutGraph(graph: SchemaGraph): { nodes: TableFlowNode[]; edges
       source: relationship.source,
       target: relationship.target,
       type: 'routed',
-      data: { points: routed?.points ?? [] },
+      data: {
+        points: routed?.points ?? [],
+        // A manual edge carries its relationship id so it can be removed straight from the
+        // map; the diagram injects the remove callback (layout stays a pure function).
+        ...(isManual ? { manual: true, relationshipId: relationship.id } : {}),
+      },
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#9a92b4' },
       style: {
         stroke: '#9a92b4',

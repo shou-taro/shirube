@@ -84,11 +84,11 @@ function RelatedRow({
   const { t } = useTranslation()
   const Arrow = direction === 'out' ? ArrowRight : ArrowLeft
   return (
-    <li className="group flex items-center hover:bg-brand/10">
+    <li className="group relative flex items-center hover:bg-brand/10">
       <button
         type="button"
         onClick={onNavigate}
-        className="flex min-w-0 flex-1 items-center gap-2 px-3 py-1 text-left text-xs leading-[18px]"
+        className="flex w-full items-center gap-2 px-3 py-1 text-left text-xs leading-[18px]"
       >
         <Arrow className={cn('size-3 shrink-0', dependency ? 'text-muted-foreground' : 'text-brand')} />
         <span className="min-w-0 truncate font-medium" title={name}>
@@ -100,7 +100,15 @@ function RelatedRow({
             {t('relationships.manual')}
           </span>
         )}
-        <span className="ml-auto truncate text-[11px] text-muted-foreground" title={columns.join(', ')}>
+        {/* On a manual row the joined columns slide left on hover to clear the remove
+            control, so it never overlaps them. */}
+        <span
+          className={cn(
+            'ml-auto truncate text-[11px] text-muted-foreground',
+            manual && 'transition-[margin] group-hover:mr-7',
+          )}
+          title={columns.join(', ')}
+        >
           {columns.join(', ')}
         </span>
       </button>
@@ -110,7 +118,7 @@ function RelatedRow({
           aria-label={t('relationships.remove')}
           title={t('relationships.remove')}
           onClick={onRemove}
-          className="mr-1.5 flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground opacity-0 hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+          className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground opacity-0 hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
         >
           <Trash2 className="size-3" />
         </button>
@@ -211,19 +219,23 @@ export function TableDetail({
                   {t('schema.notNull')}
                 </span>
               )}
-              <span className="ml-auto truncate text-muted-foreground" title={column.data_type}>
+              {/* The type slides left on hover so the link button reveals in the freed
+                  space rather than overlapping it. */}
+              <span
+                className="ml-auto truncate text-muted-foreground transition-[margin] group-hover:mr-7"
+                title={column.data_type}
+              >
                 {column.data_type}
               </span>
               {/* Draw a relationship from this column. Absolutely positioned so it reserves
-                  no space — the type sits flush at rest — and reveals over the row's right
-                  edge on hover (or keyboard focus), a card-coloured square so it reads over
-                  the type. */}
+                  no space — the type sits flush at rest — and reveals on hover (or keyboard
+                  focus) in the gap the type opens up. */}
               <button
                 type="button"
                 aria-label={t('relationships.linkColumn', { column: column.name })}
                 title={t('relationships.linkColumn', { column: column.name })}
                 onClick={() => onStartLink(column.name)}
-                className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-sm bg-card text-muted-foreground opacity-0 hover:bg-brand/15 hover:text-brand focus-visible:opacity-100 group-hover:opacity-100"
+                className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground opacity-0 hover:bg-brand/15 hover:text-brand focus-visible:opacity-100 group-hover:opacity-100"
               >
                 <Link2 className="size-3" />
               </button>

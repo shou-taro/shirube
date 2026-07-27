@@ -365,6 +365,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
                   ? `narrow:${dataOpen}`
                   : `${navigatorOpen}:${dataOpen}:${resizing ? 'drag' : settings.navigatorWidth}`
               }
+              onRemoveManual={removeRelationship}
             />
           ) : null}
 
