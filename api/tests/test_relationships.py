@@ -9,12 +9,17 @@ from fastapi.testclient import TestClient
 
 from shirube.adapters.api.app import create_app
 from shirube.adapters.api.dependencies import get_schema_inspector, get_secret_store
+from shirube.adapters.persistence.database import get_session_factory
+from shirube.adapters.persistence.manual_relationship_repository import (
+    SqlManualRelationshipRepository,
+)
 from shirube.application.relationships import ManualRelationshipService
-from shirube.domain.connection import ConnectionParams
+from shirube.domain.connection import ConnectionParams, ConnectionProfile, SslMode
 from shirube.domain.errors import (
     DuplicateManualRelationshipError,
     InvalidManualRelationshipError,
     ManualRelationshipNotFoundError,
+    ProfileNotFoundError,
 )
 from shirube.domain.schema import (
     Column,
@@ -84,9 +89,36 @@ class FakeManualRepo:
     def delete(self, relationship_id: str) -> None:
         self._rows.pop(relationship_id, None)
 
+    def delete_for_profile(self, profile_id: str) -> None:
+        self._rows = {rid: row for rid, row in self._rows.items() if row.profile_id != profile_id}
 
-def _service() -> ManualRelationshipService:
-    return ManualRelationshipService(FakeManualRepo())  # type: ignore[arg-type]
+
+class FakeProfileRepo:
+    """In-memory profile lookup; only the ids in ``known`` exist."""
+
+    def __init__(self, known: set[str]) -> None:
+        self._known = known
+
+    def get(self, profile_id: str) -> ConnectionProfile | None:
+        if profile_id not in self._known:
+            return None
+        return ConnectionProfile(
+            id=profile_id,
+            name="shop",
+            host="db.example.com",
+            port=5432,
+            database="shop",
+            username="readonly",
+            sslmode=SslMode.REQUIRE,
+            schemas=("public",),
+        )
+
+
+def _service(known: set[str] = frozenset({"p1"})) -> ManualRelationshipService:
+    return ManualRelationshipService(
+        FakeManualRepo(),  # type: ignore[arg-type]
+        FakeProfileRepo(set(known)),  # type: ignore[arg-type]
+    )
 
 
 def test_add_assigns_an_id_and_persists() -> None:
@@ -96,6 +128,13 @@ def test_add_assigns_an_id_and_persists() -> None:
 
     assert created.id
     assert service.list("p1") == [created]
+
+
+def test_add_to_an_unknown_profile_is_not_found() -> None:
+    service = _service(known=set())
+
+    with pytest.raises(ProfileNotFoundError):
+        service.add(profile_id="ghost", **_LINK)
 
 
 def test_add_refuses_a_duplicate() -> None:
@@ -280,3 +319,22 @@ def test_delete_unknown_returns_404() -> None:
         response = client.delete(f"/api/profiles/{profile_id}/relationships/nope")
 
     assert response.status_code == 404
+
+
+def test_create_for_an_unknown_profile_returns_404() -> None:
+    with _client() as client:
+        response = client.post("/api/profiles/ghost/relationships", json=_LINK)
+
+    assert response.status_code == 404
+
+
+def test_deleting_a_profile_removes_its_manual_relationships() -> None:
+    with _client() as client:
+        profile_id = _create_profile(client)
+        client.post(f"/api/profiles/{profile_id}/relationships", json=_LINK)
+
+        assert client.delete(f"/api/profiles/{profile_id}").status_code == 204
+
+    # The link must not linger as an orphan row once its profile is gone.
+    repository = SqlManualRelationshipRepository(get_session_factory())
+    assert repository.list_for_profile(profile_id) == []

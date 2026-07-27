@@ -67,8 +67,8 @@ def create_relationship(
 ) -> ManualRelationshipRead:
     """Draw a manual relationship for a profile.
 
-    A link to a column that is the same as its source is refused as 400; an identical
-    existing link as 409.
+    An unknown profile is 404; a link to a column that is the same as its source is refused
+    as 400; an identical existing link as 409.
     """
     relationship = service.add(
         profile_id=profile_id,

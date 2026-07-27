@@ -133,10 +133,16 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
 
   // Refresh the graph in place after a manual relationship changes — no loading flash and no
   // centre reset, so the map simply gains or loses the edge without losing the user's place.
+  // A failure surfaces as an error notice rather than leaving the map silently stale.
   const refreshSchema = useCallback(() => {
-    fetchSchema(profile.id)
+    return fetchSchema(profile.id)
       .then((graph) => setSchema({ status: 'ready', graph }))
-      .catch(() => {})
+      .catch((error: unknown) =>
+        setLinkNotice({
+          kind: 'error',
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      )
   }, [profile.id])
 
   const startLink = useCallback(
@@ -185,7 +191,14 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
 
   const removeRelationship = useCallback(
     (relationshipId: string) => {
-      deleteManualRelationship(profile.id, relationshipId).then(refreshSchema).catch(() => {})
+      deleteManualRelationship(profile.id, relationshipId)
+        .then(refreshSchema)
+        .catch((error: unknown) =>
+          setLinkNotice({
+            kind: 'error',
+            message: error instanceof Error ? error.message : String(error),
+          }),
+        )
       setLinkNotice((current) =>
         current?.kind === 'added' && current.relationshipId === relationshipId ? null : current,
       )

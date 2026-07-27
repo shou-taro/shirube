@@ -5,7 +5,11 @@ from dataclasses import dataclass
 
 from shirube.domain.connection import ConnectionProfile, SslMode
 from shirube.domain.errors import ProfileNotFoundError
-from shirube.ports.repositories import ProfileRepository, SecretStore
+from shirube.ports.repositories import (
+    ManualRelationshipRepository,
+    ProfileRepository,
+    SecretStore,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,14 +32,20 @@ class ProfileFields:
 class ProfileService:
     """Creates, reads, updates and deletes connection profiles.
 
-    Coordinates the profile repository (non-secret fields) and the secret store (the
-    password) so the two never drift apart: creating a profile writes both and deleting
-    one removes both.
+    Coordinates the profile repository (non-secret fields), the secret store (the
+    password) and the profile's manual relationships so the three never drift apart:
+    creating a profile writes profile and password, and deleting one removes all three.
     """
 
-    def __init__(self, repository: ProfileRepository, secrets: SecretStore) -> None:
+    def __init__(
+        self,
+        repository: ProfileRepository,
+        secrets: SecretStore,
+        manual_relationships: ManualRelationshipRepository,
+    ) -> None:
         self._repository = repository
         self._secrets = secrets
+        self._manual_relationships = manual_relationships
 
     def list(self) -> list[ConnectionProfile]:
         """Return all saved profiles."""
@@ -114,7 +124,7 @@ class ProfileService:
         return updated
 
     def delete(self, profile_id: str) -> None:
-        """Delete a profile and its stored password.
+        """Delete a profile, its stored password and its manual relationships.
 
         Raises:
             ProfileNotFoundError: if no profile has that id.
@@ -122,3 +132,5 @@ class ProfileService:
         self.get(profile_id)
         self._repository.delete(profile_id)
         self._secrets.delete_password(profile_id)
+        # Local annotations must not outlive the profile they belong to.
+        self._manual_relationships.delete_for_profile(profile_id)
