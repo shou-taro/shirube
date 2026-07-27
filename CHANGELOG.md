@@ -8,14 +8,16 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.2.0b7] — 2026-07-27
+
 ### Added
 
 - **Browse the schema as a tree.** A new toolbar button opens a collapsible tree of the
   whole database — schemas, then their tables and views, each expandable to its columns
   (primary and foreign keys marked). Click any object to travel the map to it while the tree
-  stays open; the map's current table is highlighted in step. It reads
-  the schema the map already has, so it complements the map and search without a fresh
-  request — and comes into its own on a database with several schemas.
+  stays open; the map's current table is highlighted in step. It reads the schema the map
+  already has, so it complements the map and search without a fresh request — and comes into
+  its own on a database with several schemas.
 
 ### Fixed
 
@@ -23,6 +25,9 @@ may still change between releases).
   A missing role is named as a username problem (distinct from a wrong password); a server
   that is at its connection limit says so ("too many clients"); and a server that is up but
   still starting up or recovering advises waiting and retrying.
+- **Clickable controls show a pointer cursor.** Buttons and select dropdowns across the app
+  (the data preview, the navigator, the detail pane, the schema tree and the top bar) now
+  show a pointer on hover, rather than reading as plain text.
 
 ## [0.2.0b6] — 2026-07-24
 
@@ -260,7 +265,8 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.2.0b6...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.2.0b7...HEAD
+[0.2.0b7]: https://github.com/shou-taro/shirube/compare/v0.2.0b6...v0.2.0b7
 [0.2.0b6]: https://github.com/shou-taro/shirube/compare/v0.2.0b5...v0.2.0b6
 [0.2.0b5]: https://github.com/shou-taro/shirube/compare/v0.2.0b4...v0.2.0b5
 [0.2.0b4]: https://github.com/shou-taro/shirube/compare/v0.2.0b3...v0.2.0b4
