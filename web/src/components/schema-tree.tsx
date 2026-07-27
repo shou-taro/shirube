@@ -167,7 +167,7 @@ export function SchemaTree({ objects, relationships, activeId, onSelect }: Schem
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          'cursor-pointer hover:bg-brand/15 hover:text-brand',
+          'hover:bg-brand/15 hover:text-brand',
           open && 'bg-brand/15 text-brand',
         )}
       >
@@ -182,7 +182,7 @@ export function SchemaTree({ objects, relationships, activeId, onSelect }: Schem
               type="button"
               aria-label={t('tree.close')}
               onClick={() => setOpen(false)}
-              className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-brand/15 hover:text-brand"
+              className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-brand/15 hover:text-brand"
             >
               <X className="size-4" />
             </button>
@@ -198,7 +198,7 @@ export function SchemaTree({ objects, relationships, activeId, onSelect }: Schem
                     type="button"
                     aria-expanded={schemaOpen(group.schema)}
                     onClick={() => toggleSchema(group.schema)}
-                    className="flex w-full cursor-pointer items-center gap-1.5 rounded-sm px-1.5 py-1 text-left text-sm font-medium hover:bg-brand/10"
+                    className="flex w-full items-center gap-1.5 rounded-sm px-1.5 py-1 text-left text-sm font-medium hover:bg-brand/10"
                   >
                     {schemaOpen(group.schema) ? (
                       <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -232,7 +232,7 @@ export function SchemaTree({ objects, relationships, activeId, onSelect }: Schem
                                 aria-label={expanded ? t('tree.collapse') : t('tree.expand')}
                                 aria-expanded={expanded}
                                 onClick={() => toggleObject(object.id)}
-                                className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:text-brand"
+                                className="flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:text-brand"
                               >
                                 {expanded ? (
                                   <ChevronDown className="size-3.5" aria-hidden="true" />
@@ -247,7 +247,7 @@ export function SchemaTree({ objects, relationships, activeId, onSelect }: Schem
                               type="button"
                               aria-current={active ? 'true' : undefined}
                               onClick={() => onSelect(object.id)}
-                              className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-sm py-1 pr-1.5 text-left text-sm"
+                              className="flex min-w-0 flex-1 items-center gap-1.5 rounded-sm py-1 pr-1.5 text-left text-sm"
                             >
                               <KindIcon kind={object.kind} />
                               <span
