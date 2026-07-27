@@ -14,8 +14,9 @@ may still change between releases).
   in ORM-shaped, legacy or warehouse schemas — related tables scatter on the map. You can
   now draw the missing link yourself: hover a column in the detail card, choose the target
   column from a searchable tree (a `<name>_id` column suggests its likely table), and a
-  manual edge is added in a lighter lilac, tagged in the detail card and removable. The
-  links are saved per connection and never touch your database.
+  manual edge is drawn as a dotted line — set apart from the solid foreign keys and dashed
+  view dependencies — tagged in the detail card and removable. The links are saved per
+  connection and never touch your database.
 
 ## [0.2.0b7] — 2026-07-27
 

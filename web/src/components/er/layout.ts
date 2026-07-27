@@ -84,24 +84,24 @@ export function layoutGraph(graph: SchemaGraph): { nodes: TableFlowNode[]; edges
       w: relationship.target,
       name: relationship.constraint_name,
     }) as { points?: { x: number; y: number }[] } | undefined
-    // A view dependency (a view reading a relation) is drawn dashed to set it apart from
-    // a solid foreign key. A manual relationship (one the user drew) is solid, in a lighter
-    // lilac — distinct from both the neutral foreign-key/view lines without breaking the
-    // brand's violet family. `--edge-manual` flips per theme so it stays visible.
+    // All edges share one neutral colour; only the line style differs, so none draws more
+    // attention than another. A foreign key is solid, a view dependency dashed, and a
+    // manual relationship (one the user drew) dotted — quiet on the map, with the detail
+    // card's "manual" tag giving the certainty.
     const isDependency = relationship.kind === 'view_dependency'
     const isManual = relationship.kind === 'manual'
-    const stroke = isManual ? 'var(--edge-manual)' : '#9a92b4'
     return {
       id: `${relationship.source}:${relationship.constraint_name}`,
       source: relationship.source,
       target: relationship.target,
       type: 'routed',
       data: { points: routed?.points ?? [] },
-      markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: stroke },
+      markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#9a92b4' },
       style: {
-        stroke,
-        strokeWidth: isManual ? 2 : 1.5,
+        stroke: '#9a92b4',
+        strokeWidth: 1.5,
         ...(isDependency ? { strokeDasharray: '5 4' } : {}),
+        ...(isManual ? { strokeDasharray: '1 4', strokeLinecap: 'round' as const } : {}),
       },
     }
   })

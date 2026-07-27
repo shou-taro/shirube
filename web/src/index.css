@@ -29,10 +29,6 @@
   --brand-foreground: #2b2154;
   /* The explorer's top bar: a light lilac wash that reads as branded chrome. */
   --topbar: #e9e3fb;
-  /* A manual relationship's edge on the map: a lighter, softer lilac than the neutral
-     foreign-key line, so a user-drawn link reads apart without leaving the violet family.
-     A touch deeper on the light map so it does not wash out against white. */
-  --edge-manual: #c4b5fd;
 }
 
 .dark {
@@ -62,8 +58,6 @@
   /* Slightly deeper and more saturated than the cards, so the top bar reads as branded
      chrome that sits with the tinted surfaces rather than apart from them. */
   --topbar: oklch(0.2 0.032 300);
-  /* Airier on the dark map, where a pale lilac glows rather than disappears. */
-  --edge-manual: #ede9fe;
 }
 
 @theme inline {
