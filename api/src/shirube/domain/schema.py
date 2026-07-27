@@ -27,12 +27,15 @@ class RelationshipKind(StrEnum):
     """What connects two objects on the map.
 
     A foreign key ties a referencing table to the one it points at; a view dependency
-    ties a view (or materialized view) to a relation it reads from. Both are drawn as
-    directed edges, source → target, but they are styled apart.
+    ties a view (or materialized view) to a relation it reads from; a manual relationship
+    is one the user drew themselves, for a link the database does not declare (see
+    :class:`ManualRelationship`). All three are drawn as directed edges, source → target,
+    but they are styled apart.
     """
 
     FOREIGN_KEY = "foreign_key"
     VIEW_DEPENDENCY = "view_dependency"
+    MANUAL = "manual"
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,7 +121,10 @@ class Relationship:
         target: ``schema.name`` id of the referenced object.
         target_columns: The referenced columns, matching ``source_columns`` by position
             (empty for a dependency).
-        kind: Whether this is a foreign key or a view dependency.
+        kind: Whether this is a foreign key, a view dependency or a manual relationship.
+        id: The identifier of the manual relationship this edge came from, set only for
+            ``MANUAL`` edges so the client can delete them; ``None`` for foreign keys and
+            view dependencies, which are read from the database and cannot be edited.
     """
 
     constraint_name: str
@@ -127,6 +133,60 @@ class Relationship:
     target: str
     target_columns: tuple[str, ...]
     kind: RelationshipKind = RelationshipKind.FOREIGN_KEY
+    id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ManualRelationship:
+    """A relationship the user drew themselves, for a link the database does not declare.
+
+    Many real schemas relate tables without a physical foreign key (ORM conventions,
+    legacy or warehouse designs), leaving them scattered on the map. A manual relationship
+    lets the user assert such a link — column to column — so the map can draw it. It is
+    scoped to one connection profile and stored locally; it never touches the target
+    database.
+
+    Attributes:
+        id: A stable identifier, assigned on creation.
+        profile_id: The connection profile this link belongs to.
+        source_schema: Schema of the referencing table.
+        source_table: The referencing table's name.
+        source_column: The referencing column.
+        target_schema: Schema of the referenced table.
+        target_table: The referenced table's name.
+        target_column: The referenced column.
+    """
+
+    id: str
+    profile_id: str
+    source_schema: str
+    source_table: str
+    source_column: str
+    target_schema: str
+    target_table: str
+    target_column: str
+
+    @property
+    def source_object_id(self) -> str:
+        """The ``schema.name`` id of the referencing table."""
+        return f"{self.source_schema}.{self.source_table}"
+
+    @property
+    def target_object_id(self) -> str:
+        """The ``schema.name`` id of the referenced table."""
+        return f"{self.target_schema}.{self.target_table}"
+
+    def as_edge(self) -> Relationship:
+        """Render this manual relationship as a graph edge for the ER map."""
+        return Relationship(
+            constraint_name=f"manual:{self.id}",
+            source=self.source_object_id,
+            source_columns=(self.source_column,),
+            target=self.target_object_id,
+            target_columns=(self.target_column,),
+            kind=RelationshipKind.MANUAL,
+            id=self.id,
+        )
 
 
 @dataclass(frozen=True, slots=True)

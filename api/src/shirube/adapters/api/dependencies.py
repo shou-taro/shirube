@@ -12,6 +12,9 @@ from shirube.adapters.ai.factory import build_provider
 from shirube.adapters.keyring.secret_store import KeyringSecretStore
 from shirube.adapters.persistence.ai_config_repository import SqlAiConfigRepository
 from shirube.adapters.persistence.database import get_session_factory
+from shirube.adapters.persistence.manual_relationship_repository import (
+    SqlManualRelationshipRepository,
+)
 from shirube.adapters.persistence.profile_repository import SqlProfileRepository
 from shirube.adapters.postgres.connector import PostgresConnector
 from shirube.adapters.postgres.data_reader import PostgresDataReader
@@ -22,6 +25,7 @@ from shirube.application.context_budget import ANTHROPIC_CONTEXT_WINDOW, resolve
 from shirube.application.data import DataService
 from shirube.application.navigator import NavigatorService
 from shirube.application.profiles import ProfileService
+from shirube.application.relationships import ManualRelationshipService
 from shirube.application.schema import SchemaService
 from shirube.domain.errors import ProviderNotConfiguredError
 from shirube.ports.repositories import (
@@ -29,6 +33,7 @@ from shirube.ports.repositories import (
     AiProvider,
     DatabaseConnector,
     DataReader,
+    ManualRelationshipRepository,
     ProfileRepository,
     SchemaInspector,
     SecretStore,
@@ -60,6 +65,11 @@ def get_schema_inspector() -> SchemaInspector:
     return PostgresSchemaInspector()
 
 
+def get_manual_relationship_repository() -> ManualRelationshipRepository:
+    """Provide the manual-relationship repository backed by the app-state database."""
+    return SqlManualRelationshipRepository(get_session_factory())
+
+
 def get_data_reader() -> DataReader:
     """Provide the PostgreSQL row-preview reader."""
     return PostgresDataReader()
@@ -82,13 +92,26 @@ def get_connection_service(
     return ConnectionService(repository, secrets, connector)
 
 
+def get_manual_relationship_service(
+    repository: Annotated[
+        ManualRelationshipRepository, Depends(get_manual_relationship_repository)
+    ],
+) -> ManualRelationshipService:
+    """Compose the manual-relationship service from its repository."""
+    return ManualRelationshipService(repository)
+
+
 def get_schema_service(
     repository: Annotated[ProfileRepository, Depends(get_profile_repository)],
     secrets: Annotated[SecretStore, Depends(get_secret_store)],
     inspector: Annotated[SchemaInspector, Depends(get_schema_inspector)],
+    manual_relationships: Annotated[
+        ManualRelationshipRepository, Depends(get_manual_relationship_repository)
+    ],
 ) -> SchemaService:
-    """Compose the schema service from the repository, secret store and inspector."""
-    return SchemaService(repository, secrets, inspector)
+    """Compose the schema service from the repository, secret store, inspector and the
+    profile's manual relationships."""
+    return SchemaService(repository, secrets, inspector, manual_relationships)
 
 
 def get_data_service(

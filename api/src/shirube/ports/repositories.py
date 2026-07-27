@@ -16,7 +16,7 @@ from shirube.domain.ai import AiProviderConfig
 from shirube.domain.chat import ProviderEvent, TurnRequest
 from shirube.domain.connection import ConnectionParams, ConnectionProfile
 from shirube.domain.data import RowPage, RowQuery
-from shirube.domain.schema import SchemaGraph
+from shirube.domain.schema import ManualRelationship, SchemaGraph
 
 
 class ProfileRepository(Protocol):
@@ -40,6 +40,30 @@ class ProfileRepository(Protocol):
 
     def delete(self, profile_id: str) -> None:
         """Delete a profile."""
+        ...
+
+
+class ManualRelationshipRepository(Protocol):
+    """Stores the relationships a user draws for a connection profile.
+
+    These are local annotations, keyed by an opaque id and scoped to a profile; the target
+    database is never touched.
+    """
+
+    def list_for_profile(self, profile_id: str) -> list[ManualRelationship]:
+        """Return every manual relationship saved for a profile."""
+        ...
+
+    def get(self, relationship_id: str) -> ManualRelationship | None:
+        """Return one manual relationship, or ``None`` if it does not exist."""
+        ...
+
+    def add(self, relationship: ManualRelationship) -> None:
+        """Insert a new manual relationship."""
+        ...
+
+    def delete(self, relationship_id: str) -> None:
+        """Delete a manual relationship (a no-op if it does not exist)."""
         ...
 
 
