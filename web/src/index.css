@@ -92,6 +92,14 @@
   * {
     border-color: var(--border);
   }
+  /* Tailwind v4 no longer gives buttons a pointer cursor by default, so every clickable
+     control across the app read as plain text. Restore it for enabled buttons and selects
+     (e.g. the data-preview filter's column and operator dropdowns); disabled ones keep the
+     default arrow, and text inputs keep their I-beam. */
+  button:not(:disabled),
+  select:not(:disabled) {
+    cursor: pointer;
+  }
   body {
     margin: 0;
     background-color: var(--background);
