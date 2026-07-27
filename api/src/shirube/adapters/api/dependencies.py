@@ -78,9 +78,13 @@ def get_data_reader() -> DataReader:
 def get_profile_service(
     repository: Annotated[ProfileRepository, Depends(get_profile_repository)],
     secrets: Annotated[SecretStore, Depends(get_secret_store)],
+    manual_relationships: Annotated[
+        ManualRelationshipRepository, Depends(get_manual_relationship_repository)
+    ],
 ) -> ProfileService:
-    """Compose the profile service from its repository and secret store."""
-    return ProfileService(repository, secrets)
+    """Compose the profile service from its repository, secret store and manual
+    relationships (removed alongside the profile)."""
+    return ProfileService(repository, secrets, manual_relationships)
 
 
 def get_connection_service(
@@ -96,9 +100,11 @@ def get_manual_relationship_service(
     repository: Annotated[
         ManualRelationshipRepository, Depends(get_manual_relationship_repository)
     ],
+    profiles: Annotated[ProfileRepository, Depends(get_profile_repository)],
 ) -> ManualRelationshipService:
-    """Compose the manual-relationship service from its repository."""
-    return ManualRelationshipService(repository)
+    """Compose the manual-relationship service from its repository and the profile
+    repository (to reject links for a profile that does not exist)."""
+    return ManualRelationshipService(repository, profiles)
 
 
 def get_schema_service(

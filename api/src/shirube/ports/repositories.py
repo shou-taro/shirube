@@ -66,6 +66,14 @@ class ManualRelationshipRepository(Protocol):
         """Delete a manual relationship (a no-op if it does not exist)."""
         ...
 
+    def delete_for_profile(self, profile_id: str) -> None:
+        """Delete every manual relationship saved for a profile.
+
+        Used when a profile is removed, so its local annotations do not outlive it as
+        orphan rows.
+        """
+        ...
+
 
 class SchemaInspector(Protocol):
     """Introspects a database into domain metadata."""

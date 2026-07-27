@@ -6,7 +6,7 @@ like the other repositories: these are infrequent, independent operations for a 
 user.
 """
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from shirube.adapters.persistence.models import ManualRelationshipRow
@@ -71,3 +71,11 @@ class SqlManualRelationshipRepository:
             if row is not None:
                 session.delete(row)
                 session.commit()
+
+    def delete_for_profile(self, profile_id: str) -> None:
+        """Delete every manual relationship saved for a profile; a no-op if there are none."""
+        with self._session_factory() as session:
+            session.execute(
+                delete(ManualRelationshipRow).where(ManualRelationshipRow.profile_id == profile_id)
+            )
+            session.commit()

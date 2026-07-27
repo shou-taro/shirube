@@ -6,16 +6,22 @@ from shirube.domain.errors import (
     DuplicateManualRelationshipError,
     InvalidManualRelationshipError,
     ManualRelationshipNotFoundError,
+    ProfileNotFoundError,
 )
 from shirube.domain.schema import ManualRelationship
-from shirube.ports.repositories import ManualRelationshipRepository
+from shirube.ports.repositories import ManualRelationshipRepository, ProfileRepository
 
 
 class ManualRelationshipService:
     """Adds, lists and removes the manual relationships saved for a connection profile."""
 
-    def __init__(self, repository: ManualRelationshipRepository) -> None:
+    def __init__(
+        self,
+        repository: ManualRelationshipRepository,
+        profiles: ProfileRepository,
+    ) -> None:
         self._repository = repository
+        self._profiles = profiles
 
     def list(self, profile_id: str) -> list[ManualRelationship]:
         """Return every manual relationship saved for a profile."""
@@ -47,9 +53,14 @@ class ManualRelationshipService:
             The created relationship, with its assigned id.
 
         Raises:
+            ProfileNotFoundError: if no profile has that id.
             InvalidManualRelationshipError: if the source and target are the same column.
             DuplicateManualRelationshipError: if the same link already exists for the profile.
         """
+        # Refuse to annotate a profile that does not exist, so a stale or wrong id cannot
+        # leave an orphan row that no profile owns.
+        if self._profiles.get(profile_id) is None:
+            raise ProfileNotFoundError
         relationship = ManualRelationship(
             id=str(uuid4()),
             profile_id=profile_id,
