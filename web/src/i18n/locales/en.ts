@@ -55,6 +55,23 @@ const en = {
     primaryKey: 'Primary key',
     foreignKey: 'Foreign key → {{target}}',
   },
+  relationships: {
+    // The link icon on a column row in the detail card.
+    linkColumn: 'Draw a relationship from {{column}}',
+    manual: 'manual',
+    remove: 'Remove relationship',
+    close: 'Close',
+    // The target picker.
+    pickerTitle: 'Choose a target column',
+    linkFrom: 'Link',
+    pickHint: 'Choose the column this one points at.',
+    filter: 'Filter tables and columns',
+    suggested: 'Suggested',
+    noMatches: 'No matches',
+    // The notice after drawing a link.
+    added: 'Relationship added',
+    undo: 'Undo',
+  },
   schema: {
     loading: 'Reading the schema…',
     error: 'Could not read the schema.',

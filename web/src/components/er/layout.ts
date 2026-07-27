@@ -85,18 +85,22 @@ export function layoutGraph(graph: SchemaGraph): { nodes: TableFlowNode[]; edges
       name: relationship.constraint_name,
     }) as { points?: { x: number; y: number }[] } | undefined
     // A view dependency (a view reading a relation) is drawn dashed to set it apart from
-    // a solid foreign key.
+    // a solid foreign key. A manual relationship (one the user drew) is solid, in a lighter
+    // lilac — distinct from both the neutral foreign-key/view lines without breaking the
+    // brand's violet family. `--edge-manual` flips per theme so it stays visible.
     const isDependency = relationship.kind === 'view_dependency'
+    const isManual = relationship.kind === 'manual'
+    const stroke = isManual ? 'var(--edge-manual)' : '#9a92b4'
     return {
       id: `${relationship.source}:${relationship.constraint_name}`,
       source: relationship.source,
       target: relationship.target,
       type: 'routed',
       data: { points: routed?.points ?? [] },
-      markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#9a92b4' },
+      markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: stroke },
       style: {
-        stroke: '#9a92b4',
-        strokeWidth: 1.5,
+        stroke,
+        strokeWidth: isManual ? 2 : 1.5,
         ...(isDependency ? { strokeDasharray: '5 4' } : {}),
       },
     }

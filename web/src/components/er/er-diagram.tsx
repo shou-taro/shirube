@@ -107,9 +107,15 @@ export function ErDiagram({
     }, 180)
   }, [])
 
-  // A fresh schema resets the centre to its backbone (no transition on first load).
+  // A fresh schema keeps the current centre when that table is still present — so reloading,
+  // or adding a manual relationship, does not throw the user back to the backbone — and only
+  // falls back to the backbone when there is no centre yet or it has gone.
   useEffect(() => {
-    setCentreId(pickCentre(graph))
+    setCentreId((current) =>
+      current !== null && graph.objects.some((object) => object.id === current)
+        ? current
+        : pickCentre(graph),
+    )
   }, [graph])
 
   // A search selection travels the centre there.

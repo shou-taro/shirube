@@ -86,11 +86,12 @@ export interface SchemaObject {
   partitions: Partition[]
 }
 
-/** What an edge represents: a foreign key, or a view reading a relation. */
-export type RelationshipKind = 'foreign_key' | 'view_dependency'
+/** What an edge represents: a foreign key, a view reading a relation, or a link the user
+ *  drew that the database does not declare. */
+export type RelationshipKind = 'foreign_key' | 'view_dependency' | 'manual'
 
 /** A relationship — one edge on the map. Foreign keys carry joined columns; view
- *  dependencies have none. */
+ *  dependencies have none; a manual link carries a single joined column each side. */
 export interface Relationship {
   constraint_name: string
   /** `schema.name` id of the referencing object (the view, for a dependency). */
@@ -100,6 +101,19 @@ export interface Relationship {
   target: string
   target_columns: string[]
   kind: RelationshipKind
+  /** Set only for a manual relationship, so it can be deleted; absent for foreign keys
+   *  and view dependencies, which come from the database. */
+  id?: string
+}
+
+/** The endpoints of a manual relationship the user is drawing, column to column. */
+export interface ManualRelationshipInput {
+  source_schema: string
+  source_table: string
+  source_column: string
+  target_schema: string
+  target_table: string
+  target_column: string
 }
 
 /** The introspected schema: objects (nodes) and relationships (edges). */
@@ -237,6 +251,24 @@ export function testProfileConnection(id: string): Promise<void> {
 /** Introspect a saved profile's database and return its schema as a graph. */
 export function fetchSchema(id: string): Promise<SchemaGraph> {
   return apiFetch<SchemaGraph>(`/profiles/${id}/schema`)
+}
+
+/** Draw a manual relationship for a profile; the created relationship carries its id. */
+export function addManualRelationship(
+  profileId: string,
+  input: ManualRelationshipInput,
+): Promise<ManualRelationshipInput & { id: string }> {
+  return apiFetch<ManualRelationshipInput & { id: string }>(
+    `/profiles/${profileId}/relationships`,
+    { method: 'POST', body: JSON.stringify(input) },
+  )
+}
+
+/** Remove a manual relationship the user drew. */
+export function deleteManualRelationship(profileId: string, relationshipId: string): Promise<void> {
+  return apiFetch<void>(`/profiles/${profileId}/relationships/${relationshipId}`, {
+    method: 'DELETE',
+  })
 }
 
 /** Fetch the configured AI provider, or `null` when none is set. */
