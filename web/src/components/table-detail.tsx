@@ -196,7 +196,7 @@ export function TableDetail({
           {object.columns.map((column) => (
             <li
               key={column.name}
-              className="group flex items-center gap-2 px-3 py-1 text-xs leading-[18px]"
+              className="group relative flex items-center gap-2 px-3 py-1 text-xs leading-[18px]"
             >
               {column.is_primary_key ? (
                 <KeyRound className="size-3 shrink-0 text-brand" />
@@ -214,14 +214,16 @@ export function TableDetail({
               <span className="ml-auto truncate text-muted-foreground" title={column.data_type}>
                 {column.data_type}
               </span>
-              {/* Draw a relationship from this column — revealed on hover to keep the list
-                  calm, but always focusable for the keyboard. */}
+              {/* Draw a relationship from this column. Absolutely positioned so it reserves
+                  no space — the type sits flush at rest — and reveals over the row's right
+                  edge on hover (or keyboard focus), a card-coloured square so it reads over
+                  the type. */}
               <button
                 type="button"
                 aria-label={t('relationships.linkColumn', { column: column.name })}
                 title={t('relationships.linkColumn', { column: column.name })}
                 onClick={() => onStartLink(column.name)}
-                className="flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground opacity-0 hover:bg-brand/15 hover:text-brand focus-visible:opacity-100 group-hover:opacity-100"
+                className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-sm bg-card text-muted-foreground opacity-0 hover:bg-brand/15 hover:text-brand focus-visible:opacity-100 group-hover:opacity-100"
               >
                 <Link2 className="size-3" />
               </button>
