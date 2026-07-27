@@ -71,7 +71,11 @@ class ObjectRead(BaseModel):
 
 
 class RelationshipRead(BaseModel):
-    """A relationship — one edge on the map: a foreign key or a view dependency."""
+    """A relationship — one edge on the map: a foreign key, view dependency or manual link.
+
+    ``id`` is set only for a manual relationship, so the client can delete it; it is
+    ``None`` for foreign keys and view dependencies, which come from the database.
+    """
 
     constraint_name: str
     source: str
@@ -79,6 +83,7 @@ class RelationshipRead(BaseModel):
     target: str
     target_columns: list[str]
     kind: RelationshipKind
+    id: str | None = None
 
 
 class SchemaRead(BaseModel):
@@ -100,6 +105,7 @@ class SchemaRead(BaseModel):
                     target=relationship.target,
                     target_columns=list(relationship.target_columns),
                     kind=relationship.kind,
+                    id=relationship.id,
                 )
                 for relationship in graph.relationships
             ],

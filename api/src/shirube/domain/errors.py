@@ -65,6 +65,35 @@ class InvalidQueryError(ShirubeError):
     detail = "The query referenced a column that does not exist"
 
 
+class ManualRelationshipNotFoundError(ShirubeError):
+    """Raised when a manual relationship to delete does not exist for the profile."""
+
+    status_code = 404
+    detail = "Manual relationship not found"
+
+
+class DuplicateManualRelationshipError(ShirubeError):
+    """Raised when the same manual relationship (source and target columns) already exists.
+
+    A given link only needs drawing once, so an identical one is refused rather than
+    quietly duplicated on the map.
+    """
+
+    status_code = 409
+    detail = "That relationship already exists"
+
+
+class InvalidManualRelationshipError(ShirubeError):
+    """Raised when a manual relationship is not a valid link.
+
+    A column cannot be linked to itself (the same table and column on both ends), which
+    would draw a meaningless self-loop.
+    """
+
+    status_code = 400
+    detail = "A column cannot be linked to itself"
+
+
 class SecretStoreError(ShirubeError):
     """Raised when the OS keychain cannot be read or written.
 
