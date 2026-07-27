@@ -2,11 +2,14 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { SchemaGraph, SchemaObject } from '@/lib/api'
-import { makeFk, makeGraph, makeObject } from '@/test/factories'
+import { makeFk, makeGraph, makeManual, makeObject } from '@/test/factories'
 
-// t returns the key, so tests query by stable keys rather than translated copy.
+// t returns the key (with interpolation appended), so tests match on stable keys.
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) =>
+      options ? `${key} ${JSON.stringify(options)}` : key,
+  }),
 }))
 
 import { TableDetail } from '@/components/table-detail'
@@ -23,9 +26,20 @@ const ORDERS: SchemaObject = {
   partitions: [],
 }
 
-function renderDetail(graph: SchemaGraph, onNavigate = vi.fn()) {
-  render(<TableDetail object={ORDERS} graph={graph} onNavigate={onNavigate} />)
-  return { onNavigate }
+function renderDetail(graph: SchemaGraph, object: SchemaObject = ORDERS) {
+  const onNavigate = vi.fn()
+  const onStartLink = vi.fn()
+  const onRemoveRelationship = vi.fn()
+  render(
+    <TableDetail
+      object={object}
+      graph={graph}
+      onNavigate={onNavigate}
+      onStartLink={onStartLink}
+      onRemoveRelationship={onRemoveRelationship}
+    />,
+  )
+  return { onNavigate, onStartLink, onRemoveRelationship }
 }
 
 describe('columns', () => {
@@ -118,7 +132,7 @@ describe('partitions', () => {
   ])
 
   it('lists a partitioned table’s children and their bounds under a collapsed section', () => {
-    render(<TableDetail object={payment} graph={makeGraph([payment])} onNavigate={vi.fn()} />)
+    renderDetail(makeGraph([payment]), payment)
 
     const heading = screen.getByRole('button', { name: /schema.partitions/ })
     // Starts collapsed, like the relationship sections.
@@ -136,5 +150,33 @@ describe('partitions', () => {
     renderDetail(makeGraph([ORDERS]))
 
     expect(screen.queryByRole('button', { name: /schema.partitions/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('manual relationships', () => {
+  it('starts a link from a column when its link button is clicked', () => {
+    const { onStartLink } = renderDetail(makeGraph([ORDERS]))
+
+    // The i18n mock appends the interpolated column, so the email column's button is findable.
+    fireEvent.click(screen.getByLabelText(/relationships\.linkColumn.*email/))
+
+    expect(onStartLink).toHaveBeenCalledWith('email')
+  })
+
+  it('tags a manual relationship and removes it on the remove button', () => {
+    const customer = makeObject('public.customer', 1)
+    const graph = makeGraph(
+      [ORDERS, customer],
+      [makeManual('public.orders', 'public.customer', 'mr-9')],
+    )
+    const { onRemoveRelationship } = renderDetail(graph)
+
+    // References starts collapsed; open it to reveal the manual row.
+    fireEvent.click(screen.getByRole('button', { name: /schema.references/ }))
+
+    expect(screen.getByText('relationships.manual')).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('relationships.remove'))
+
+    expect(onRemoveRelationship).toHaveBeenCalledWith('mr-9')
   })
 })

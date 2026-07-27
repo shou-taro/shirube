@@ -84,20 +84,29 @@ export function layoutGraph(graph: SchemaGraph): { nodes: TableFlowNode[]; edges
       w: relationship.target,
       name: relationship.constraint_name,
     }) as { points?: { x: number; y: number }[] } | undefined
-    // A view dependency (a view reading a relation) is drawn dashed to set it apart from
-    // a solid foreign key.
+    // All edges share one neutral colour; only the line style differs, so none draws more
+    // attention than another. A foreign key is solid, a view dependency dashed, and a
+    // manual relationship (one the user drew) dotted — quiet on the map, with the detail
+    // card's "manual" tag giving the certainty.
     const isDependency = relationship.kind === 'view_dependency'
+    const isManual = relationship.kind === 'manual'
     return {
       id: `${relationship.source}:${relationship.constraint_name}`,
       source: relationship.source,
       target: relationship.target,
       type: 'routed',
-      data: { points: routed?.points ?? [] },
+      data: {
+        points: routed?.points ?? [],
+        // A manual edge carries its relationship id so it can be removed straight from the
+        // map; the diagram injects the remove callback (layout stays a pure function).
+        ...(isManual ? { manual: true, relationshipId: relationship.id } : {}),
+      },
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#9a92b4' },
       style: {
         stroke: '#9a92b4',
         strokeWidth: 1.5,
         ...(isDependency ? { strokeDasharray: '5 4' } : {}),
+        ...(isManual ? { strokeDasharray: '1 4', strokeLinecap: 'round' as const } : {}),
       },
     }
   })

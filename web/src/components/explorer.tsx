@@ -8,6 +8,7 @@ import {
   Settings,
   Sparkles,
   Table2,
+  X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,13 +18,22 @@ import { ErDiagram } from '@/components/er/er-diagram'
 import { KindBadge } from '@/components/kind-badge'
 import { Logo } from '@/components/logo'
 import { NavigatorPane } from '@/components/navigator-pane'
+import { type ColumnRef, RelationshipTargetPicker } from '@/components/relationship-target-picker'
 import { SchemaSearch } from '@/components/schema-search'
 import { SchemaTree } from '@/components/schema-tree'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { TableDetail } from '@/components/table-detail'
 import { Button } from '@/components/ui/button'
 import { ResizeHandle } from '@/components/ui/resize-handle'
-import { type AiProvider, fetchAiProvider, fetchSchema, type Profile, type SchemaGraph } from '@/lib/api'
+import {
+  addManualRelationship,
+  type AiProvider,
+  deleteManualRelationship,
+  fetchAiProvider,
+  fetchSchema,
+  type Profile,
+  type SchemaGraph,
+} from '@/lib/api'
 import { revokeDestination, loadApprovedDestinations, approveDestination } from '@/lib/destinations'
 import { DETAIL_PANE, NAVIGATOR_PANE } from '@/lib/panes'
 import { buildObjectResolver } from '@/lib/schema-refs'
@@ -74,6 +84,14 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const [centreOverride, setCentreOverride] = useState<string | null>(null)
   // The id of the map's current centre, reported by the ER map; drives the detail card.
   const [centreId, setCentreId] = useState<string | null>(null)
+  // A manual relationship being drawn: the source column picked in the detail card, or null.
+  const [linkSource, setLinkSource] = useState<ColumnRef | null>(null)
+  // True while a manual relationship is being created, so the picker shows it is working.
+  const [linkBusy, setLinkBusy] = useState(false)
+  // A transient notice after a link is drawn (offering undo) or when one was refused.
+  const [linkNotice, setLinkNotice] = useState<
+    { kind: 'added'; relationshipId: string } | { kind: 'error'; message: string } | null
+  >(null)
 
   // The loaded schema (when ready). View-dependency edges are dropped when the setting is
   // off, so the map and detail panel fall back to foreign keys only.
@@ -112,6 +130,77 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   useEffect(() => {
     loadSchema()
   }, [loadSchema])
+
+  // Refresh the graph in place after a manual relationship changes — no loading flash and no
+  // centre reset, so the map simply gains or loses the edge without losing the user's place.
+  const refreshSchema = useCallback(() => {
+    fetchSchema(profile.id)
+      .then((graph) => setSchema({ status: 'ready', graph }))
+      .catch(() => {})
+  }, [profile.id])
+
+  const startLink = useCallback(
+    (sourceColumn: string) => {
+      if (centreObject) {
+        setLinkNotice(null)
+        setLinkSource({
+          schema: centreObject.schema,
+          table: centreObject.name,
+          column: sourceColumn,
+        })
+      }
+    },
+    [centreObject],
+  )
+
+  const pickTarget = useCallback(
+    (target: ColumnRef) => {
+      if (linkSource === null) {
+        return
+      }
+      setLinkBusy(true)
+      addManualRelationship(profile.id, {
+        source_schema: linkSource.schema,
+        source_table: linkSource.table,
+        source_column: linkSource.column,
+        target_schema: target.schema,
+        target_table: target.table,
+        target_column: target.column,
+      })
+        .then((created) => {
+          setLinkSource(null)
+          setLinkNotice({ kind: 'added', relationshipId: created.id })
+          refreshSchema()
+        })
+        .catch((error: unknown) =>
+          setLinkNotice({
+            kind: 'error',
+            message: error instanceof Error ? error.message : String(error),
+          }),
+        )
+        .finally(() => setLinkBusy(false))
+    },
+    [linkSource, profile.id, refreshSchema],
+  )
+
+  const removeRelationship = useCallback(
+    (relationshipId: string) => {
+      deleteManualRelationship(profile.id, relationshipId).then(refreshSchema).catch(() => {})
+      setLinkNotice((current) =>
+        current?.kind === 'added' && current.relationshipId === relationshipId ? null : current,
+      )
+    },
+    [profile.id, refreshSchema],
+  )
+
+  // The link notice is transient — clear it after a few seconds so it does not linger.
+  useEffect(() => {
+    if (linkNotice === null) {
+      return
+    }
+    const timer = window.setTimeout(() => setLinkNotice(null), 6000)
+    return () => window.clearTimeout(timer)
+  }, [linkNotice])
 
   // Load the configured provider (null when none is set); a failure is treated as unset.
   const loadProvider = useCallback(() => {
@@ -276,6 +365,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
                   ? `narrow:${dataOpen}`
                   : `${navigatorOpen}:${dataOpen}:${resizing ? 'drag' : settings.navigatorWidth}`
               }
+              onRemoveManual={removeRelationship}
             />
           ) : null}
 
@@ -318,6 +408,8 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
                   object={centreObject}
                   graph={displayGraph}
                   onNavigate={setCentreOverride}
+                  onStartLink={startLink}
+                  onRemoveRelationship={removeRelationship}
                 />
               </div>
             ) : (
@@ -416,6 +508,54 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
         approved={approved}
         onRevoke={revoke}
       />
+
+      {/* Drawing a manual relationship: pick the target column for the source chosen in the
+          detail card. */}
+      {linkSource && displayGraph && (
+        <RelationshipTargetPicker
+          source={linkSource}
+          objects={displayGraph.objects}
+          relationships={displayGraph.relationships}
+          busy={linkBusy}
+          onPick={pickTarget}
+          onClose={() => setLinkSource(null)}
+        />
+      )}
+
+      {/* A brief notice after a link is drawn (with undo) or refused. */}
+      {linkNotice && (
+        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
+          <div
+            className={cn(
+              'flex items-center gap-3 rounded-lg border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-lg',
+              linkNotice.kind === 'error' && 'border-destructive/40',
+            )}
+          >
+            {linkNotice.kind === 'added' ? (
+              <>
+                <span>{t('relationships.added')}</span>
+                <button
+                  type="button"
+                  onClick={() => removeRelationship(linkNotice.relationshipId)}
+                  className="font-medium text-brand hover:underline"
+                >
+                  {t('relationships.undo')}
+                </button>
+              </>
+            ) : (
+              <span className="text-destructive">{linkNotice.message}</span>
+            )}
+            <button
+              type="button"
+              aria-label={t('relationships.close')}
+              onClick={() => setLinkNotice(null)}
+              className="ml-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

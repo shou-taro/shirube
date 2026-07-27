@@ -73,6 +73,8 @@ interface ErDiagramProps {
   defaultShowAll?: boolean
   /** Changes when a side pane toggles, so the map can refit to the new width. */
   resizeKey?: unknown
+  /** Remove a manual relationship by id — wired to the delete control on its map edge. */
+  onRemoveManual?: (relationshipId: string) => void
 }
 
 /**
@@ -89,6 +91,7 @@ export function ErDiagram({
   onCentreChange,
   defaultShowAll = false,
   resizeKey,
+  onRemoveManual,
 }: ErDiagramProps) {
   const { t } = useTranslation()
   const [centreId, setCentreId] = useState<string | null>(() => pickCentre(graph))
@@ -107,9 +110,15 @@ export function ErDiagram({
     }, 180)
   }, [])
 
-  // A fresh schema resets the centre to its backbone (no transition on first load).
+  // A fresh schema keeps the current centre when that table is still present — so reloading,
+  // or adding a manual relationship, does not throw the user back to the backbone — and only
+  // falls back to the backbone when there is no centre yet or it has gone.
   useEffect(() => {
-    setCentreId(pickCentre(graph))
+    setCentreId((current) =>
+      current !== null && graph.objects.some((object) => object.id === current)
+        ? current
+        : pickCentre(graph),
+    )
   }, [graph])
 
   // A search selection travels the centre there.
@@ -154,6 +163,20 @@ export function ErDiagram({
     return { nodes, edges: laid.edges }
   }, [showAll, graph, centreId, travelTo])
 
+  // Wire each manual edge's on-map delete control to the remove handler. Kept out of the
+  // layout above so it stays a pure geometry step, independent of this callback.
+  const edgesWithHandlers = useMemo(
+    () =>
+      onRemoveManual === undefined
+        ? edges
+        : edges.map((edge) =>
+            edge.data?.manual === true
+              ? { ...edge, data: { ...edge.data, onRemove: onRemoveManual } }
+              : edge,
+          ),
+    [edges, onRemoveManual],
+  )
+
   // Clicking a neighbour travels the centre to it; clicking the centre does nothing.
   const handleNodeClick = useCallback<NodeMouseHandler>(
     (_, node) => {
@@ -165,7 +188,7 @@ export function ErDiagram({
   return (
     <ReactFlow
       nodes={nodes}
-      edges={edges}
+      edges={edgesWithHandlers}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       onNodeClick={handleNodeClick}

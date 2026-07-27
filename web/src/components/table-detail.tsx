@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, KeyRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, KeyRound, Link2, Trash2 } from 'lucide-react'
 import { type ReactNode, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -55,7 +55,8 @@ function Section({
 
 /**
  * A related table as a clickable row: an arrow showing the direction, the other table's
- * name, and the local columns that join them. Clicking travels the map there.
+ * name, and the local columns that join them. Clicking travels the map there. A manual
+ * relationship (one the user drew) is tagged and carries a remove control, revealed on hover.
  */
 function RelatedRow({
   direction,
@@ -63,7 +64,9 @@ function RelatedRow({
   kind,
   columns,
   dependency = false,
+  manual = false,
   onNavigate,
+  onRemove,
 }: {
   direction: 'out' | 'in'
   name: string
@@ -72,25 +75,54 @@ function RelatedRow({
   columns: string[]
   /** A view dependency rather than a foreign key: dimmed arrow, no columns. */
   dependency?: boolean
+  /** A relationship the user drew rather than one read from the database. */
+  manual?: boolean
   onNavigate: () => void
+  /** Remove a manual relationship; present only when ``manual`` is true. */
+  onRemove?: () => void
 }) {
+  const { t } = useTranslation()
   const Arrow = direction === 'out' ? ArrowRight : ArrowLeft
   return (
-    <li>
+    <li className="group relative flex items-center hover:bg-brand/10">
       <button
         type="button"
         onClick={onNavigate}
-        className="flex w-full items-center gap-2 px-3 py-1 text-left text-xs leading-[18px] hover:bg-brand/10"
+        className="flex w-full items-center gap-2 px-3 py-1 text-left text-xs leading-[18px]"
       >
         <Arrow className={cn('size-3 shrink-0', dependency ? 'text-muted-foreground' : 'text-brand')} />
         <span className="min-w-0 truncate font-medium" title={name}>
           {name}
         </span>
         <KindBadge kind={kind} />
-        <span className="ml-auto truncate text-[11px] text-muted-foreground" title={columns.join(', ')}>
+        {manual && (
+          <span className="shrink-0 rounded-sm border border-brand/30 bg-card px-1 text-[9px] font-semibold uppercase tracking-wide text-brand">
+            {t('relationships.manual')}
+          </span>
+        )}
+        {/* On a manual row the joined columns slide left on hover to clear the remove
+            control, so it never overlaps them. */}
+        <span
+          className={cn(
+            'ml-auto truncate text-[11px] text-muted-foreground',
+            manual && 'transition-[margin] group-hover:mr-7',
+          )}
+          title={columns.join(', ')}
+        >
           {columns.join(', ')}
         </span>
       </button>
+      {manual && onRemove && (
+        <button
+          type="button"
+          aria-label={t('relationships.remove')}
+          title={t('relationships.remove')}
+          onClick={onRemove}
+          className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground opacity-0 hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+        >
+          <Trash2 className="size-3" />
+        </button>
+      )}
     </li>
   )
 }
@@ -102,6 +134,10 @@ interface TableDetailProps {
   graph: SchemaGraph
   /** Travel the map to a related table. */
   onNavigate: (id: string) => void
+  /** Begin drawing a manual relationship from one of this table's columns. */
+  onStartLink: (sourceColumn: string) => void
+  /** Remove a manual relationship the user drew, by its id. */
+  onRemoveRelationship: (relationshipId: string) => void
 }
 
 /**
@@ -111,7 +147,13 @@ interface TableDetailProps {
  * to travel there. Fills the floating card in the workspace's top-left; the card owns the
  * table's name (in its header) and scrolling.
  */
-export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
+export function TableDetail({
+  object,
+  graph,
+  onNavigate,
+  onStartLink,
+  onRemoveRelationship,
+}: TableDetailProps) {
   const { t } = useTranslation()
   // Open state persists as the centre changes, so a section opened for exploring — say
   // "referenced by" — stays open while travelling from table to table.
@@ -162,7 +204,7 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
           {object.columns.map((column) => (
             <li
               key={column.name}
-              className="flex items-center gap-2 px-3 py-1 text-xs leading-[18px]"
+              className="group relative flex items-center gap-2 px-3 py-1 text-xs leading-[18px]"
             >
               {column.is_primary_key ? (
                 <KeyRound className="size-3 shrink-0 text-brand" />
@@ -177,9 +219,26 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
                   {t('schema.notNull')}
                 </span>
               )}
-              <span className="ml-auto truncate text-muted-foreground" title={column.data_type}>
+              {/* The type slides left on hover so the link button reveals in the freed
+                  space rather than overlapping it. */}
+              <span
+                className="ml-auto truncate text-muted-foreground transition-[margin] group-hover:mr-7"
+                title={column.data_type}
+              >
                 {column.data_type}
               </span>
+              {/* Draw a relationship from this column. Absolutely positioned so it reserves
+                  no space — the type sits flush at rest — and reveals on hover (or keyboard
+                  focus) in the gap the type opens up. */}
+              <button
+                type="button"
+                aria-label={t('relationships.linkColumn', { column: column.name })}
+                title={t('relationships.linkColumn', { column: column.name })}
+                onClick={() => onStartLink(column.name)}
+                className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground opacity-0 hover:bg-brand/15 hover:text-brand focus-visible:opacity-100 group-hover:opacity-100"
+              >
+                <Link2 className="size-3" />
+              </button>
             </li>
           ))}
         </ul>
@@ -201,7 +260,13 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
                 kind={objectById.get(relationship.target)?.kind ?? 'table'}
                 columns={relationship.source_columns}
                 dependency={relationship.kind === 'view_dependency'}
+                manual={relationship.kind === 'manual'}
                 onNavigate={() => onNavigate(relationship.target)}
+                onRemove={
+                  relationship.id
+                    ? () => onRemoveRelationship(relationship.id as string)
+                    : undefined
+                }
               />
             ))}
           </ul>
@@ -224,7 +289,13 @@ export function TableDetail({ object, graph, onNavigate }: TableDetailProps) {
                 kind={objectById.get(relationship.source)?.kind ?? 'table'}
                 columns={relationship.target_columns}
                 dependency={relationship.kind === 'view_dependency'}
+                manual={relationship.kind === 'manual'}
                 onNavigate={() => onNavigate(relationship.source)}
+                onRemove={
+                  relationship.id
+                    ? () => onRemoveRelationship(relationship.id as string)
+                    : undefined
+                }
               />
             ))}
           </ul>

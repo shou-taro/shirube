@@ -1,4 +1,9 @@
-import { BaseEdge, type EdgeProps } from '@xyflow/react'
+import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react'
+import { X } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { cn } from '@/lib/utils'
 
 /** A waypoint on a dagre-routed edge. */
 interface Point {
@@ -58,6 +63,8 @@ export function RoutedEdge({
   style,
   data,
 }: EdgeProps) {
+  const { t } = useTranslation()
+  const [hovered, setHovered] = useState(false)
   const waypoints = (data?.points as Point[] | undefined) ?? []
   const interior = waypoints.slice(1, -1)
   const points: Point[] = [
@@ -65,5 +72,50 @@ export function RoutedEdge({
     ...interior,
     { x: targetX, y: targetY },
   ]
-  return <BaseEdge path={roundedPath(points)} markerEnd={markerEnd} style={style} />
+  const path = roundedPath(points)
+
+  // A manual relationship can be removed straight from the map: hovering its (thin, dotted)
+  // line reveals a delete control at its midpoint. Foreign keys and view dependencies carry
+  // no id and so no control.
+  const manual = data?.manual === true
+  const relationshipId = data?.relationshipId as string | undefined
+  const onRemove = data?.onRemove as ((id: string) => void) | undefined
+  const mid = points[Math.floor(points.length / 2)] ?? points[0]
+
+  if (!manual || onRemove === undefined || relationshipId === undefined) {
+    return <BaseEdge path={path} markerEnd={markerEnd} style={style} />
+  }
+
+  return (
+    <>
+      <BaseEdge path={path} markerEnd={markerEnd} style={style} interactionWidth={0} />
+      {/* A wide, invisible hit area so the thin dotted line is easy to hover. */}
+      <path
+        d={path}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={18}
+        style={{ pointerEvents: 'stroke' }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      />
+      <EdgeLabelRenderer>
+        <button
+          type="button"
+          aria-label={t('relationships.remove')}
+          title={t('relationships.remove')}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          onClick={() => onRemove(relationshipId)}
+          className={cn(
+            'nodrag nopan absolute flex size-5 items-center justify-center rounded-full border bg-card text-muted-foreground shadow-sm transition-opacity hover:bg-destructive/15 hover:text-destructive',
+            hovered ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
+          )}
+          style={{ transform: `translate(-50%, -50%) translate(${mid.x}px, ${mid.y}px)` }}
+        >
+          <X className="size-3" />
+        </button>
+      </EdgeLabelRenderer>
+    </>
+  )
 }

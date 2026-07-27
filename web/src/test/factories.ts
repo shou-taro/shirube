@@ -47,6 +47,19 @@ export function makeFk(source: string, target: string, name = `${source}_${targe
   }
 }
 
+/** A manual relationship the user drew, from `source` to `target`, carrying its id. */
+export function makeManual(source: string, target: string, id = 'mr-1'): Relationship {
+  return {
+    constraint_name: `manual:${id}`,
+    source,
+    source_columns: ['fk'],
+    target,
+    target_columns: ['id'],
+    kind: 'manual',
+    id,
+  }
+}
+
 /** A view dependency: `source` (a view) reads from `target`. */
 export function makeViewDep(source: string, target: string, name = `${source}__${target}`): Relationship {
   return {
