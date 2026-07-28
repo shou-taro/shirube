@@ -31,7 +31,16 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy -p shirube
       # Unit tests only here; the database-backed suite runs in the integration job.
-      - run: uv run pytest -m "not integration"
+      - run: uv run pytest -m "not integration" --cov --cov-report=xml
+      # Upload once, from the Linux leg — the numbers are identical across OSes, and
+      # this report is merged with the integration job's under the same flag.
+      - name: Upload backend coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./api/coverage.xml
+          flags: backend
 
   # A single required check that turns green only when every OS leg above passed. Keeps the
   # branch-protection contract on one name while the work fans out across the matrix.
@@ -68,9 +77,17 @@ jobs:
         with:
           python-version: "3.14"
       - run: uv sync
-      - run: uv run pytest -m integration
+      - run: uv run pytest -m integration --cov --cov-report=xml
         env:
           SHIRUBE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      # Merged with the unit report under the backend flag so the postgres adapters —
+      # exercised only here — count toward the backend total.
+      - name: Upload backend coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./api/coverage.xml
+          flags: backend
 
   # Supply-chain and static security checks. A vulnerable dependency or a flagged
   # code pattern fails CI — non-negotiable for a tool that handles database credentials.
@@ -113,7 +130,21 @@ jobs:
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
-      - run: pnpm run test
+      # Measure coverage on the Linux leg (and upload it); the other OSes just run the
+      # tests, keeping their legs fast.
+      - name: Test with coverage
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm run coverage
+      - name: Test
+        if: matrix.os != 'ubuntu-latest'
+        run: pnpm run test
+      - name: Upload frontend coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./web/coverage/lcov.info
+          flags: frontend
       - run: pnpm run build
       # Dependency audit: fail on a high-severity advisory in the JS dependencies.
       - run: pnpm audit --audit-level=high

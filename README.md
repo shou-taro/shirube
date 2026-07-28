@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/shou-taro/shirube/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/shou-taro/shirube/ci.yml?branch=main&label=CI" alt="CI" /></a>
+  <a href="https://codecov.io/gh/shou-taro/shirube"><img src="https://img.shields.io/codecov/c/github/shou-taro/shirube?label=coverage" alt="Coverage" /></a>
   <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/v/shirube" alt="PyPI" /></a>
   <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/pyversions/shirube" alt="Python versions" /></a>
   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff" /></a>

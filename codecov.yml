@@ -1,0 +1,38 @@
+# Codecov configuration — https://docs.codecov.com/docs/codecov-yaml
+#
+# shirube is one repository holding two codebases (the Python backend and the React
+# SPA); each uploads its own coverage under a flag so the two stay legible apart.
+
+coverage:
+  precision: 1
+  round: nearest
+  range: "80...100"
+  status:
+    # Coverage is reported on every pull request but never blocks a merge — the
+    # branch-protection contract rests on the CI test gates, not on a coverage
+    # threshold. Tighten these to real targets once the numbers settle.
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+flags:
+  backend:
+    # The backend total is merged from two uploads (the unit job and the
+    # database-backed integration job); carry a flag forward when only the other ran.
+    carryforward: true
+  frontend:
+    carryforward: true
+
+comment:
+  layout: "reach, diff, flags, files"
+  require_changes: false
+
+# Paths with no logic worth covering, or exercised only by the end-to-end suite.
+ignore:
+  - "api/tests"
+  - "web/src/main.tsx"  # Boots the real app against a live backend; covered by e2e.
+  - "web/src/i18n"      # Plain translation data.
+  - "web/src/test"      # Test helpers.
