@@ -87,6 +87,10 @@ Everything below works today, in the beta:
   reads from.
 - 🔗 **Relationship navigation.** Click a related table to glide the map over to it, and
   keep following the connections.
+- ✏️ **Draw your own relationships.** When a database declares no foreign key — common in
+  ORM-shaped, legacy or warehouse schemas — related tables scatter on the map. Draw the
+  missing link yourself, column to column, as a dotted edge; it is tagged in the detail
+  card, saved per connection, and never touches your database.
 - 🌳 **Browse the schema as a tree.** Open a collapsible tree of the whole database —
   schemas, then their tables and views, each expandable to its columns — and click any
   object to travel the map to it. A list-style companion to the map, and it comes into its
