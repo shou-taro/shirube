@@ -13,8 +13,9 @@ may still change between releases).
 ### Added
 
 - **Draw your own relationships.** When a database does not declare a foreign key — common
-  in ORM-shaped, legacy or warehouse schemas — related tables scatter on the map. You can
-  now draw the missing link yourself: hover a column in the detail card, choose the target
+  in ORM-shaped, legacy or warehouse schemas — shirube can't tell that two tables are
+  related, so no edge links them and you can't travel between them. You can now draw the
+  missing link yourself: hover a column in the detail card, choose the target
   column from a searchable tree (a `<name>_id` column suggests its likely table), and a
   manual edge is drawn as a dotted line — set apart from the solid foreign keys and dashed
   view dependencies — tagged in the detail card and removable. The links are saved per
