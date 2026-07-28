@@ -42,7 +42,8 @@ export default defineConfig({
         // Plain data with no logic to cover.
         'src/i18n/**',
       ],
-      reporter: ['text-summary', 'html'],
+      // text-summary for the console, html for local browsing, lcov for Codecov (CI).
+      reporter: ['text-summary', 'html', 'lcov'],
     },
   },
 })
