@@ -66,6 +66,8 @@ Everything below works today, in the beta:
 - 📋 **Table detail** — columns with their types, primary keys and nullability, plus
   relationships split into *references* and *referenced by*.
 - 🔗 **Relationship navigation** — click a related table to glide the map over to it.
+- 🌳 **Browse the schema as a tree** — a collapsible tree of the whole database (schemas →
+  tables and views → columns); click any object to travel the map to it.
 - 👁️ **Data preview** — read a table or view's actual rows in a drawer, with click-to-sort
   columns, simple filters and paging.
 - ⚡ **Instant search** — jump straight to any table or column.

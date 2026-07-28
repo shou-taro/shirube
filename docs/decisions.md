@@ -105,14 +105,16 @@ built), **Active** (an ongoing practice).
 
 ### Objects and edges on the map
 
-**Built (tables/views/matviews; foreign-key and view-dependency edges).**
+**Built (tables/views/matviews; foreign-key, view-dependency and manual edges).**
 
 - **Nodes:** tables, views, materialised views. Indexes, constraints, triggers, types,
   sequences and comments belong **in the detail panel, not as nodes**. Out of scope (not
   a DBA tool): roles, extensions, tablespaces.
-- **Edges** are visually distinct by meaning: **foreign-key** (declared) and
-  **view-dependency** (a view → the relations it reads). A third kind — **manual**
-  user-added links — is committed but not yet built (see Tentative).
+- **Edges** are visually distinct by meaning: **foreign-key** (declared, solid),
+  **view-dependency** (a view → the relations it reads, dashed) and **manual** (dotted).
+  Manual links are now built: a user draws the relationship the database does not declare,
+  column to column, so foreign-key-less schemas stop scattering on the map. They are saved
+  per profile and never touch the target database, and are styled apart from the other two.
 - Relationships are drawn from **declared foreign keys**. **Rule-based name inference is
   rejected:** on legacy schemas its accuracy is unpredictable, and a *wrong* edge
   misleads worse than a missing one. If inference ever returns, it should be "the AI
@@ -142,11 +144,10 @@ built), **Active** (an ongoing practice).
 - shirube's own state is a single **SQLite** file in the OS data directory
   (`platformdirs`); secrets stay in the keychain. Chosen over JSON/TOML for being
   structured and transactional as the data grows, and it reuses SQLAlchemy.
-- Per-database state (layout, and later manual links / saved views) is keyed to the
-  **profile**, not host+port+database — SSH tunnels make every database look like
-  `localhost:5432`, so a user-named profile disambiguates. Persisting that per-profile
-  state, starting with the ER layout, is **planned, not yet built**; today the map is
-  laid out afresh each session.
+- Per-database state is keyed to the **profile**, not host+port+database — SSH tunnels
+  make every database look like `localhost:5432`, so a user-named profile disambiguates.
+  The **manual links a user draws are already persisted this way**; the ER layout and saved
+  views are **planned, not yet built**, so today the map is laid out afresh each session.
 
 ### Schema introspection: fresh per connect, drift-tolerant
 
@@ -156,8 +157,11 @@ built), **Active** (an ongoing practice).
   schema cache** (introspection is fast; this avoids stale, misleading metadata). A
   manual "refresh" covers mid-session changes. Read from `pg_catalog` as lightweight
   structures, not full ORM reflection.
-- On drift: layout for vanished tables is skipped; manual links that no longer match are
-  kept but flagged "needs attention", never drawn as broken edges.
+- On drift: layout for vanished tables is skipped; a manual link whose endpoint has since
+  vanished — a renamed or dropped table, or one outside the currently selected schemas — is
+  kept in storage but simply not drawn, so it reappears on its own if the object returns
+  (for instance the schema is re-included). Surfacing such links for review ("needs
+  attention") is intended but not yet built.
 
 ### Reconnect on reload; no surprise connections otherwise
 
