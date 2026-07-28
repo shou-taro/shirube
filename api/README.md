@@ -110,6 +110,9 @@ pipx run shirube   # with pipx
 uvx shirube        # with uv
 ```
 
+> 💡 `pipx` and `uvx` run a Python command-line app in its own throwaway environment, so
+> shirube is never installed permanently (`uvx` ships with [uv](https://docs.astral.sh/uv/)).
+
 Either command starts a small local server and opens shirube in your browser. Add a
 connection with your PostgreSQL details, and shirube inspects the schema and opens the ER
 diagram.
