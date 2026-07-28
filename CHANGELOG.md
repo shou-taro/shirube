@@ -8,15 +8,20 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.3.0b1] — 2026-07-28
+
 ### Added
 
 - **Draw your own relationships.** When a database does not declare a foreign key — common
-  in ORM-shaped, legacy or warehouse schemas — related tables scatter on the map. You can
-  now draw the missing link yourself: hover a column in the detail card, choose the target
+  in ORM-shaped, legacy or warehouse schemas — shirube can't tell that two tables are
+  related, so no edge links them and you can't travel between them. You can now draw the
+  missing link yourself: hover a column in the detail card, choose the target
   column from a searchable tree (a `<name>_id` column suggests its likely table), and a
   manual edge is drawn as a dotted line — set apart from the solid foreign keys and dashed
   view dependencies — tagged in the detail card and removable. The links are saved per
   connection and never touch your database.
+- **Japanese README.** shirube's README is now available in Japanese
+  ([`README.ja.md`](README.ja.md)), linked from the top of the English one.
 
 ## [0.2.0b7] — 2026-07-27
 
@@ -275,7 +280,8 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.2.0b7...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.3.0b1...HEAD
+[0.3.0b1]: https://github.com/shou-taro/shirube/compare/v0.2.0b7...v0.3.0b1
 [0.2.0b7]: https://github.com/shou-taro/shirube/compare/v0.2.0b6...v0.2.0b7
 [0.2.0b6]: https://github.com/shou-taro/shirube/compare/v0.2.0b5...v0.2.0b6
 [0.2.0b5]: https://github.com/shou-taro/shirube/compare/v0.2.0b4...v0.2.0b5

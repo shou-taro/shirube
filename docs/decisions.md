@@ -146,8 +146,8 @@ built), **Active** (an ongoing practice).
   structured and transactional as the data grows, and it reuses SQLAlchemy.
 - Per-database state is keyed to the **profile**, not host+port+database — SSH tunnels
   make every database look like `localhost:5432`, so a user-named profile disambiguates.
-  The **manual links a user draws are already persisted this way**; the ER layout and saved
-  views are **planned, not yet built**, so today the map is laid out afresh each session.
+  The **manual links a user draws are already persisted this way**; the ER map's layout is
+  **not** persisted, and there is no plan to — the map is laid out afresh each session.
 
 ### Schema introspection: fresh per connect, drift-tolerant
 
