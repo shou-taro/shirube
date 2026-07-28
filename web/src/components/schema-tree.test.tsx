@@ -108,4 +108,54 @@ describe('SchemaTree', () => {
     expect(screen.getByRole('button', { name: /customer/ })).toHaveAttribute('aria-current', 'true')
     expect(screen.getByRole('button', { name: /film/ })).not.toHaveAttribute('aria-current')
   })
+
+  it('collapses and re-expands a schema', () => {
+    open([object('public.customer')])
+    // The schema header carries its object count in its accessible name.
+    const schemaHeader = screen.getByRole('button', { name: /public/ })
+    expect(schemaHeader).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: /customer/ })).toBeInTheDocument()
+
+    fireEvent.click(schemaHeader)
+    expect(schemaHeader).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: /customer/ })).not.toBeInTheDocument()
+
+    fireEvent.click(schemaHeader)
+    expect(screen.getByRole('button', { name: /customer/ })).toBeInTheDocument()
+  })
+
+  it('collapses an expanded object again', () => {
+    open([object('public.payment', { columns: [col('amount')] })])
+    fireEvent.click(screen.getByLabelText('tree.expand'))
+    expect(screen.getByText('amount')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('tree.collapse'))
+
+    expect(screen.queryByText('amount')).not.toBeInTheDocument()
+  })
+
+  it('closes from the header close button', () => {
+    open([object('public.customer')])
+
+    fireEvent.click(screen.getByLabelText('tree.close'))
+
+    expect(screen.queryByLabelText('tree.close')).not.toBeInTheDocument()
+    expect(screen.queryByText('public')).not.toBeInTheDocument()
+  })
+
+  it('closes on Escape', () => {
+    open([object('public.customer')])
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.queryByLabelText('tree.close')).not.toBeInTheDocument()
+  })
+
+  it('closes on an outside click', () => {
+    open([object('public.customer')])
+
+    fireEvent.mouseDown(document.body)
+
+    expect(screen.queryByLabelText('tree.close')).not.toBeInTheDocument()
+  })
 })
