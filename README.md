@@ -83,6 +83,10 @@ Everything below works today, in the beta:
   reads from.
 - 🔗 **Relationship navigation.** Click a related table to glide the map over to it, and
   keep following the connections.
+- 🌳 **Browse the schema as a tree.** Open a collapsible tree of the whole database —
+  schemas, then their tables and views, each expandable to its columns — and click any
+  object to travel the map to it. A list-style companion to the map, and it comes into its
+  own on a database with several schemas.
 - 👁️ **Data preview.** Read a table or view's actual rows in a drawer beneath the map,
   with click-to-sort columns, simple column filters, and paging.
 - ⚡ **Instant search.** Press <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> to jump straight to any
@@ -180,8 +184,7 @@ shirube's development runs in two phases.
 - **Now — Explore & navigate (beta).** Everything described above — the ER-map explorer
   and the AI navigator — on PostgreSQL.
 - **Later — broadening reach.** More databases beyond PostgreSQL (SQLite and MySQL), a
-  fully localised interface, and maps you can shape yourself — saved layouts and your own
-  relationship links.
+  fully localised interface, and saved map layouts you can shape yourself.
 
 ## 🤝 Contributing
 
