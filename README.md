@@ -18,6 +18,10 @@
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
 </p>
 
+<p align="center">
+  <strong>English</strong> | <a href="README.ja.md">日本語</a>
+</p>
+
 > 🚧 **Status: Beta.** Both the explorer and the AI navigator work today. shirube is
 > pre-1.0, so things may still change — see the [roadmap](#-roadmap).
 
@@ -143,6 +147,10 @@ pipx run shirube   # with pipx
 # or
 uvx shirube        # with uv
 ```
+
+> [!NOTE]  
+> `pipx` and `uvx` run a Python command-line app in its own throwaway environment, so
+> shirube is never installed permanently (`uvx` ships with [uv](https://docs.astral.sh/uv/)).
 
 Either command starts a small local server and opens shirube in your browser. From
 there:
