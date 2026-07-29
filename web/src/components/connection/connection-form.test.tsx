@@ -22,11 +22,13 @@ vi.mock('@/lib/api', async (importOriginal) => ({
   updateProfile: vi.fn(),
   testConnection: vi.fn(),
   testProfileConnection: vi.fn(),
+  pickSqliteFile: vi.fn(),
 }))
 
 import { ConnectionForm } from '@/components/connection/connection-form'
 import {
   createProfile,
+  pickSqliteFile,
   testConnection,
   testProfileConnection,
   updateProfile,
@@ -36,6 +38,7 @@ const mockCreate = vi.mocked(createProfile)
 const mockUpdate = vi.mocked(updateProfile)
 const mockTest = vi.mocked(testConnection)
 const mockTestProfile = vi.mocked(testProfileConnection)
+const mockPick = vi.mocked(pickSqliteFile)
 
 const SAVED: Profile = {
   kind: 'postgresql',
@@ -54,6 +57,7 @@ afterEach(() => {
   mockUpdate.mockReset()
   mockTest.mockReset()
   mockTestProfile.mockReset()
+  mockPick.mockReset()
 })
 
 function field(label: RegExp) {
@@ -341,5 +345,45 @@ describe('SQLite profiles', () => {
     )
 
     expect(field(/connection.fields.path/)).toHaveValue('/data/chinook.sqlite')
+  })
+
+  it('fills the path from the native file dialog', async () => {
+    mockPick.mockResolvedValue('/data/picked.sqlite')
+    render(
+      <ConnectionForm initial={null} editingId={null} onConnected={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    selectSqlite()
+    fireEvent.click(screen.getByRole('button', { name: 'connection.browse' }))
+
+    await waitFor(() =>
+      expect(field(/connection.fields.path/)).toHaveValue('/data/picked.sqlite'),
+    )
+  })
+
+  it('leaves the path unchanged when the dialog is cancelled', async () => {
+    mockPick.mockResolvedValue(null)
+    render(
+      <ConnectionForm initial={null} editingId={null} onConnected={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    selectSqlite()
+    fireEvent.change(field(/connection.fields.path/), { target: { value: '/typed.sqlite' } })
+    fireEvent.click(screen.getByRole('button', { name: 'connection.browse' }))
+
+    await waitFor(() => expect(mockPick).toHaveBeenCalled())
+    expect(field(/connection.fields.path/)).toHaveValue('/typed.sqlite')
+  })
+
+  it('shows the message and keeps the field when no dialog is available', async () => {
+    mockPick.mockRejectedValue(new Error('A file dialog is not available here.'))
+    render(
+      <ConnectionForm initial={null} editingId={null} onConnected={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    selectSqlite()
+    fireEvent.click(screen.getByRole('button', { name: 'connection.browse' }))
+
+    expect(await screen.findByText('A file dialog is not available here.')).toBeInTheDocument()
   })
 })

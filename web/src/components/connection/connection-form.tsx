@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   createProfile,
+  pickSqliteFile,
   testConnection,
   testProfileConnection,
   updateProfile,
@@ -114,6 +115,7 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
   const [error, setError] = useState<string | null>(null)
   const [testState, setTestState] = useState<'idle' | 'testing' | 'ok'>('idle')
   const [saving, setSaving] = useState(false)
+  const [browsing, setBrowsing] = useState(false)
 
   const isSqlite = form.kind === 'sqlite'
 
@@ -121,6 +123,22 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
     setForm((previous) => ({ ...previous, [key]: value }))
     setTestState('idle')
     setError(null)
+  }
+
+  async function handleBrowse(): Promise<void> {
+    // The dialog is shown by the local server (a browser can't reveal a file's path), so the
+    // request blocks until the user picks or cancels. On cancel the path is left as it was; if
+    // no dialog can be shown the translated message is surfaced and the text field remains.
+    setError(null)
+    setBrowsing(true)
+    try {
+      const path = await pickSqliteFile()
+      if (path) set('path', path)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBrowsing(false)
+    }
   }
 
   /** Field names that must be filled before a test can run, per engine. */
@@ -209,12 +227,24 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
 
       {isSqlite ? (
         <Field label={t('connection.fields.path')} hint={t('connection.pathHint')}>
-          <Input
-            value={form.path}
-            onChange={(event) => set('path', event.target.value)}
-            placeholder="/path/to/database.sqlite"
-            required
-          />
+          <div className="flex gap-2">
+            <Input
+              className="flex-1"
+              value={form.path}
+              onChange={(event) => set('path', event.target.value)}
+              placeholder="/path/to/database.sqlite"
+              required
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0"
+              onClick={() => void handleBrowse()}
+              disabled={browsing}
+            >
+              {browsing ? t('connection.browsing') : t('connection.browse')}
+            </Button>
+          </div>
         </Field>
       ) : (
         <>

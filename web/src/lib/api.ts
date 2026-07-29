@@ -278,6 +278,20 @@ export function testProfileConnection(id: string): Promise<void> {
   return apiFetch<void>(`/profiles/${id}/test`, { method: 'POST' })
 }
 
+/**
+ * Open the native file dialog (shown by the local server) to pick a SQLite file.
+ *
+ * Resolves to the chosen absolute path, or `null` if the user cancelled. Rejects with the
+ * translated message when no dialog can be shown (a headless session, or a Python without
+ * Tk) — the caller then falls back to the text field.
+ */
+export async function pickSqliteFile(): Promise<string | null> {
+  const { path } = await apiFetch<{ path: string | null }>('/connections/pick-file', {
+    method: 'POST',
+  })
+  return path
+}
+
 /** Introspect a saved profile's database and return its schema as a graph. */
 export function fetchSchema(id: string): Promise<SchemaGraph> {
   return apiFetch<SchemaGraph>(`/profiles/${id}/schema`)
