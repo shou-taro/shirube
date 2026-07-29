@@ -19,9 +19,14 @@ from shirube.adapters.sqlite.schema_inspector import (
     SqliteSchemaInspector,
     build_graph,
 )
-from shirube.domain.connection import SqliteConnectionParams
+from shirube.application.connection_params import build_connection_params
+from shirube.domain.connection import (
+    ConnectionProfile,
+    SqliteConnectionParams,
+    SqliteTarget,
+)
 from shirube.domain.data import ColumnFilter, FilterOperator, RowQuery, SortOrder
-from shirube.domain.errors import ConnectionFailedError, ObjectNotFoundError
+from shirube.domain.errors import ConnectionFailedError, InvalidQueryError, ObjectNotFoundError
 from shirube.domain.schema import ObjectKind, RelationshipKind
 
 
@@ -223,6 +228,87 @@ def test_read_rows_rejects_a_wrong_schema_prefix(chinook_like: SqliteConnectionP
         )
 
 
+def _album_titles(chinook_like: SqliteConnectionParams, query: RowQuery) -> list[object]:
+    """Read ``album`` with the given query and return its title column."""
+    page = SqliteDataReader().read_rows(
+        chinook_like,
+        schemas=(),
+        object_id=f"{SQLITE_SCHEMA}.album",
+        query=query,
+    )
+    return [row[page.columns.index("title")] for row in page.rows]
+
+
+def test_read_rows_is_null_and_is_not_null(chinook_like: SqliteConnectionParams) -> None:
+    """The null checks partition the rows by a nullable column (album 3 has no artist)."""
+    absent = _album_titles(
+        chinook_like,
+        RowQuery(
+            limit=10,
+            offset=0,
+            filters=(ColumnFilter(column="artist_id", operator=FilterOperator.IS_NULL),),
+        ),
+    )
+    present = _album_titles(
+        chinook_like,
+        RowQuery(
+            limit=10,
+            offset=0,
+            filters=(ColumnFilter(column="artist_id", operator=FilterOperator.IS_NOT_NULL),),
+        ),
+    )
+    assert absent == ["Untitled"]
+    assert set(present) == {"A Night at the Opera", "Hunky Dory"}
+
+
+def test_read_rows_not_equal_filter(chinook_like: SqliteConnectionParams) -> None:
+    """The ``ne`` operator excludes the matching value, comparing as text."""
+    titles = _album_titles(
+        chinook_like,
+        RowQuery(
+            limit=10,
+            offset=0,
+            filters=(ColumnFilter(column="title", operator=FilterOperator.NE, value="Hunky Dory"),),
+        ),
+    )
+    assert "Hunky Dory" not in titles
+    assert set(titles) == {"A Night at the Opera", "Untitled"}
+
+
+def test_read_rows_reports_no_more_when_the_page_holds_every_row(
+    chinook_like: SqliteConnectionParams,
+) -> None:
+    """A limit larger than the table means the last page, so ``has_more`` is false."""
+    page = SqliteDataReader().read_rows(
+        chinook_like,
+        schemas=(),
+        object_id=f"{SQLITE_SCHEMA}.album",
+        query=RowQuery(limit=10, offset=0),
+    )
+    assert len(page.rows) == 3
+    assert page.has_more is False
+
+
+def test_read_rows_reduces_blob_and_null_cells(tmp_path: Path) -> None:
+    """A BLOB becomes a size placeholder and NULL passes through as ``None``."""
+    path = tmp_path / "blobs.sqlite"
+    connection = sqlite3.connect(path)
+    connection.execute("CREATE TABLE items (id INTEGER PRIMARY KEY, data BLOB, note TEXT)")
+    connection.execute("INSERT INTO items (id, data, note) VALUES (1, ?, NULL)", (b"\x00\x01\x02",))
+    connection.commit()
+    connection.close()
+
+    page = SqliteDataReader().read_rows(
+        SqliteConnectionParams(path=str(path)),
+        schemas=(),
+        object_id=f"{SQLITE_SCHEMA}.items",
+        query=RowQuery(limit=10, offset=0),
+    )
+    row = page.rows[0]
+    assert row[page.columns.index("data")] == "[3 bytes]"
+    assert row[page.columns.index("note")] is None
+
+
 def test_build_select_quotes_identifiers_and_binds_values() -> None:
     statement, params = build_select(
         name='we"ird',
@@ -240,6 +326,30 @@ def test_build_select_quotes_identifiers_and_binds_values() -> None:
     assert params == ["%x%", 6, 0]
 
 
+def test_build_select_rejects_an_unknown_filter_column() -> None:
+    """A filter on a column the object lacks is refused before any SQL runs."""
+    with pytest.raises(InvalidQueryError):
+        build_select(
+            name="album",
+            columns=["id", "title"],
+            query=RowQuery(
+                limit=5,
+                offset=0,
+                filters=(ColumnFilter(column="ghost", operator=FilterOperator.EQ, value="x"),),
+            ),
+        )
+
+
+def test_build_select_rejects_an_unknown_sort_column() -> None:
+    """A sort on a column the object lacks is refused before any SQL runs."""
+    with pytest.raises(InvalidQueryError):
+        build_select(
+            name="album",
+            columns=["id", "title"],
+            query=RowQuery(limit=5, offset=0, sort=SortOrder(column="ghost")),
+        )
+
+
 # --- the read-only guarantee ---------------------------------------------------------
 
 
@@ -253,6 +363,30 @@ def test_writes_are_refused(chinook_like: SqliteConnectionParams) -> None:
     with pytest.raises(ConnectionFailedError):
         with read_only_connection(chinook_like) as connection:
             connection.execute("INSERT INTO artist (id, name) VALUES (99, 'hacker')")
+
+
+class _NoSecrets:
+    """A secret store that must not be consulted — SQLite has no password."""
+
+    def get_password(self, profile_id: str) -> str | None:
+        raise AssertionError("a SQLite connection must not read the keychain")
+
+    def set_password(self, profile_id: str, password: str) -> None: ...
+
+    def delete_password(self, profile_id: str) -> None: ...
+
+
+def test_build_connection_params_for_a_sqlite_profile_skips_the_keychain() -> None:
+    """A SQLite profile becomes file parameters without ever touching the secret store."""
+    profile = ConnectionProfile(
+        id="s1",
+        name="chinook",
+        target=SqliteTarget(path="/data/chinook.sqlite"),
+    )
+
+    params = build_connection_params(profile, _NoSecrets())
+
+    assert params == SqliteConnectionParams(path="/data/chinook.sqlite")
 
 
 def test_missing_file_is_a_friendly_error(tmp_path: Path) -> None:
