@@ -8,6 +8,16 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Added
+
+- **Explore SQLite databases.** shirube now reads SQLite database files as well as
+  PostgreSQL. Choose the engine when adding a connection, then point shirube at a `.sqlite`
+  file — it opens read-only, just like a PostgreSQL connection.
+- **A built-in sample database.** On first run shirube adds a ready-to-explore
+  "Sample database (Chinook)" connection — a small SQLite music-store schema — so you can
+  try the map with no database of your own and no Docker. It is read-only, seeded once, and
+  never comes back if you delete it. Set `SHIRUBE_SEED_SAMPLE=false` to opt out.
+
 ## [0.3.0b1] — 2026-07-28
 
 ### Added

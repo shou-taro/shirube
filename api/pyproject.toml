@@ -59,8 +59,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/shirube"]
-# Include the built SPA (generated, git-ignored) in the wheel for single-origin serving.
-artifacts = ["src/shirube/static/**/*"]
+# Include the built SPA (generated, git-ignored) and the bundled sample database (the
+# non-Python data seeded on first run) in the wheel for single-origin serving.
+artifacts = ["src/shirube/static/**/*", "src/shirube/samples/**/*"]
 
 [tool.hatch.build.targets.sdist]
 # Keep the sdist to the sources needed to build the wheel; exclude test caches,
@@ -70,7 +71,7 @@ include = [
     "README.md",
     "pyproject.toml",
 ]
-artifacts = ["src/shirube/static/**/*"]
+artifacts = ["src/shirube/static/**/*", "src/shirube/samples/**/*"]
 
 [tool.ruff]
 line-length = 100

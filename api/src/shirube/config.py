@@ -28,6 +28,10 @@ class Settings(BaseSettings):
         port: TCP port to listen on (see the note on the default value below).
         open_browser: Whether to open the browser automatically on start-up. Disabled
             in tests and when running headless.
+        seed_sample: Whether to seed the bundled Chinook sample database as a saved
+            connection on first run, so a new user has something to explore without a
+            database of their own. Seeded once and never re-added after deletion; set
+            ``SHIRUBE_SEED_SAMPLE=false`` to opt out entirely.
         data_dir: Directory for shirube's own state (the SQLite database). Defaults to
             the platform's per-user data directory via ``platformdirs``.
         log_level: Minimum level written to the console and the log file. Raise to
@@ -45,6 +49,7 @@ class Settings(BaseSettings):
     # steers clear of the common dev ports (3000, 5173, 8000, 8080, 5432, ...).
     port: int = 7472
     open_browser: bool = True
+    seed_sample: bool = True
     data_dir: Path = Field(default_factory=lambda: Path(user_data_dir(APP_NAME)))
     log_level: str = "INFO"
     allowed_hosts: list[str] = Field(default_factory=lambda: ["127.0.0.1", "localhost"])

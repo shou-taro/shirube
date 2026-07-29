@@ -29,6 +29,7 @@ from shirube.adapters.api.routes import (
     schema,
 )
 from shirube.adapters.persistence.bootstrap import bootstrap_database
+from shirube.adapters.persistence.sample_data import seed_sample_database
 from shirube.config import get_settings
 from shirube.logging_config import get_logger
 
@@ -60,8 +61,9 @@ _CONTENT_SECURITY_POLICY = (
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Run start-up and shutdown work around the application's lifetime.
 
-    On start-up the local app-state database is created if missing. There is nothing to
-    tear down yet, so control simply yields back to the server.
+    On start-up the local app-state database is created if missing, then the bundled sample
+    database is seeded on first run (once, idempotent). There is nothing to tear down yet, so
+    control simply yields back to the server.
 
     Args:
         app: The FastAPI application (unused; required by the lifespan signature).
@@ -70,6 +72,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         None, once start-up has completed.
     """
     bootstrap_database()
+    if get_settings().seed_sample:
+        seed_sample_database()
     yield
 
 

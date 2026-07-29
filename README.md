@@ -142,10 +142,11 @@ shirube is meant never to feel dangerous.
 
 ## 🚀 Getting started
 
-**You'll need** a PostgreSQL database to point shirube at, and a way to run a Python
-application without installing it permanently. Most developers already have
-[pipx](https://pipx.pypa.io/); if you prefer [uv](https://docs.astral.sh/uv/), that
-works just as well.
+**You won't need a database of your own to start** — shirube ships with a small sample
+you can open straight away. To explore your own data, have a PostgreSQL or SQLite database
+ready. Either way you'll want a way to run a Python application without installing it
+permanently: most developers already have [pipx](https://pipx.pypa.io/); if you prefer
+[uv](https://docs.astral.sh/uv/), that works just as well.
 
 ```bash
 pipx run shirube   # with pipx
@@ -160,9 +161,12 @@ uvx shirube        # with uv
 Either command starts a small local server and opens shirube in your browser. From
 there:
 
-1. 🔌 Add a connection with your PostgreSQL details.
-2. 🗺️ shirube inspects the schema and opens the ER diagram.
-3. 🔍 Search for a table, or just start following its relationships outward.
+1. 🧪 A **Sample database (Chinook)** is already in your saved connections — open it to
+   explore straight away, no database of your own required.
+2. 🔌 Or add your own connection: choose **PostgreSQL** or **SQLite**, and enter its
+   details (or, for SQLite, the path to the `.sqlite` file).
+3. 🗺️ shirube inspects the schema and opens the ER diagram.
+4. 🔍 Search for a table, or just start following its relationships outward.
 
 Your database can be local or remote.
 

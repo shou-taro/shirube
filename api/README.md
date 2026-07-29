@@ -104,8 +104,9 @@ navigator is entirely optional; the explorer works fully without it.
 
 ## 🚀 Getting started
 
-You'll need a PostgreSQL database to point shirube at, and a way to run a Python
-application without installing it permanently.
+You won't need a database of your own to start — shirube ships with a small sample you can
+open straight away. To explore your own data, have a PostgreSQL or SQLite database ready.
+Either way you'll want a way to run a Python application without installing it permanently.
 
 ```bash
 pipx run shirube   # with pipx
@@ -116,9 +117,10 @@ uvx shirube        # with uv
 > 💡 `pipx` and `uvx` run a Python command-line app in its own throwaway environment, so
 > shirube is never installed permanently (`uvx` ships with [uv](https://docs.astral.sh/uv/)).
 
-Either command starts a small local server and opens shirube in your browser. Add a
-connection with your PostgreSQL details, and shirube inspects the schema and opens the ER
-diagram.
+Either command starts a small local server and opens shirube in your browser. A **Sample
+database (Chinook)** is already in your saved connections — open it to explore straight
+away — or add your own connection (PostgreSQL or SQLite), and shirube inspects the schema
+and opens the ER diagram.
 
 > 💡 shirube connects with whatever credentials you give it. A read-only role with
 > `CONNECT` and `SELECT` is all it needs — and all it should have.

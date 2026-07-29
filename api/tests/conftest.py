@@ -13,6 +13,9 @@ def _isolated_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Itera
     # TestClient sends "Host: testserver"; allow it so the host-validation middleware
     # (see the app factory) does not reject every request under test.
     monkeypatch.setenv("SHIRUBE_ALLOWED_HOSTS", '["127.0.0.1", "localhost", "testserver"]')
+    # Keep the profile store empty by default: the app tests assert exact profile lists, so
+    # first-run sample seeding is off unless a test opts in by calling the seeder directly.
+    monkeypatch.setenv("SHIRUBE_SEED_SAMPLE", "false")
     from shirube.adapters.persistence import database
     from shirube.config import get_settings
 

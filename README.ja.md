@@ -123,17 +123,20 @@ uvx shirube
 > [!NOTE]  
 > `pipx` と `uvx` は、Python 製のコマンドラインツールを隔離された環境で実行できる仕組みです（`uvx` は [uv](https://docs.astral.sh/uv/) に付属）。shirube を常設インストールせずに試せます。
 
-コマンドを実行すると、shirube が起動し、ブラウザで自動的に開きます。あとは接続するだけです。
+コマンドを実行すると、shirube が起動し、ブラウザで自動的に開きます。自分の DB がなくても、同梱のサンプルですぐに試せます。
 
-1. PostgreSQL の接続情報を入力して接続する。
-2. shirube がスキーマを読み取り、ER 図が表示される。
-3. テーブルを検索したり、関係をたどったりして、目的のデータを探す。
+1. 保存済みの接続に「Sample database (Chinook)」が最初から入っています。開けばそのまま試せます（自分の DB は不要）。
+2. 自分の DB を見るときは、接続を追加してエンジン（PostgreSQL / SQLite）を選び、接続情報を入力します（SQLite はファイルパス）。
+3. shirube がスキーマを読み取り、ER 図が表示される。
+4. テーブルを検索したり、関係をたどったりして、目的のデータを探す。
 
 接続先は、ローカルでもリモートでも構いません。
 
 ### 🧪 サンプルデータベースで試す
 
-手元に試せる PostgreSQL がない場合は、Docker でサンプル DB を起動できます。このリポジトリには pagila、chinook、lego、employees、AdventureWorks のサンプルを用意しています。
+shirube には SQLite のサンプル（Chinook）が同梱されていて、初回起動時に「Sample database (Chinook)」として自動で追加されます。Docker も自分の DB も要りません。
+
+PostgreSQL のサンプルを試したいときは、Docker で起動できます。このリポジトリには pagila、chinook、lego、employees、AdventureWorks のサンプルを用意しています。
 
 ```bash
 git clone https://github.com/shou-taro/shirube.git
