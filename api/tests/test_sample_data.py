@@ -6,7 +6,9 @@ respects a deletion, and never lets a failure escape.
 """
 
 import pytest
+from fastapi.testclient import TestClient
 
+from shirube.adapters.api.app import create_app
 from shirube.adapters.persistence import sample_data
 from shirube.adapters.persistence.bootstrap import bootstrap_database
 from shirube.adapters.persistence.database import get_session_factory
@@ -18,6 +20,7 @@ from shirube.adapters.persistence.sample_data import (
     seed_sample_database,
 )
 from shirube.adapters.sqlite.schema_inspector import SqliteSchemaInspector
+from shirube.config import get_settings
 from shirube.domain.connection import SqliteConnectionParams, SqliteTarget
 
 
@@ -100,3 +103,40 @@ def test_a_seeding_failure_is_swallowed_and_retried_next_time(
     monkeypatch.undo()
     seed_sample_database()
     assert _repository().get(SAMPLE_PROFILE_ID) is not None
+
+
+def test_reseed_after_a_lost_marker_reuses_the_existing_file() -> None:
+    """If the marker is lost but the copy and profile remain, re-seeding is a no-op.
+
+    The fixed profile id and the existence checks make seeding idempotent even without the
+    marker, so a re-run neither re-copies the file nor adds a second profile.
+    """
+    bootstrap_database()
+    seed_sample_database()
+    original_mtime = sample_database_path().stat().st_mtime_ns
+    sample_data._seeded_marker().unlink()
+
+    seed_sample_database()
+
+    matching = [profile for profile in _repository().list() if profile.id == SAMPLE_PROFILE_ID]
+    assert len(matching) == 1
+    # The existing copy was reused, not overwritten.
+    assert sample_database_path().stat().st_mtime_ns == original_mtime
+
+
+def test_app_startup_seeds_the_sample_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With seeding on, starting the app runs the real lifespan and seeds the sample.
+
+    The conftest disables seeding by default; this opts back in to prove the lifespan
+    wiring (bootstrap → seed) end to end through the HTTP surface.
+    """
+    monkeypatch.setenv("SHIRUBE_SEED_SAMPLE", "true")
+    get_settings.cache_clear()
+
+    with TestClient(create_app()) as client:
+        profiles = client.get("/api/profiles").json()
+
+    seeded = next((profile for profile in profiles if profile["id"] == SAMPLE_PROFILE_ID), None)
+    assert seeded is not None
+    assert seeded["kind"] == "sqlite"
+    assert seeded["path"] == str(sample_database_path())
