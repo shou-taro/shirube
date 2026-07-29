@@ -10,6 +10,7 @@ import {
   fetchRows,
   fetchSchema,
   listProfiles,
+  pickSqliteFile,
   saveAiProvider,
   streamChat,
   testAiProvider,
@@ -101,6 +102,22 @@ describe('request shape', () => {
     const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('/api/profiles')
     expect(init.method).toBe('POST')
+  })
+
+  it('posts to the file-picker endpoint and returns the chosen path', async () => {
+    const spy = mockFetch(new Response(JSON.stringify({ path: '/data/chinook.sqlite' }), { status: 200 }))
+
+    await expect(pickSqliteFile()).resolves.toBe('/data/chinook.sqlite')
+
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/connections/pick-file')
+    expect(init.method).toBe('POST')
+  })
+
+  it('returns null from the file picker when the dialog was cancelled', async () => {
+    mockFetch(new Response(JSON.stringify({ path: null }), { status: 200 }))
+
+    await expect(pickSqliteFile()).resolves.toBeNull()
   })
 
   it('reads the AI provider, returning null when unconfigured', async () => {

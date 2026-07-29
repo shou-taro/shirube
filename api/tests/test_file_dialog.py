@@ -13,7 +13,13 @@ from fastapi.testclient import TestClient
 from shirube.adapters.api.app import create_app
 from shirube.adapters.api.dependencies import get_file_picker
 from shirube.adapters.system import file_dialog
+from shirube.adapters.system.file_dialog import pick_sqlite_file
 from shirube.domain.errors import FileDialogUnavailableError
+
+
+def test_dependency_provides_the_native_picker() -> None:
+    """The DI provider hands the endpoint the real native picker."""
+    assert get_file_picker() is pick_sqlite_file
 
 
 class _CompletedProcess:

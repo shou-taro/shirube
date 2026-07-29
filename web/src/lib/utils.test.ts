@@ -24,4 +24,8 @@ describe('fileName', () => {
   it('returns the whole string when there is no separator', () => {
     expect(fileName('chinook.sqlite')).toBe('chinook.sqlite')
   })
+
+  it('falls back to the input when the path ends in a separator', () => {
+    expect(fileName('/data/samples/')).toBe('/data/samples/')
+  })
 })
