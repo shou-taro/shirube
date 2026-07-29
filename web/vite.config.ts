@@ -26,6 +26,9 @@ export default defineConfig({
     // actually works under test.
     environmentOptions: { jsdom: { url: 'http://localhost/' } },
     setupFiles: './src/test/setup.ts',
+    // The default 5s is tight for the first component test on a cold, slow CI runner
+    // (Windows especially), where module load and JIT warm-up land on that first render.
+    testTimeout: 15000,
     // Tests import their own helpers rather than relying on globals — kinder to the
     // linter and the type checker.
     globals: false,
