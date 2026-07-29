@@ -31,6 +31,7 @@ from shirube.domain.schema import SchemaGraph
 _SECRET = "pw-do-not-leak-8f3a2b1c"
 
 _PROFILE = {
+    "kind": "postgresql",
     "name": "shop",
     "host": "db.example.com",
     "port": 5432,
@@ -156,6 +157,7 @@ def test_password_never_reaches_the_log(caplog: pytest.LogCaptureFixture) -> Non
         response = client.post(
             "/api/connections/test",
             json={
+                "kind": "postgresql",
                 "host": "127.0.0.1",
                 "port": 1,
                 "database": "d",

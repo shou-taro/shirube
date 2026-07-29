@@ -1,7 +1,7 @@
 """PostgreSQL connection adapter."""
 
 from shirube.adapters.postgres._common import read_only_connection
-from shirube.domain.connection import ConnectionParams
+from shirube.domain.connection import PostgresConnectionParams
 
 
 class PostgresConnector:
@@ -13,7 +13,7 @@ class PostgresConnector:
     shirube's safety model — the tool should never be able to change a user's database.
     """
 
-    def test_connection(self, params: ConnectionParams) -> None:
+    def test_connection(self, params: PostgresConnectionParams) -> None:
         """Open a read-only connection and run a trivial query.
 
         Args:

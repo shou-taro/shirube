@@ -12,6 +12,13 @@ from shirube.adapters.persistence.database import Base, get_engine
 # left valid. Keep the type clause SQLite-flavoured.
 _ADDED_COLUMNS: dict[str, dict[str, str]] = {
     "ai_provider_config": {"context_window": "INTEGER"},
+    # Multi-engine connections: ``kind`` names the engine (existing rows are PostgreSQL), and
+    # ``path`` holds a SQLite file's location. ``kind`` carries a default so the backfill of
+    # existing rows satisfies its NOT NULL.
+    "connection_profiles": {
+        "kind": "TEXT NOT NULL DEFAULT 'postgresql'",
+        "path": "TEXT",
+    },
 }
 
 

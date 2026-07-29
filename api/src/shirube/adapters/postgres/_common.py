@@ -10,7 +10,7 @@ from contextlib import contextmanager
 
 import psycopg
 
-from shirube.domain.connection import ConnectionParams
+from shirube.domain.connection import PostgresConnectionParams
 from shirube.domain.errors import ConnectionFailedError
 
 # Fail fast rather than hang on an unreachable host, and cap any query we run.
@@ -18,7 +18,7 @@ CONNECT_TIMEOUT_SECONDS = 5
 STATEMENT_TIMEOUT_MS = 5000
 
 
-def friendly_message(exc: psycopg.Error, params: ConnectionParams) -> str:
+def friendly_message(exc: psycopg.Error, params: PostgresConnectionParams) -> str:
     """Translate a driver error into a plain, actionable message.
 
     psycopg's own messages are terse and often cryptic, so common failures are mapped to
@@ -102,7 +102,7 @@ def friendly_message(exc: psycopg.Error, params: ConnectionParams) -> str:
 
 
 @contextmanager
-def read_only_connection(params: ConnectionParams) -> Iterator[psycopg.Connection]:
+def read_only_connection(params: PostgresConnectionParams) -> Iterator[psycopg.Connection]:
     """Open a PostgreSQL connection locked to read-only, with timeouts applied.
 
     The session is set ``default_transaction_read_only`` and given a statement timeout,

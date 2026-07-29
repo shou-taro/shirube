@@ -8,6 +8,7 @@ from sqlalchemy import JSON, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shirube.adapters.persistence.database import Base
+from shirube.domain.connection import DatabaseKind
 
 
 class ConnectionProfileRow(Base):
@@ -15,17 +16,26 @@ class ConnectionProfileRow(Base):
 
     The password is never stored here; it lives in the OS keychain, keyed by ``id``.
     ``schemas`` is held as a JSON array of schema names.
+
+    The table is flat across engines: ``kind`` names the engine, and the server columns
+    (``host`` … ``sslmode``) or the file column (``path``) carry that engine's target. The
+    server columns predate multi-engine support and are still ``NOT NULL``, so a SQLite row —
+    which has no host or port — writes empty placeholders into them; the repository reads only
+    the columns its ``kind`` calls for. ``kind`` defaults to ``postgresql`` so rows written
+    before the column existed read back as PostgreSQL.
     """
 
     __tablename__ = "connection_profiles"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String)
+    kind: Mapped[str] = mapped_column(String, default=DatabaseKind.POSTGRESQL.value)
     host: Mapped[str] = mapped_column(String)
     port: Mapped[int] = mapped_column(Integer)
     database: Mapped[str] = mapped_column(String)
     username: Mapped[str] = mapped_column(String)
     sslmode: Mapped[str] = mapped_column(String)
+    path: Mapped[str | None] = mapped_column(String, nullable=True)
     schemas: Mapped[list[str]] = mapped_column(JSON)
 
 

@@ -34,6 +34,7 @@ def _structured_events(caplog: pytest.LogCaptureFixture) -> list[dict[str, objec
 
 
 _PROFILE = {
+    "kind": "postgresql",
     "name": "shop",
     "host": "db.example.com",
     "port": 5432,

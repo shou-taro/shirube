@@ -58,7 +58,9 @@ export function ProfilesList({
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{profile.name}</span>
               <span className="block truncate text-xs text-muted-foreground">
-                {profile.host}:{profile.port} · {profile.database}
+                {profile.kind === 'sqlite'
+                  ? profile.path
+                  : `${profile.host}:${profile.port} · ${profile.database}`}
               </span>
             </span>
             {connecting ? (

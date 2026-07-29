@@ -22,19 +22,19 @@ from urllib.parse import unquote, urlparse
 import psycopg
 import pytest
 
-from shirube.domain.connection import ConnectionParams, SslMode
+from shirube.domain.connection import PostgresConnectionParams, SslMode
 
 _ENV_VAR = "SHIRUBE_TEST_DATABASE_URL"
 
 
-def _params_from_url(url: str) -> ConnectionParams:
+def _params_from_url(url: str) -> PostgresConnectionParams:
     """Turn a ``postgresql://`` URL into shirube's own connection parameters.
 
     SSL is disabled: the target is a local, throwaway test database, so certificate
     negotiation only gets in the way.
     """
     parsed = urlparse(url)
-    return ConnectionParams(
+    return PostgresConnectionParams(
         host=parsed.hostname or "127.0.0.1",
         port=parsed.port or 5432,
         database=(parsed.path.lstrip("/") or "postgres"),
@@ -61,7 +61,7 @@ def admin_connection(database_url: str) -> Iterator[psycopg.Connection]:
 
 
 @pytest.fixture
-def params(database_url: str) -> ConnectionParams:
+def params(database_url: str) -> PostgresConnectionParams:
     """The connection parameters the code under test opens its own connection with."""
     return _params_from_url(database_url)
 
@@ -90,7 +90,7 @@ def make_schema(admin_connection: psycopg.Connection) -> Iterator[Callable[[], s
 class SampleObject:
     """A throwaway schema and table with known rows, for asserting exact results."""
 
-    params: ConnectionParams
+    params: PostgresConnectionParams
     schema: str
     table: str
     columns: tuple[str, ...]
@@ -132,7 +132,7 @@ def sample_object(
 class HostileObject:
     """A table whose name and columns need quoting — including SQL metacharacters."""
 
-    params: ConnectionParams
+    params: PostgresConnectionParams
     schema: str
     table: str
     weird_column: str

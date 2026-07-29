@@ -18,6 +18,7 @@ const en = {
     copySuffix: 'copy',
     fields: {
       name: 'Name',
+      kind: 'Engine',
       host: 'Host',
       port: 'Port',
       database: 'Database',
@@ -25,9 +26,15 @@ const en = {
       password: 'Password',
       sslmode: 'SSL mode',
       schemas: 'Schemas',
+      path: 'File path',
+    },
+    kinds: {
+      postgresql: 'PostgreSQL',
+      sqlite: 'SQLite',
     },
     optionsLabel: 'Security and scope',
     schemasHint: 'Comma-separated; leave empty for all',
+    pathHint: 'Full path to the .sqlite or .db file',
     passwordKeepHint: 'Leave blank to keep the saved password',
     test: 'Test',
     testMissingFields: 'Enter the {{fields}} before testing.',

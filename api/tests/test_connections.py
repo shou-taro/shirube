@@ -13,6 +13,7 @@ from shirube.domain.connection import ConnectionParams
 from shirube.domain.errors import ConnectionFailedError
 
 _PARAMS = {
+    "kind": "postgresql",
     "host": "db.example.com",
     "port": 5432,
     "database": "shop",
