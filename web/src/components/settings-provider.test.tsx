@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { SettingsProvider } from '@/components/settings-provider'
@@ -105,5 +105,42 @@ describe('SettingsProvider', () => {
     renderWithProvider()
 
     expect(document.documentElement).not.toHaveClass('dark')
+  })
+
+  it('updates a setting and persists the change', () => {
+    function Editor() {
+      const { settings, update } = useSettings()
+      return (
+        <>
+          <span data-testid="theme">{settings.theme}</span>
+          <button type="button" onClick={() => update({ theme: 'dark' })}>
+            go-dark
+          </button>
+        </>
+      )
+    }
+    render(
+      <SettingsProvider>
+        <Editor />
+      </SettingsProvider>,
+    )
+    expect(screen.getByTestId('theme')).toHaveTextContent('system')
+
+    fireEvent.click(screen.getByText('go-dark'))
+
+    // The change is reflected in the context and written straight back to storage.
+    expect(screen.getByTestId('theme')).toHaveTextContent('dark')
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}').theme).toBe('dark')
+  })
+})
+
+describe('useSettings', () => {
+  it('throws when used outside a SettingsProvider', () => {
+    function Bare() {
+      useSettings()
+      return null
+    }
+    // Rendering without a provider must fail loudly rather than read a null context.
+    expect(() => render(<Bare />)).toThrow('must be used within a SettingsProvider')
   })
 })
