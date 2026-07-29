@@ -10,7 +10,9 @@ from sqlalchemy import inspect, text
 from shirube.adapters.persistence.ai_config_repository import SqlAiConfigRepository
 from shirube.adapters.persistence.bootstrap import bootstrap_database
 from shirube.adapters.persistence.database import get_engine, get_session_factory
+from shirube.adapters.persistence.profile_repository import SqlProfileRepository
 from shirube.domain.ai import AiProviderConfig, AiProviderKind
+from shirube.domain.connection import DatabaseKind, PostgresTarget
 
 
 def _create_pre_migration_table() -> None:
@@ -64,3 +66,40 @@ def test_migration_is_idempotent_and_preserves_a_set_window() -> None:
     bootstrap_database()  # a second start-up must not disturb the stored value
 
     assert repository.get().context_window == 8192  # type: ignore[union-attr]
+
+
+def _create_pre_kind_profiles_table() -> None:
+    """Create a ``connection_profiles`` table as it was before ``kind`` and ``path`` existed."""
+    with get_engine().begin() as connection:
+        connection.execute(
+            text(
+                "CREATE TABLE connection_profiles ("
+                "id TEXT PRIMARY KEY, name TEXT, host TEXT, port INTEGER, "
+                "database TEXT, username TEXT, sslmode TEXT, schemas JSON)"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO connection_profiles "
+                "(id, name, host, port, database, username, sslmode, schemas) "
+                "VALUES ('p1', 'shop', 'db.example.com', 5432, 'shop', 'readonly', 'require', '[]')"
+            )
+        )
+
+
+def test_adds_kind_and_path_to_a_pre_migration_profiles_table() -> None:
+    """An old profile row gains ``kind``/``path`` and reads back as a PostgreSQL profile."""
+    _create_pre_kind_profiles_table()
+
+    bootstrap_database()
+
+    inspector = inspect(get_engine())
+    columns = {column["name"] for column in inspector.get_columns("connection_profiles")}
+    assert {"kind", "path"} <= columns
+
+    profile = SqlProfileRepository(get_session_factory()).get("p1")
+    assert profile is not None
+    # The backfilled ``kind`` default makes the pre-migration row a PostgreSQL profile.
+    assert profile.kind is DatabaseKind.POSTGRESQL
+    assert isinstance(profile.target, PostgresTarget)
+    assert profile.target.host == "db.example.com"

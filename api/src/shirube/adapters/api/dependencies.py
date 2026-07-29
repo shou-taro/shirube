@@ -9,6 +9,11 @@ from typing import Annotated
 from fastapi import Depends
 
 from shirube.adapters.ai.factory import build_provider
+from shirube.adapters.engine_dispatch import (
+    DispatchingDatabaseConnector,
+    DispatchingDataReader,
+    DispatchingSchemaInspector,
+)
 from shirube.adapters.keyring.secret_store import KeyringSecretStore
 from shirube.adapters.persistence.ai_config_repository import SqlAiConfigRepository
 from shirube.adapters.persistence.database import get_session_factory
@@ -19,6 +24,9 @@ from shirube.adapters.persistence.profile_repository import SqlProfileRepository
 from shirube.adapters.postgres.connector import PostgresConnector
 from shirube.adapters.postgres.data_reader import PostgresDataReader
 from shirube.adapters.postgres.schema_inspector import PostgresSchemaInspector
+from shirube.adapters.sqlite.connector import SqliteConnector
+from shirube.adapters.sqlite.data_reader import SqliteDataReader
+from shirube.adapters.sqlite.schema_inspector import SqliteSchemaInspector
 from shirube.application.ai_config import AI_PROVIDER_SECRET_ID, AiConfigService
 from shirube.application.connections import ConnectionService
 from shirube.application.context_budget import ANTHROPIC_CONTEXT_WINDOW, resolve_window
@@ -56,13 +64,13 @@ def get_ai_config_repository() -> AiConfigRepository:
 
 
 def get_database_connector() -> DatabaseConnector:
-    """Provide the PostgreSQL connector."""
-    return PostgresConnector()
+    """Provide the connector that dispatches to the engine matching the connection."""
+    return DispatchingDatabaseConnector(PostgresConnector(), SqliteConnector())
 
 
 def get_schema_inspector() -> SchemaInspector:
-    """Provide the PostgreSQL schema inspector."""
-    return PostgresSchemaInspector()
+    """Provide the schema inspector that dispatches to the engine matching the connection."""
+    return DispatchingSchemaInspector(PostgresSchemaInspector(), SqliteSchemaInspector())
 
 
 def get_manual_relationship_repository() -> ManualRelationshipRepository:
@@ -71,8 +79,8 @@ def get_manual_relationship_repository() -> ManualRelationshipRepository:
 
 
 def get_data_reader() -> DataReader:
-    """Provide the PostgreSQL row-preview reader."""
-    return PostgresDataReader()
+    """Provide the row-preview reader that dispatches to the engine matching the connection."""
+    return DispatchingDataReader(PostgresDataReader(), SqliteDataReader())
 
 
 def get_profile_service(

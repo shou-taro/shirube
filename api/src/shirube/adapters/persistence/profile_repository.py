@@ -4,7 +4,34 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from shirube.adapters.persistence.models import ConnectionProfileRow
-from shirube.domain.connection import ConnectionProfile, SslMode
+from shirube.domain.connection import (
+    ConnectionProfile,
+    DatabaseKind,
+    DatabaseTarget,
+    PostgresTarget,
+    SqliteTarget,
+    SslMode,
+)
+
+# Placeholders written into the server-only columns of a SQLite row, which has no host,
+# port, user or SSL. The row's ``kind`` is ``sqlite``, so these are never read back.
+_SQLITE_SERVER_PLACEHOLDERS = {"host": "", "port": 0, "database": "", "username": "", "sslmode": ""}
+
+
+def _target_from_row(row: ConnectionProfileRow) -> DatabaseTarget:
+    """Read the engine-specific target from a row, per its ``kind``.
+
+    A missing ``kind`` (a row written before the column existed) is read as PostgreSQL.
+    """
+    if row.kind == DatabaseKind.SQLITE:
+        return SqliteTarget(path=row.path or "")
+    return PostgresTarget(
+        host=row.host,
+        port=row.port,
+        database=row.database,
+        username=row.username,
+        sslmode=SslMode(row.sslmode),
+    )
 
 
 def _to_domain(row: ConnectionProfileRow) -> ConnectionProfile:
@@ -12,13 +39,28 @@ def _to_domain(row: ConnectionProfileRow) -> ConnectionProfile:
     return ConnectionProfile(
         id=row.id,
         name=row.name,
-        host=row.host,
-        port=row.port,
-        database=row.database,
-        username=row.username,
-        sslmode=SslMode(row.sslmode),
+        target=_target_from_row(row),
         schemas=tuple(row.schemas),
     )
+
+
+def _target_columns(target: DatabaseTarget) -> dict[str, object]:
+    """The per-engine column values for a target, filling the unused columns with placeholders.
+
+    A SQLite row carries its path and leaves the server columns as placeholders; a PostgreSQL
+    row carries the server columns and leaves ``path`` empty. Either way every column of the
+    flat table gets a value, so the shape does not depend on the engine.
+    """
+    if isinstance(target, SqliteTarget):
+        return {"path": target.path, **_SQLITE_SERVER_PLACEHOLDERS}
+    return {
+        "path": None,
+        "host": target.host,
+        "port": target.port,
+        "database": target.database,
+        "username": target.username,
+        "sslmode": target.sslmode.value,
+    }
 
 
 def _to_row(profile: ConnectionProfile) -> ConnectionProfileRow:
@@ -26,12 +68,9 @@ def _to_row(profile: ConnectionProfile) -> ConnectionProfileRow:
     return ConnectionProfileRow(
         id=profile.id,
         name=profile.name,
-        host=profile.host,
-        port=profile.port,
-        database=profile.database,
-        username=profile.username,
-        sslmode=profile.sslmode.value,
+        kind=profile.kind.value,
         schemas=list(profile.schemas),
+        **_target_columns(profile.target),
     )
 
 
@@ -70,12 +109,12 @@ class SqlProfileRepository:
             if row is None:
                 return
             row.name = profile.name
-            row.host = profile.host
-            row.port = profile.port
-            row.database = profile.database
-            row.username = profile.username
-            row.sslmode = profile.sslmode.value
+            row.kind = profile.kind.value
             row.schemas = list(profile.schemas)
+            # Rewrite every engine column so switching a profile's kind cannot leave stale
+            # values from the other engine behind (e.g. an old host on a now-SQLite row).
+            for column, value in _target_columns(profile.target).items():
+                setattr(row, column, value)
             session.commit()
 
     def delete(self, profile_id: str) -> None:

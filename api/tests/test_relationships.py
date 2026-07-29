@@ -14,7 +14,12 @@ from shirube.adapters.persistence.manual_relationship_repository import (
     SqlManualRelationshipRepository,
 )
 from shirube.application.relationships import ManualRelationshipService
-from shirube.domain.connection import ConnectionParams, ConnectionProfile, SslMode
+from shirube.domain.connection import (
+    ConnectionParams,
+    ConnectionProfile,
+    PostgresTarget,
+    SslMode,
+)
 from shirube.domain.errors import (
     DuplicateManualRelationshipError,
     InvalidManualRelationshipError,
@@ -30,6 +35,7 @@ from shirube.domain.schema import (
 )
 
 _PROFILE = {
+    "kind": "postgresql",
     "name": "shop",
     "host": "db.example.com",
     "port": 5432,
@@ -105,11 +111,13 @@ class FakeProfileRepo:
         return ConnectionProfile(
             id=profile_id,
             name="shop",
-            host="db.example.com",
-            port=5432,
-            database="shop",
-            username="readonly",
-            sslmode=SslMode.REQUIRE,
+            target=PostgresTarget(
+                host="db.example.com",
+                port=5432,
+                database="shop",
+                username="readonly",
+                sslmode=SslMode.REQUIRE,
+            ),
             schemas=("public",),
         )
 

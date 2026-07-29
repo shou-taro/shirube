@@ -14,7 +14,7 @@ from typing import Any
 from psycopg import sql
 
 from shirube.adapters.postgres._common import read_only_connection
-from shirube.domain.connection import ConnectionParams
+from shirube.domain.connection import PostgresConnectionParams
 from shirube.domain.data import (
     CellValue,
     FilterOperator,
@@ -144,7 +144,7 @@ class PostgresDataReader:
 
     def read_rows(
         self,
-        params: ConnectionParams,
+        params: PostgresConnectionParams,
         schemas: Sequence[str],
         object_id: str,
         query: RowQuery,

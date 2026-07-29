@@ -281,9 +281,13 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
           >
             <Database className="size-3.5 shrink-0 text-brand" />
             <span className="truncate text-sm font-medium">{profile.name}</span>
-            {/* The database name is the first thing to go when the top bar runs short. */}
+            {/* The database name (or SQLite file) is first to go when the top bar runs short. */}
             {!isNarrow && (
-              <span className="text-xs text-muted-foreground">{profile.database}</span>
+              <span className="text-xs text-muted-foreground">
+                {profile.kind === 'sqlite'
+                  ? (profile.path.split(/[/\\]/).pop() ?? profile.path)
+                  : profile.database}
+              </span>
             )}
           </button>
           <span className="h-5 w-px bg-border" />

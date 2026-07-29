@@ -3,7 +3,7 @@
 import uuid
 from dataclasses import dataclass
 
-from shirube.domain.connection import ConnectionProfile, SslMode
+from shirube.domain.connection import ConnectionProfile, DatabaseTarget
 from shirube.domain.errors import ProfileNotFoundError
 from shirube.ports.repositories import (
     ManualRelationshipRepository,
@@ -16,16 +16,19 @@ from shirube.ports.repositories import (
 class ProfileFields:
     """The non-secret fields of a profile, as supplied when creating or updating one.
 
-    The password is handled separately so it never travels alongside the persisted
-    fields.
+    The password is handled separately so it never travels alongside the persisted fields;
+    the engine-specific details are carried by ``target`` (a server or file target), whose
+    type fixes the profile's kind.
+
+    Attributes:
+        name: Human-friendly label.
+        target: The engine-specific connection details (a server or file target).
+        schemas: Schemas to load; empty means all non-system schemas (ignored for a
+            schema-less engine such as SQLite).
     """
 
     name: str
-    host: str
-    port: int
-    database: str
-    username: str
-    sslmode: SslMode
+    target: DatabaseTarget
     schemas: tuple[str, ...]
 
 
@@ -62,29 +65,29 @@ class ProfileService:
             raise ProfileNotFoundError
         return profile
 
-    def create(self, fields: ProfileFields, password: str) -> ConnectionProfile:
-        """Create a profile and store its password in the keychain.
+    def create(self, fields: ProfileFields, password: str | None) -> ConnectionProfile:
+        """Create a profile and, for an engine that has one, store its password in the keychain.
 
-        If the password cannot be stored (e.g. a locked keychain), the just-added profile
-        is rolled back, so a failure never leaves a saved-but-unusable profile behind.
+        A ``None`` password stores nothing — the shape a keyless engine such as SQLite uses,
+        the same as an Ollama AI provider that needs no key. If a password is supplied but
+        cannot be stored (e.g. a locked keychain), the just-added profile is rolled back, so a
+        failure never leaves a saved-but-unusable profile behind.
 
         Returns:
             The created profile (without the password).
 
         Raises:
-            SecretStoreError: if the password cannot be written to the keychain.
+            SecretStoreError: if a supplied password cannot be written to the keychain.
         """
         profile = ConnectionProfile(
             id=str(uuid.uuid4()),
             name=fields.name,
-            host=fields.host,
-            port=fields.port,
-            database=fields.database,
-            username=fields.username,
-            sslmode=fields.sslmode,
+            target=fields.target,
             schemas=fields.schemas,
         )
         self._repository.add(profile)
+        if password is None:
+            return profile
         try:
             self._secrets.set_password(profile.id, password)
         except Exception:
@@ -111,11 +114,7 @@ class ProfileService:
         updated = ConnectionProfile(
             id=existing.id,
             name=fields.name,
-            host=fields.host,
-            port=fields.port,
-            database=fields.database,
-            username=fields.username,
-            sslmode=fields.sslmode,
+            target=fields.target,
             schemas=fields.schemas,
         )
         self._repository.update(updated)

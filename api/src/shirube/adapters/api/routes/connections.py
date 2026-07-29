@@ -1,20 +1,27 @@
 """Endpoints for testing database connections."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from shirube.adapters.api.dependencies import get_connection_service
 from shirube.application.connections import ConnectionService
-from shirube.domain.connection import ConnectionParams, SslMode
+from shirube.domain.connection import (
+    ConnectionParams,
+    DatabaseKind,
+    PostgresConnectionParams,
+    SqliteConnectionParams,
+    SslMode,
+)
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
 
-class ConnectionTestRequest(BaseModel):
-    """Ad-hoc connection parameters to test (e.g. from the connection form)."""
+class PostgresConnectionTest(BaseModel):
+    """Ad-hoc PostgreSQL connection parameters to test (e.g. from the connection form)."""
 
+    kind: Literal[DatabaseKind.POSTGRESQL] = DatabaseKind.POSTGRESQL
     host: str
     port: int = 5432
     database: str
@@ -24,7 +31,7 @@ class ConnectionTestRequest(BaseModel):
 
     def to_params(self) -> ConnectionParams:
         """Build the domain connection parameters."""
-        return ConnectionParams(
+        return PostgresConnectionParams(
             host=self.host,
             port=self.port,
             database=self.database,
@@ -32,6 +39,24 @@ class ConnectionTestRequest(BaseModel):
             password=self.password,
             sslmode=self.sslmode,
         )
+
+
+class SqliteConnectionTest(BaseModel):
+    """Ad-hoc SQLite connection parameters to test — just the file path."""
+
+    kind: Literal[DatabaseKind.SQLITE]
+    path: str
+
+    def to_params(self) -> ConnectionParams:
+        """Build the domain connection parameters."""
+        return SqliteConnectionParams(path=self.path)
+
+
+# The request body is one of the per-engine shapes, told apart by the ``kind`` discriminator.
+ConnectionTestRequest = Annotated[
+    PostgresConnectionTest | SqliteConnectionTest,
+    Field(discriminator="kind"),
+]
 
 
 class ConnectionTestResult(BaseModel):

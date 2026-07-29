@@ -9,10 +9,10 @@ import pytest
 
 from shirube.adapters.postgres._common import friendly_message
 from shirube.adapters.postgres.connector import PostgresConnector
-from shirube.domain.connection import ConnectionParams, SslMode
+from shirube.domain.connection import PostgresConnectionParams, SslMode
 from shirube.domain.errors import ConnectionFailedError
 
-_PARAMS = ConnectionParams(
+_PARAMS = PostgresConnectionParams(
     host="db.example.com",
     port=5432,
     database="shop",
@@ -137,7 +137,7 @@ def test_empty_host_is_named_over_the_raw_socket_error() -> None:
     The blank host is the real cause, so it must be reported ahead of the generic
     fallback rather than surfacing psycopg's cryptic socket message.
     """
-    params = ConnectionParams(
+    params = PostgresConnectionParams(
         host="",
         port=5432,
         database="shop",
@@ -166,7 +166,7 @@ def test_real_connect_to_unreachable_port_is_translated() -> None:
     Port 1 refuses immediately, so this needs no database yet still drives the actual
     driver call, timeout, and error translation.
     """
-    params = ConnectionParams(
+    params = PostgresConnectionParams(
         host="127.0.0.1",
         port=1,
         database="none",

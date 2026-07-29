@@ -29,6 +29,7 @@ from shirube.domain.data import (
 from shirube.domain.errors import InvalidQueryError, ObjectNotFoundError
 
 _PROFILE = {
+    "kind": "postgresql",
     "name": "shop",
     "host": "db.example.com",
     "port": 5432,

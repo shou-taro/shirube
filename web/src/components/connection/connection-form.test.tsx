@@ -38,6 +38,7 @@ const mockTest = vi.mocked(testConnection)
 const mockTestProfile = vi.mocked(testProfileConnection)
 
 const SAVED: Profile = {
+  kind: 'postgresql',
   id: 'new',
   name: 'shop',
   host: 'db',
@@ -82,6 +83,7 @@ describe('creating a profile', () => {
 
     await waitFor(() =>
       expect(mockCreate).toHaveBeenCalledWith({
+        kind: 'postgresql',
         name: 'shop',
         host: 'db',
         port: 5433,
@@ -129,6 +131,7 @@ describe('creating a profile', () => {
 
 describe('editing a profile', () => {
   const existing: Profile = {
+    kind: 'postgresql',
     id: 'p1',
     name: 'shop',
     host: 'db',
@@ -256,5 +259,87 @@ describe('validation', () => {
     expect(field(/connection.fields.host/)).toBeRequired()
     expect(field(/connection.fields.database/)).toBeRequired()
     expect(field(/connection.fields.username/)).toBeRequired()
+  })
+})
+
+describe('SQLite profiles', () => {
+  const SAVED_SQLITE: Profile = {
+    kind: 'sqlite',
+    id: 's1',
+    name: 'chinook',
+    path: '/data/chinook.sqlite',
+    schemas: [],
+  }
+
+  function selectSqlite() {
+    fireEvent.change(field(/connection.fields.kind/), { target: { value: 'sqlite' } })
+  }
+
+  it('swaps the server fields for a single file path', () => {
+    render(
+      <ConnectionForm initial={null} editingId={null} onConnected={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    selectSqlite()
+
+    expect(screen.getByLabelText(/connection.fields.path/)).toBeInTheDocument()
+    // The PostgreSQL-only fields are gone.
+    expect(screen.queryByLabelText(/connection.fields.host/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/connection.fields.password/)).not.toBeInTheDocument()
+  })
+
+  it('creates a SQLite profile from just a path, with no password', async () => {
+    mockCreate.mockResolvedValue(SAVED_SQLITE)
+    mockTest.mockResolvedValue(undefined)
+    const onConnected = vi.fn()
+    render(
+      <ConnectionForm initial={null} editingId={null} onConnected={onConnected} onCancel={vi.fn()} />,
+    )
+
+    selectSqlite()
+    fireEvent.change(field(/connection.fields.name/), { target: { value: 'chinook' } })
+    fireEvent.change(field(/connection.fields.path/), {
+      target: { value: '/data/chinook.sqlite' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /connection.saveAndConnect/ }))
+
+    await waitFor(() =>
+      expect(mockCreate).toHaveBeenCalledWith({
+        kind: 'sqlite',
+        name: 'chinook',
+        path: '/data/chinook.sqlite',
+        schemas: [],
+      }),
+    )
+    // The connection check is sent as a SQLite test, path only.
+    expect(mockTest).toHaveBeenCalledWith({ kind: 'sqlite', path: '/data/chinook.sqlite' })
+    await waitFor(() => expect(onConnected).toHaveBeenCalledWith(SAVED_SQLITE))
+  })
+
+  it('blocks testing with an empty path, naming the file field', async () => {
+    render(
+      <ConnectionForm initial={null} editingId={null} onConnected={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    selectSqlite()
+    fireEvent.click(screen.getByRole('button', { name: 'connection.test' }))
+
+    // The mocked ``t`` echoes the key, so the field name shows through as ``…fields.path``.
+    const message = await screen.findByText(/Enter the .* before testing\./)
+    expect(message).toHaveTextContent('path')
+    expect(mockTest).not.toHaveBeenCalled()
+  })
+
+  it('prefills the path when editing a SQLite profile', () => {
+    render(
+      <ConnectionForm
+        initial={SAVED_SQLITE}
+        editingId="s1"
+        onConnected={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    expect(field(/connection.fields.path/)).toHaveValue('/data/chinook.sqlite')
   })
 })

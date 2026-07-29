@@ -12,7 +12,7 @@ from typing import Any
 from psycopg.rows import dict_row
 
 from shirube.adapters.postgres._common import read_only_connection
-from shirube.domain.connection import ConnectionParams
+from shirube.domain.connection import PostgresConnectionParams
 from shirube.domain.schema import (
     Column,
     ObjectKind,
@@ -340,7 +340,7 @@ def build_graph(
 class PostgresSchemaInspector:
     """Introspects a PostgreSQL database into a :class:`SchemaGraph`."""
 
-    def inspect(self, params: ConnectionParams, schemas: Sequence[str]) -> SchemaGraph:
+    def inspect(self, params: PostgresConnectionParams, schemas: Sequence[str]) -> SchemaGraph:
         """Read objects, columns, foreign keys and view dependencies from the database.
 
         Args:

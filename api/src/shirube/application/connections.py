@@ -1,5 +1,6 @@
 """Use cases for testing database connections."""
 
+from shirube.application.connection_params import build_connection_params
 from shirube.domain.connection import ConnectionParams
 from shirube.domain.errors import ProfileNotFoundError
 from shirube.ports.repositories import DatabaseConnector, ProfileRepository, SecretStore
@@ -38,12 +39,5 @@ class ConnectionService:
         profile = self._repository.get(profile_id)
         if profile is None:
             raise ProfileNotFoundError
-        params = ConnectionParams(
-            host=profile.host,
-            port=profile.port,
-            database=profile.database,
-            username=profile.username,
-            password=self._secrets.get_password(profile_id) or "",
-            sslmode=profile.sslmode,
-        )
+        params = build_connection_params(profile, self._secrets)
         self._connector.test_connection(params)

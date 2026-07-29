@@ -20,8 +20,12 @@ export interface HealthResponse {
 /** PostgreSQL SSL negotiation mode. */
 export type SslMode = 'disable' | 'allow' | 'prefer' | 'require' | 'verify-ca' | 'verify-full'
 
-/** A saved connection profile (non-secret fields only). */
-export interface Profile {
+/** Which database engine a connection targets. */
+export type DatabaseKind = 'postgresql' | 'sqlite'
+
+/** A saved PostgreSQL profile (non-secret fields only). */
+export interface PostgresProfile {
+  kind: 'postgresql'
   id: string
   name: string
   host: string
@@ -32,8 +36,21 @@ export interface Profile {
   schemas: string[]
 }
 
-/** Fields sent when creating or updating a profile; `password` may be omitted on edit. */
-export interface ProfileInput {
+/** A saved SQLite profile — a file path and its name. */
+export interface SqliteProfile {
+  kind: 'sqlite'
+  id: string
+  name: string
+  path: string
+  schemas: string[]
+}
+
+/** A saved connection profile, of either engine. Tell them apart by `kind`. */
+export type Profile = PostgresProfile | SqliteProfile
+
+/** Fields sent when creating or updating a PostgreSQL profile; `password` may be omitted on edit. */
+export interface PostgresProfileInput {
+  kind: 'postgresql'
   name: string
   host: string
   port: number
@@ -44,15 +61,28 @@ export interface ProfileInput {
   schemas: string[]
 }
 
-/** Ad-hoc parameters for a connection test (before a profile is saved). */
-export interface ConnectionTestParams {
-  host: string
-  port: number
-  database: string
-  username: string
-  password: string
-  sslmode: SslMode
+/** Fields sent when creating or updating a SQLite profile. */
+export interface SqliteProfileInput {
+  kind: 'sqlite'
+  name: string
+  path: string
+  schemas: string[]
 }
+
+export type ProfileInput = PostgresProfileInput | SqliteProfileInput
+
+/** Ad-hoc parameters for a connection test (before a profile is saved). */
+export type ConnectionTestParams =
+  | {
+      kind: 'postgresql'
+      host: string
+      port: number
+      database: string
+      username: string
+      password: string
+      sslmode: SslMode
+    }
+  | { kind: 'sqlite'; path: string }
 
 /** The kind of schema object shown on the ER map. */
 export type ObjectKind = 'table' | 'view' | 'materialized_view' | 'partitioned_table'

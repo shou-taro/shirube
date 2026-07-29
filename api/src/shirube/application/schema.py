@@ -1,6 +1,6 @@
 """Use cases for introspecting a database schema."""
 
-from shirube.domain.connection import ConnectionParams
+from shirube.application.connection_params import build_connection_params
 from shirube.domain.errors import ProfileNotFoundError
 from shirube.domain.schema import ManualRelationship, Relationship, SchemaGraph
 from shirube.ports.repositories import (
@@ -49,14 +49,7 @@ class SchemaService:
         profile = self._repository.get(profile_id)
         if profile is None:
             raise ProfileNotFoundError
-        params = ConnectionParams(
-            host=profile.host,
-            port=profile.port,
-            database=profile.database,
-            username=profile.username,
-            password=self._secrets.get_password(profile_id) or "",
-            sslmode=profile.sslmode,
-        )
+        params = build_connection_params(profile, self._secrets)
         graph = self._inspector.inspect(params, profile.schemas)
         manual = self._manual_relationships.list_for_profile(profile_id)
         return SchemaGraph(

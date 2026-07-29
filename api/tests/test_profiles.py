@@ -46,6 +46,7 @@ def client(secrets: FakeSecretStore) -> Iterator[TestClient]:
 
 def _new_profile() -> dict[str, object]:
     return {
+        "kind": "postgresql",
         "name": "staging DB",
         "host": "db.example.com",
         "port": 5432,
@@ -54,6 +55,15 @@ def _new_profile() -> dict[str, object]:
         "password": "s3cret",
         "sslmode": "require",
         "schemas": ["public"],
+    }
+
+
+def _new_sqlite_profile() -> dict[str, object]:
+    return {
+        "kind": "sqlite",
+        "name": "chinook",
+        "path": "/data/chinook.sqlite",
+        "schemas": [],
     }
 
 
@@ -100,6 +110,47 @@ def test_delete_removes_profile_and_password(client: TestClient, secrets: FakeSe
 
 def test_get_missing_returns_404(client: TestClient) -> None:
     assert client.get("/api/profiles/does-not-exist").status_code == 404
+
+
+def test_create_sqlite_profile_stores_no_password(
+    client: TestClient,
+    secrets: FakeSecretStore,
+) -> None:
+    """A SQLite profile carries a path, no server fields, and never touches the keychain."""
+    response = client.post("/api/profiles", json=_new_sqlite_profile())
+    assert response.status_code == 201
+    body = response.json()
+
+    assert body["kind"] == "sqlite"
+    assert body["path"] == "/data/chinook.sqlite"
+    assert "host" not in body and "password" not in body
+    # SQLite has no secret, so nothing is written to the keychain.
+    assert secrets.get_password(body["id"]) is None
+
+
+def test_sqlite_and_postgres_profiles_round_trip_side_by_side(client: TestClient) -> None:
+    """Both kinds coexist in the list, each read back with its own shape."""
+    client.post("/api/profiles", json=_new_profile())
+    client.post("/api/profiles", json=_new_sqlite_profile())
+
+    listed = client.get("/api/profiles").json()
+    by_kind = {profile["kind"]: profile for profile in listed}
+
+    assert by_kind["postgresql"]["host"] == "db.example.com"
+    assert by_kind["sqlite"]["path"] == "/data/chinook.sqlite"
+
+
+def test_update_switches_a_profile_to_sqlite(client: TestClient, secrets: FakeSecretStore) -> None:
+    """Switching kind rewrites the target and leaves no stale server fields behind."""
+    created = client.post("/api/profiles", json=_new_profile()).json()
+
+    response = client.put(f"/api/profiles/{created['id']}", json=_new_sqlite_profile())
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["kind"] == "sqlite"
+    assert body["path"] == "/data/chinook.sqlite"
+    assert "host" not in body
 
 
 class FailingSecretStore(FakeSecretStore):

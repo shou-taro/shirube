@@ -22,6 +22,7 @@ from shirube.domain.schema import (
 )
 
 _PROFILE = {
+    "kind": "postgresql",
     "name": "shop",
     "host": "db.example.com",
     "port": 5432,
