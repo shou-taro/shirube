@@ -16,6 +16,7 @@
   <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/pyversions/shirube?logo=python&logoColor=white" alt="Python versions" /></a><br />
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue?logo=gnu&logoColor=white" alt="Licence: AGPL-3.0" /></a>
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/SQLite-ready-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
 </p>
 
 <p align="center">
@@ -123,12 +124,12 @@ uvx shirube
 > [!NOTE]  
 > `pipx` と `uvx` は、Python 製のコマンドラインツールを隔離された環境で実行できる仕組みです（`uvx` は [uv](https://docs.astral.sh/uv/) に付属）。shirube を常設インストールせずに試せます。
 
-コマンドを実行すると、shirube が起動し、ブラウザで自動的に開きます。自分の DB がなくても、同梱のサンプルですぐに試せます。
+コマンドを実行すると、shirube が起動し、ブラウザで自動的に開きます。手元に DB がなくても、同梱のサンプルですぐに試せます。
 
-1. 保存済みの接続に「Sample database (Chinook)」が最初から入っています。開けばそのまま試せます（自分の DB は不要）。
-2. 自分の DB を見るときは、接続を追加してエンジン（PostgreSQL / SQLite）を選び、接続情報を入力します（SQLite はファイルパス）。
-3. shirube がスキーマを読み取り、ER 図が表示される。
-4. テーブルを検索したり、関係をたどったりして、目的のデータを探す。
+1. 🧪 保存済みの接続に「Sample database (Chinook)」が最初から入っています。選択することでそのまま試せます。
+2. 🔌 手元の DB を見るときは、エンジン（PostgreSQL / SQLite）を選び、接続情報を入力します（SQLite はファイルパス）。
+3. 🗺️ shirube がスキーマを読み取り、ER 図が表示されます。
+4. 🔍 テーブルを検索したり、関係をたどったりして、目的のデータを探すことができます。
 
 接続先は、ローカルでもリモートでも構いません。
 

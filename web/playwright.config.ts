@@ -49,6 +49,9 @@ export default defineConfig({
         SHIRUBE_PORT: PORT,
         SHIRUBE_DATA_DIR: dataDir,
         PYTHON_KEYRING_BACKEND: 'keyrings.alt.file.PlaintextKeyring',
+        // The suite sets up its own deterministic connection and starts from an empty
+        // saved list; the first-run sample would otherwise open on the saved-list view.
+        SHIRUBE_SEED_SAMPLE: 'false',
       },
     },
   ],

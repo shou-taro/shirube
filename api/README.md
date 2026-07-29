@@ -16,6 +16,7 @@
   <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/pyversions/shirube?logo=python&logoColor=white" alt="Python versions" /></a><br />
   <a href="https://github.com/shou-taro/shirube/blob/main/LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue?logo=gnu&logoColor=white" alt="Licence: AGPL-3.0" /></a>
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/SQLite-ready-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
 </p>
 
 > 🚧 **Status: Beta.** Both the explorer and the AI navigator work today. shirube is

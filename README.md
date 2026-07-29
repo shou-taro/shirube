@@ -16,6 +16,7 @@
   <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/pyversions/shirube?logo=python&logoColor=white" alt="Python versions" /></a><br />
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue?logo=gnu&logoColor=white" alt="Licence: AGPL-3.0" /></a>
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/SQLite-ready-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
 </p>
 
 <p align="center">
@@ -199,9 +200,9 @@ between them there. `./scripts/dev-db.sh list` shows what's available.
 shirube's development runs in two phases.
 
 - **Now — Explore & navigate (beta).** Everything described above — the ER-map explorer
-  and the AI navigator — on PostgreSQL.
-- **Later — broadening reach.** More databases beyond PostgreSQL (SQLite and MySQL), and
-  a fully localised interface.
+  and the AI navigator — on PostgreSQL and SQLite.
+- **Later — broadening reach.** More databases beyond these (MySQL next), and a fully
+  localised interface.
 
 ## 🤝 Contributing
 
