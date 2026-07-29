@@ -203,6 +203,68 @@ def test_bad_arguments_are_reported_not_crashed() -> None:
     assert "error" in _tool_result(provider.requests[1], "t1")
 
 
+def test_find_path_reports_a_route_between_two_objects() -> None:
+    provider = FakeProvider(
+        [
+            [
+                ToolUse("t1", "find_path", {"source": "public.staff", "target": "public.address"}),
+                TurnComplete("tool_use"),
+            ],
+            [TextDelta("They are linked through store."), TurnComplete("end_turn")],
+        ]
+    )
+    _ask(_navigator(provider))
+
+    # staff → store → address: the hops run source to target inclusive.
+    result = _tool_result(provider.requests[1], "t1")
+    assert result["found"] is True
+    assert result["hops"] == ["public.staff", "public.store", "public.address"]
+
+
+def test_find_path_with_missing_arguments_is_reported_not_crashed() -> None:
+    provider = FakeProvider(
+        [
+            # Only a source — the target is absent, so the guard must refuse, not crash.
+            [ToolUse("t1", "find_path", {"source": "public.staff"}), TurnComplete("tool_use")],
+            [TextDelta("ok"), TurnComplete("end_turn")],
+        ]
+    )
+    _ask(_navigator(provider))
+
+    assert "error" in _tool_result(provider.requests[1], "t1")
+
+
+def test_find_path_to_an_unknown_object_is_reported_to_the_model() -> None:
+    provider = FakeProvider(
+        [
+            [
+                ToolUse("t1", "find_path", {"source": "public.staff", "target": "public.nope"}),
+                TurnComplete("tool_use"),
+            ],
+            [TextDelta("No such table."), TurnComplete("end_turn")],
+        ]
+    )
+    _ask(_navigator(provider))
+
+    # An unknown endpoint is reported as an error the model can relay, not a crash.
+    result = _tool_result(provider.requests[1], "t1")
+    assert "do not exist" in str(result["error"])
+    assert result["target"] == "public.nope"
+
+
+def test_get_object_with_a_non_string_ref_is_reported_not_crashed() -> None:
+    provider = FakeProvider(
+        [
+            # A malformed ref (a number, not a schema.name string) must be refused cleanly.
+            [ToolUse("t1", "get_object", {"ref": 123}), TurnComplete("tool_use")],
+            [TextDelta("ok"), TurnComplete("end_turn")],
+        ]
+    )
+    _ask(_navigator(provider))
+
+    assert "error" in _tool_result(provider.requests[1], "t1")
+
+
 class LoopingProvider:
     """Never stops asking for tools — to exercise the max-turns guard."""
 
