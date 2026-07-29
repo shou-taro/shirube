@@ -140,7 +140,7 @@ import {
   fetchAiProvider,
   fetchSchema,
 } from '@/lib/api'
-import { SettingsProvider } from '@/lib/settings'
+import { SettingsProvider } from '@/components/settings-provider'
 import { SETTINGS_KEY } from '@/lib/storage'
 
 const mockSchema = vi.mocked(fetchSchema)
