@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { SettingsProvider } from '@/components/settings-provider'
 import { DETAIL_PANE, NAVIGATOR_PANE } from '@/lib/panes'
-import { SettingsProvider, useSettings } from '@/lib/settings'
+import { useSettings } from '@/lib/settings'
 import { SETTINGS_KEY } from '@/lib/storage'
 
 /** A tiny consumer that renders the current settings so they can be asserted. */
