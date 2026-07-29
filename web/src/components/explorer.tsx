@@ -39,7 +39,7 @@ import { DETAIL_PANE, NAVIGATOR_PANE } from '@/lib/panes'
 import { buildObjectResolver } from '@/lib/schema-refs'
 import { useSettings } from '@/lib/settings'
 import { useMediaQuery } from '@/lib/use-media-query'
-import { cn } from '@/lib/utils'
+import { cn, fileName } from '@/lib/utils'
 
 /** The schema load for the connected profile. */
 type SchemaState =
@@ -284,9 +284,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             {/* The database name (or SQLite file) is first to go when the top bar runs short. */}
             {!isNarrow && (
               <span className="text-xs text-muted-foreground">
-                {profile.kind === 'sqlite'
-                  ? (profile.path.split(/[/\\]/).pop() ?? profile.path)
-                  : profile.database}
+                {profile.kind === 'sqlite' ? fileName(profile.path) : profile.database}
               </span>
             )}
           </button>

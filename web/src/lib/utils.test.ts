@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { cn } from '@/lib/utils'
+import { cn, fileName } from '@/lib/utils'
 
 describe('cn', () => {
   it('resolves conflicting Tailwind utilities so the last one wins', () => {
@@ -9,5 +9,19 @@ describe('cn', () => {
 
   it('drops falsy conditional classes', () => {
     expect(cn('a', false, undefined, null, 'c')).toBe('a c')
+  })
+})
+
+describe('fileName', () => {
+  it('returns the trailing segment of a POSIX path', () => {
+    expect(fileName('/Users/me/Library/shirube/samples/chinook.sqlite')).toBe('chinook.sqlite')
+  })
+
+  it('handles Windows separators', () => {
+    expect(fileName('C:\\Users\\me\\data\\app.db')).toBe('app.db')
+  })
+
+  it('returns the whole string when there is no separator', () => {
+    expect(fileName('chinook.sqlite')).toBe('chinook.sqlite')
   })
 })

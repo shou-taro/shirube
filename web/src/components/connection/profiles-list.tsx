@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { Profile } from '@/lib/api'
+import { fileName } from '@/lib/utils'
 
 interface ProfilesListProps {
   profiles: Profile[]
@@ -57,9 +58,14 @@ export function ProfilesList({
             <Database className="size-4 shrink-0 text-brand" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{profile.name}</span>
-              <span className="block truncate text-xs text-muted-foreground">
+              <span
+                className="block truncate text-xs text-muted-foreground"
+                // The full path can be long, so show just the file name and keep the whole
+                // path available on hover.
+                title={profile.kind === 'sqlite' ? profile.path : undefined}
+              >
                 {profile.kind === 'sqlite'
-                  ? profile.path
+                  ? fileName(profile.path)
                   : `${profile.host}:${profile.port} · ${profile.database}`}
               </span>
             </span>
