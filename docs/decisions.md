@@ -482,8 +482,9 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
   schema immediately, as a **saved connection that is already there**.
 - **Dataset: Chinook** — SQLite's canonical sample (a music store: Artist → Album → Track →
   InvoiceLine → Invoice → Customer, plus a self-referencing Employee). Its foreign keys make
-  the ER map and the navigator demo well; it is small (~1 MB) and permissively licensed.
-  *(Follow-up: confirm and record the Chinook licence, and attribute it in-repo.)* A SQLite
+  the ER map and the navigator demo well; it is small (~1 MB) and permissively licensed
+  (MIT — © 2008–2024 Luis Rocha; bundled unmodified with its notice in
+  `api/src/shirube/samples/CHINOOK-LICENSE.txt`). A SQLite
   build of Sakila/pagila (parity with the Postgres sample) was the alternative; Chinook wins
   as the native SQLite convention and lighter. The Docker/pagila PostgreSQL sample **stays**
   — the "real server DB" example for development.

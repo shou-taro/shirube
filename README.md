@@ -13,9 +13,10 @@
   <a href="https://github.com/shou-taro/shirube/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/shou-taro/shirube/ci.yml?branch=main&label=CI&logo=githubactions&logoColor=white" alt="CI" /></a>
   <a href="https://codecov.io/gh/shou-taro/shirube"><img src="https://img.shields.io/codecov/c/github/shou-taro/shirube?label=coverage&logo=codecov&logoColor=white" alt="Coverage" /></a><br />
   <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/v/shirube?logo=pypi&logoColor=white" alt="PyPI" /></a>
-  <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/pyversions/shirube?logo=python&logoColor=white" alt="Python versions" /></a><br />
-  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue?logo=gnu&logoColor=white" alt="Licence: AGPL-3.0" /></a>
+  <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/pyversions/shirube?logo=python&logoColor=white" alt="Python versions" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue?logo=gnu&logoColor=white" alt="Licence: AGPL-3.0" /></a><br />
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/SQLite-ready-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
 </p>
 
 <p align="center">
@@ -142,10 +143,11 @@ shirube is meant never to feel dangerous.
 
 ## 🚀 Getting started
 
-**You'll need** a PostgreSQL database to point shirube at, and a way to run a Python
-application without installing it permanently. Most developers already have
-[pipx](https://pipx.pypa.io/); if you prefer [uv](https://docs.astral.sh/uv/), that
-works just as well.
+**You won't need a database of your own to start** — shirube ships with a small sample
+you can open straight away. To explore your own data, have a PostgreSQL or SQLite database
+ready. Either way you'll want a way to run a Python application without installing it
+permanently: most developers already have [pipx](https://pipx.pypa.io/); if you prefer
+[uv](https://docs.astral.sh/uv/), that works just as well.
 
 ```bash
 pipx run shirube   # with pipx
@@ -160,9 +162,12 @@ uvx shirube        # with uv
 Either command starts a small local server and opens shirube in your browser. From
 there:
 
-1. 🔌 Add a connection with your PostgreSQL details.
-2. 🗺️ shirube inspects the schema and opens the ER diagram.
-3. 🔍 Search for a table, or just start following its relationships outward.
+1. 🧪 A **Sample database (Chinook)** is already in your saved connections — open it to
+   explore straight away, no database of your own required.
+2. 🔌 Or add your own connection: choose **PostgreSQL** or **SQLite**, and enter its
+   details (or, for SQLite, the path to the `.sqlite` file).
+3. 🗺️ shirube inspects the schema and opens the ER diagram.
+4. 🔍 Search for a table, or just start following its relationships outward.
 
 Your database can be local or remote.
 
@@ -195,9 +200,9 @@ between them there. `./scripts/dev-db.sh list` shows what's available.
 shirube's development runs in two phases.
 
 - **Now — Explore & navigate (beta).** Everything described above — the ER-map explorer
-  and the AI navigator — on PostgreSQL.
-- **Later — broadening reach.** More databases beyond PostgreSQL (SQLite and MySQL), and
-  a fully localised interface.
+  and the AI navigator — on PostgreSQL and SQLite.
+- **Later — broadening reach.** More databases beyond these (MySQL next), and a fully
+  localised interface.
 
 ## 🤝 Contributing
 

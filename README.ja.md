@@ -13,9 +13,10 @@
   <a href="https://github.com/shou-taro/shirube/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/shou-taro/shirube/ci.yml?branch=main&label=CI&logo=githubactions&logoColor=white" alt="CI" /></a>
   <a href="https://codecov.io/gh/shou-taro/shirube"><img src="https://img.shields.io/codecov/c/github/shou-taro/shirube?label=coverage&logo=codecov&logoColor=white" alt="Coverage" /></a><br />
   <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/v/shirube?logo=pypi&logoColor=white" alt="PyPI" /></a>
-  <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/pyversions/shirube?logo=python&logoColor=white" alt="Python versions" /></a><br />
-  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue?logo=gnu&logoColor=white" alt="Licence: AGPL-3.0" /></a>
+  <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/pyversions/shirube?logo=python&logoColor=white" alt="Python versions" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue?logo=gnu&logoColor=white" alt="Licence: AGPL-3.0" /></a><br />
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/SQLite-ready-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
 </p>
 
 <p align="center">
@@ -81,7 +82,7 @@ shirube は SQL IDE でも、DB 管理ツールでもありません。クエリ
 - 🌳 **スキーマツリー** — スキーマ、テーブル、ビュー、カラムをツリー形式で一覧できます。検索や ER 図だけでは追いにくい大きな DB でも、全体像をつかみやすくなります。
 - 👁️ **データプレビュー** — テーブルやビューの実データを読み取り専用で確認できます。カラムごとのソート、簡単なフィルタ、ページ送りに対応しています。
 - ⚡ **すばやく検索** — <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> で、テーブル名やカラム名を検索し、目的の場所へ移動できます。
-- 🔐 **接続を保存** — 複数の PostgreSQL 接続を管理できます。パスワードは設定ファイルではなく、OS のキーチェーンに保存します。
+- 🔐 **接続を保存** — 複数のデータベース接続を管理できます。パスワードは設定ファイルではなく、OS のキーチェーンに保存します。
 - 🌗 **ライト / ダークテーマ** — 好みや周囲の明るさに合わせて、表示を切り替えられます。
 
 ## 🤖 AI ナビゲーター
@@ -123,17 +124,18 @@ uvx shirube
 > [!NOTE]  
 > `pipx` と `uvx` は、Python 製のコマンドラインツールを隔離された環境で実行できる仕組みです（`uvx` は [uv](https://docs.astral.sh/uv/) に付属）。shirube を常設インストールせずに試せます。
 
-コマンドを実行すると、shirube が起動し、ブラウザで自動的に開きます。あとは接続するだけです。
+コマンドを実行すると、shirube が起動し、ブラウザで自動的に開きます。手元に DB がなくても、同梱のサンプルですぐに試せます。
 
-1. PostgreSQL の接続情報を入力して接続する。
-2. shirube がスキーマを読み取り、ER 図が表示される。
-3. テーブルを検索したり、関係をたどったりして、目的のデータを探す。
+1. 🧪 保存済みの接続に「Sample database (Chinook)」が最初から入っています。選択することでそのまま試せます。
+2. 🔌 手元の DB を見るときは、エンジン（PostgreSQL / SQLite）を選び、接続情報を入力します（SQLite はファイルパス）。
+3. 🗺️ shirube がスキーマを読み取り、ER 図が表示されます。
+4. 🔍 テーブルを検索したり、関係をたどったりして、目的のデータを探すことができます。
 
 接続先は、ローカルでもリモートでも構いません。
 
-### 🧪 サンプルデータベースで試す
+### 🧪 PostgreSQL のサンプルで試す
 
-手元に試せる PostgreSQL がない場合は、Docker でサンプル DB を起動できます。このリポジトリには pagila、chinook、lego、employees、AdventureWorks のサンプルを用意しています。
+すぐに試すだけなら、同梱の SQLite サンプル（前述の「Sample database (Chinook)」）で十分です。実際の PostgreSQL サーバーで試したいときは、Docker でサンプル DB を起動できます。このリポジトリには pagila、chinook、lego、employees、AdventureWorks を用意しています。
 
 ```bash
 git clone https://github.com/shou-taro/shirube.git
@@ -155,9 +157,9 @@ cd shirube
 
 ## 🛣️ ロードマップ
 
-いまは PostgreSQL を対象に、ER 図でスキーマを読み解く基本機能と AI ナビゲーターの作り込みを進めています。
+これまでに PostgreSQL と SQLite に対応し、ER 図でスキーマを読み解く基本機能と AI ナビゲーターを作り込んできました。
 
-この先は、PostgreSQL 以外のデータベース（SQLite・MySQL）への対応、ER 図の見せ方の改善、画面表示の多言語化（まずは日本語）などに取り組んでいく予定です。
+この先は、MySQL への対応、画面表示の多言語化（まずは日本語）などに取り組んでいく予定です。
 
 ## 🤝 コントリビュート
 
