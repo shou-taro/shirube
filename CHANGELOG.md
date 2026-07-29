@@ -8,6 +8,8 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.3.0b2] — 2026-07-30
+
 ### Added
 
 - **Explore SQLite databases.** shirube now reads SQLite database files as well as
@@ -17,6 +19,14 @@ may still change between releases).
   "Sample database (Chinook)" connection — a small SQLite music-store schema — so you can
   try the map with no database of your own and no Docker. It is read-only, seeded once, and
   never comes back if you delete it. Set `SHIRUBE_SEED_SAMPLE=false` to opt out.
+- **Pick a SQLite file with a dialog.** The connection form's SQLite path field now has a
+  "Browse…" button that opens a native file dialog to choose the database file. Where a
+  dialog isn't available, it falls back to typing the path in the field.
+
+### Changed
+
+- **SQLite connections show their file name.** A saved SQLite connection now displays its
+  file name (e.g. `chinook.sqlite`) rather than its full path, with the full path on hover.
 
 ## [0.3.0b1] — 2026-07-28
 
