@@ -36,3 +36,10 @@ ignore:
   - "web/src/main.tsx"  # Boots the real app against a live backend; covered by e2e.
   - "web/src/i18n"      # Plain translation data.
   - "web/src/test"      # Test helpers.
+  # The ER map's React Flow rendering (nodes, routed edges, the diagram wiring). It is
+  # exercised by the e2e suite against the real library — jsdom can't lay out or draw a
+  # flow — so it is reported there, not counted as untested units here. The logic-bearing
+  # layout.ts and neighbourhood.ts in the same folder stay measured.
+  - "web/src/components/er/er-diagram.tsx"
+  - "web/src/components/er/routed-edge.tsx"
+  - "web/src/components/er/table-node.tsx"

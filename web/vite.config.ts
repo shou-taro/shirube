@@ -41,6 +41,13 @@ export default defineConfig({
         'src/main.tsx',
         // Plain data with no logic to cover.
         'src/i18n/**',
+        // The ER map's React Flow rendering — nodes, routed edges and the diagram wiring
+        // itself. These are exercised by the e2e suite against the real library, where the
+        // rendering actually happens, not unit-tested in jsdom (which can't lay out or draw
+        // a flow). Their logic-bearing siblings layout.ts and neighbourhood.ts stay counted.
+        'src/components/er/er-diagram.tsx',
+        'src/components/er/routed-edge.tsx',
+        'src/components/er/table-node.tsx',
       ],
       // text-summary for the console, html for local browsing, lcov for Codecov (CI).
       reporter: ['text-summary', 'html', 'lcov'],
