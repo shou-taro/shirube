@@ -13,8 +13,8 @@
   <a href="https://github.com/shou-taro/shirube/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/shou-taro/shirube/ci.yml?branch=main&label=CI&logo=githubactions&logoColor=white" alt="CI" /></a>
   <a href="https://codecov.io/gh/shou-taro/shirube"><img src="https://img.shields.io/codecov/c/github/shou-taro/shirube?label=coverage&logo=codecov&logoColor=white" alt="Coverage" /></a><br />
   <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/v/shirube?logo=pypi&logoColor=white" alt="PyPI" /></a>
-  <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/pyversions/shirube?logo=python&logoColor=white" alt="Python versions" /></a><br />
-  <a href="https://github.com/shou-taro/shirube/blob/main/LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue?logo=gnu&logoColor=white" alt="Licence: AGPL-3.0" /></a>
+  <a href="https://pypi.org/project/shirube/"><img src="https://img.shields.io/pypi/pyversions/shirube?logo=python&logoColor=white" alt="Python versions" /></a>
+  <a href="https://github.com/shou-taro/shirube/blob/main/LICENSE"><img src="https://img.shields.io/badge/licence-AGPL--3.0-blue?logo=gnu&logoColor=white" alt="Licence: AGPL-3.0" /></a><br />
   <img src="https://img.shields.io/badge/PostgreSQL-ready-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/SQLite-ready-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
 </p>
