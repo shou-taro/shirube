@@ -422,10 +422,84 @@ Recorded so the thinking isn't lost, but expect it to change once implemented.
 - Hide a partitioned table's child partitions behind its parent (a scoped
   expand/collapse), so a partition-heavy schema doesn't flood the map.
 
-### More database engines
+### Multiple database engines: dialect adapters behind kind-tagged connections
 
-- PostgreSQL is the only supported target for the beta. Broadening to **SQLite**
-  (local, file-based — a natural fit for the local-first, read-only stance) and **MySQL**
-  is planned. This is the database being *explored*, distinct from shirube's own SQLite
-  state file. Each engine needs its own inspection + data-reader adapter behind the
-  existing ports, and the read-only and safety guarantees must hold for every one.
+- PostgreSQL is the only target in the beta. Broaden to **SQLite** first (local,
+  file-based — the natural fit for the local-first, read-only stance), then **MySQL**.
+  This is the database being *explored*, distinct from shirube's own SQLite state file.
+- The ports (`SchemaInspector`, `DataReader`, `DatabaseConnector`) are already
+  engine-neutral in **shape**; what leaks PostgreSQL is the **data flowing through them** —
+  `ConnectionProfile` / `ConnectionParams` assume a server (host / port / user / password /
+  sslmode). So the groundwork is to generalise the connection model **before** writing any
+  SQLite adapter, not after — otherwise server assumptions scatter through the domain,
+  persistence, ports, adapters and the connection form, and get unpicked later.
+- Each engine gets its own inspection + data-reader + connector adapter behind the existing
+  ports; a **factory picks the adapter by kind** (mirrors `adapters/ai/factory.py`, so the
+  application layer never names a concrete engine). The read-only and safety guarantees —
+  read-only open, forced `LIMIT`, statement timeout, no DML/DDL — must hold for every engine.
+
+### Connection model: kind-tagged, so a file path is a first-class connection
+
+- Introduce a `DatabaseKind` (`postgresql`, `sqlite`, later `mysql`). A profile carries the
+  **common** parts (id, name, kind) plus a **kind-specific target**:
+  - PostgreSQL / MySQL: host, port, database, username, SSL settings (+ password in the
+    keychain).
+  - SQLite: a **single file path** — no host, port, user, password or SSL.
+- Prefer a **discriminated union** (a typed target per kind) over one wide profile with
+  every field nullable: a SQLite profile should be structurally unable to hold a stray port,
+  and the `kind` tells both the form and the adapter factory what to expect. `sslmode` moves
+  onto the server-kinds' target, out of the common shape.
+- **Secrets:** SQLite has no password, so it stores nothing in the keychain — the same "some
+  connections carry no secret" shape already accepted for local AI models (Ollama needs no
+  key). `SecretStore` is unchanged; a SQLite profile simply has no entry.
+- **Persistence:** the app-state `profiles` table gains a `kind` column (default
+  `postgresql` for existing rows) and room for the SQLite target — a lightweight *additive*
+  migration in bootstrap. Pre-1.0 local state, so add-a-column is enough; no migration
+  framework.
+- **Frontend:** the connection form becomes kind-aware — choose the engine, then show only
+  that engine's fields (a file picker for SQLite; the current server fields for PostgreSQL).
+  "Test connection" stays, per engine.
+
+### Schema-less engines: map onto `main`, keep object ids unchanged
+
+- Object ids are `schema.name` throughout — the ER map, the look-up tools, `find_path`, and
+  the data reader's `object_id`. SQLite has no schemas (one namespace, whose real name *is*
+  `main`); MySQL's "database" is itself the namespace.
+- **Decision: do not special-case the id format.** For SQLite the schema is its genuine
+  `main`; for MySQL it is the database name. This keeps the entire object-id surface — map,
+  `get_object`, `find_path`, `read_rows`, schema-qualified labels — **unchanged**, which is
+  the whole point: a new engine is an adapter, not a rewrite of the core.
+- The connect-time "choose schemas" step **collapses to the single namespace** for
+  schema-less engines (auto-selected, selector hidden); `list_schemas()` returns the one
+  entry; cross-schema FK drawing never triggers. Introspection reads SQLite's `sqlite_master`
+  / `PRAGMA foreign_key_list` into the same `SchemaGraph` the map already consumes.
+
+### A bundled sample database: try shirube with no Docker
+
+- Today the sample schema is PostgreSQL (pagila) via Docker — great for contributors, but it
+  means **without Docker there is nothing to try on the spot**. SQLite closes that: ship a
+  small sample database *in the product* so `uvx shirube` lands the user in an explorable
+  schema immediately, as a **saved connection that is already there**.
+- **Dataset: Chinook** — SQLite's canonical sample (a music store: Artist → Album → Track →
+  InvoiceLine → Invoice → Customer, plus a self-referencing Employee). Its foreign keys make
+  the ER map and the navigator demo well; it is small (~1 MB) and permissively licensed.
+  *(Follow-up: confirm and record the Chinook licence, and attribute it in-repo.)* A SQLite
+  build of Sakila/pagila (parity with the Postgres sample) was the alternative; Chinook wins
+  as the native SQLite convention and lighter. The Docker/pagila PostgreSQL sample **stays**
+  — the "real server DB" example for development.
+- **Provisioning — copy to a stable user-data path on first run, not read from the wheel.**
+  `uvx` runs from an ephemeral venv whose path changes each invocation, so a profile pointing
+  into `site-packages` would break next run. Instead ship the `.sqlite` as package data and
+  **copy it once** into the `platformdirs` data directory (beside the app-state file); the
+  seeded profile points at that stable path, so it keeps working across `uvx` runs and
+  installs.
+- **Auto-seed — once, idempotent, read-only, and it respects deletion.** On startup, if the
+  sample has never been seeded (a **one-time marker**, *not* "are there no profiles"), copy
+  the file if absent and add a "Sample database (Chinook)" profile. If the user **deletes**
+  it, it does **not** come back — the marker prevents nagging. The sample opens
+  **read-only** (SQLite `mode=ro` / immutable), consistent with the read-only safety model.
+- **"No surprise connections" still holds.** Seeding a *profile* is not *connecting*: the
+  sample appears in the saved list, but shirube still connects only when the user picks it
+  (see *Reconnect on reload; no surprise connections*). This augments *Local-first,
+  single-command distribution*, where Docker Compose was the bundled-sample option — the
+  bundled sample is now zero-dependency, and Docker becomes specifically the PostgreSQL one.
