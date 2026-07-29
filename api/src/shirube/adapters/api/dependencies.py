@@ -4,6 +4,7 @@ Routes depend on these, and tests override them to inject fakes — which is how
 onion's dependency inversion shows up at the HTTP edge.
 """
 
+from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import Depends
@@ -27,6 +28,7 @@ from shirube.adapters.postgres.schema_inspector import PostgresSchemaInspector
 from shirube.adapters.sqlite.connector import SqliteConnector
 from shirube.adapters.sqlite.data_reader import SqliteDataReader
 from shirube.adapters.sqlite.schema_inspector import SqliteSchemaInspector
+from shirube.adapters.system.file_dialog import pick_sqlite_file
 from shirube.application.ai_config import AI_PROVIDER_SECRET_ID, AiConfigService
 from shirube.application.connections import ConnectionService
 from shirube.application.context_budget import ANTHROPIC_CONTEXT_WINDOW, resolve_window
@@ -61,6 +63,15 @@ def get_secret_store() -> SecretStore:
 def get_ai_config_repository() -> AiConfigRepository:
     """Provide the AI provider config repository backed by the app-state database."""
     return SqlAiConfigRepository(get_session_factory())
+
+
+def get_file_picker() -> Callable[[], str | None]:
+    """Provide the native file-open dialog used to pick a SQLite database path.
+
+    Returns the callable rather than calling it, so the endpoint invokes it per request and
+    tests can override it with a fake that returns a fixed path (no real dialog).
+    """
+    return pick_sqlite_file
 
 
 def get_database_connector() -> DatabaseConnector:

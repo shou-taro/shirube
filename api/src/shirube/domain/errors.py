@@ -129,6 +129,18 @@ class ProviderNotConfiguredError(ShirubeError):
     detail = "No AI provider is configured. Choose one in Settings before using the navigator."
 
 
+class FileDialogUnavailableError(ShirubeError):
+    """Raised when a native file-open dialog cannot be shown.
+
+    The dialog needs a graphical session and a Python built with Tk; a headless or SSH
+    session, or a Tk-less interpreter, has neither. The caller falls back to typing the path,
+    so this reports "not available here" rather than a failure the user must fix.
+    """
+
+    status_code = 503
+    detail = "A file dialog is not available here. Enter the path directly."
+
+
 class ProviderCheckError(ShirubeError):
     """Raised when a provider configuration cannot be reached or authenticated.
 

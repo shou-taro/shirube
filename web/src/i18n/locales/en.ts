@@ -35,6 +35,8 @@ const en = {
     optionsLabel: 'Security and scope',
     schemasHint: 'Comma-separated; leave empty for all',
     pathHint: 'Full path to the .sqlite or .db file',
+    browse: 'Browse…',
+    browsing: 'Opening…',
     passwordKeepHint: 'Leave blank to keep the saved password',
     test: 'Test',
     testMissingFields: 'Enter the {{fields}} before testing.',

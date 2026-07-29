@@ -52,6 +52,17 @@ describe('ConnectionScreen', () => {
     expect(screen.getByText('shop')).toBeInTheDocument()
   })
 
+  it('shows a SQLite connection by its file name, not its full path', async () => {
+    mockList.mockResolvedValue([
+      { kind: 'sqlite', id: 's1', name: 'chinook', path: '/data/samples/chinook.sqlite', schemas: [] },
+    ])
+
+    render(<ConnectionScreen onConnected={vi.fn()} />)
+
+    expect(await screen.findByText('chinook.sqlite')).toBeInTheDocument()
+    expect(screen.queryByText('/data/samples/chinook.sqlite')).not.toBeInTheDocument()
+  })
+
   it('verifies then connects when a saved connection is clicked', async () => {
     mockList.mockResolvedValue([PROFILE])
     mockTestProfile.mockResolvedValue(undefined)

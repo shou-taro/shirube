@@ -15,3 +15,17 @@ import { twMerge } from 'tailwind-merge'
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs))
 }
+
+/**
+ * The final component of a file path — its file name.
+ *
+ * Splits on both POSIX (`/`) and Windows (`\`) separators, so a SQLite path shows as a
+ * short, recognisable name (e.g. `chinook.sqlite`) rather than a long absolute path. Falls
+ * back to the whole string if there is no separator.
+ *
+ * @param path - A file path, POSIX or Windows.
+ * @returns The trailing file-name segment.
+ */
+export function fileName(path: string): string {
+  return path.split(/[/\\]/).pop() || path
+}
