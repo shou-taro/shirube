@@ -33,6 +33,10 @@ test('configures a provider, then reports that it could not be reached', async (
   // reachability check reaches, so the provider saves.
   await dialog.getByLabel('Provider').selectOption({ label: 'Ollama (local)' })
   await dialog.getByLabel('Base URL').fill(STUB_PROVIDER_URL)
+  // Focusing the model field lists the endpoint's models over the real HTTP path; the stub
+  // reports one, which shows up as a datalist suggestion. The field stays free-text.
+  await dialog.getByLabel('Model').focus()
+  await expect(page.locator('#ai-model-options option')).toHaveAttribute('value', 'test-model')
   await dialog.getByLabel('Model').fill('test-model')
   await dialog.getByRole('button', { name: 'Save' }).click()
   await expect(dialog.getByText('Saved')).toBeVisible()

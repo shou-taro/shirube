@@ -19,7 +19,7 @@ from shirube.adapters.ai.anthropic_provider import (
     to_anthropic_messages,
     to_anthropic_tools,
 )
-from shirube.adapters.ai.factory import build_provider, check_provider
+from shirube.adapters.ai.factory import build_provider, check_provider, list_provider_models
 from shirube.adapters.ai.openai_provider import (
     OpenAiCompatibleProvider,
     parse_openai_stream,
@@ -253,3 +253,45 @@ def test_check_provider_openai_compatible_needs_a_base_url() -> None:
     config = AiProviderConfig(AiProviderKind.OPENAI_COMPATIBLE, "m", None)
     with pytest.raises(InvalidProviderConfigError):
         check_provider(config, None)
+
+
+# --- model listing (the settings model picker) ---------------------------------------
+
+
+def test_openai_list_models_returns_the_reported_ids() -> None:
+    provider = OpenAiCompatibleProvider("m", "http://localhost:11434/v1")
+    provider._client = _models(  # type: ignore[assignment]
+        lambda: [SimpleNamespace(id="llama3.1"), SimpleNamespace(id="qwen2.5")]
+    )
+    assert provider.list_models() == ["llama3.1", "qwen2.5"]
+
+
+def test_anthropic_list_models_returns_the_reported_ids() -> None:
+    provider = AnthropicProvider("claude-opus-4-8", api_key="sk-ant-test")
+    provider._client = _models(  # type: ignore[assignment]
+        lambda: [SimpleNamespace(id="claude-opus-4-8"), SimpleNamespace(id="claude-sonnet-4-6")]
+    )
+    assert provider.list_models() == ["claude-opus-4-8", "claude-sonnet-4-6"]
+
+
+def test_openai_list_models_translates_a_connection_failure() -> None:
+    provider = OpenAiCompatibleProvider("m", "http://localhost:9/v1")
+
+    def _fail() -> None:
+        raise OpenAIConnectionError(request=httpx.Request("GET", "http://localhost:9/v1"))
+
+    provider._client = _models(_fail)  # type: ignore[assignment]
+    with pytest.raises(ProviderCheckError, match="Could not reach"):
+        provider.list_models()
+
+
+def test_list_provider_models_anthropic_needs_a_key() -> None:
+    config = AiProviderConfig(AiProviderKind.ANTHROPIC, "claude-opus-4-8", None)
+    with pytest.raises(ProviderCheckError, match="API key"):
+        list_provider_models(config, None)
+
+
+def test_list_provider_models_openai_compatible_needs_a_base_url() -> None:
+    config = AiProviderConfig(AiProviderKind.OPENAI_COMPATIBLE, "m", None)
+    with pytest.raises(InvalidProviderConfigError):
+        list_provider_models(config, None)

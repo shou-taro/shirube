@@ -10,7 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
-from shirube.adapters.ai.factory import check_provider
+from shirube.adapters.ai.factory import check_provider, list_provider_models
 from shirube.adapters.api.dependencies import get_ai_config_service, get_secret_store
 from shirube.application.ai_config import AI_PROVIDER_SECRET_ID, AiConfigService, ProviderStatus
 from shirube.domain.ai import AiProviderConfig, AiProviderKind
@@ -71,6 +71,12 @@ class ProviderTestResult(BaseModel):
     ok: bool = True
 
 
+class ProviderModelsResult(BaseModel):
+    """The model ids a provider offers, for the settings form's model picker."""
+
+    models: list[str]
+
+
 ServiceDep = Annotated[AiConfigService, Depends(get_ai_config_service)]
 SecretsDep = Annotated[SecretStore, Depends(get_secret_store)]
 
@@ -98,6 +104,20 @@ def test_provider(body: AiProviderWrite, secrets: SecretsDep) -> ProviderTestRes
     api_key = body.api_key or secrets.get_password(AI_PROVIDER_SECRET_ID)
     check_provider(body.to_config(), api_key)
     return ProviderTestResult()
+
+
+@router.post("/provider/models", response_model=ProviderModelsResult)
+def get_provider_models(body: AiProviderWrite, secrets: SecretsDep) -> ProviderModelsResult:
+    """List the models the entered (or configured) provider offers.
+
+    Uses the supplied API key, or the stored one when none is given — exactly as the test
+    endpoint does — so a saved provider can be listed without re-entering its key. Sends no
+    schema; only model names are read back, so it does not change what leaves the machine. A
+    provider that cannot be reached or list its models fails with a 4xx and a translated
+    message, and the form falls back to free-text entry.
+    """
+    api_key = body.api_key or secrets.get_password(AI_PROVIDER_SECRET_ID)
+    return ProviderModelsResult(models=list_provider_models(body.to_config(), api_key))
 
 
 @router.delete("/provider", status_code=status.HTTP_204_NO_CONTENT)
