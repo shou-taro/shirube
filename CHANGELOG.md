@@ -8,6 +8,14 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Changed
+
+- **The AI model field suggests real models.** In Settings → AI navigator, the model field
+  now suggests the models your provider actually offers — a boon for a local Ollama, whose
+  model tags are easy to mistype. Focus the field to fetch the list; it stays a plain text
+  field, so any model (including one not listed) still works, and it falls back to typing if
+  the provider can't list its models.
+
 ## [0.3.0b2] — 2026-07-30
 
 ### Added
