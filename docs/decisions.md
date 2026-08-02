@@ -6,8 +6,9 @@ future contributors and maintainers can understand a trade-off instead of re-ope
 It has two parts:
 
 - **Decided** — settled choices that shape the shipped product.
-- **Tentative** — current thinking on parts **not yet built** (chiefly the AI
-  navigator). Design intent, not commitments; expect it to change once the code exists.
+- **Tentative** — current thinking on parts **not yet built** (further database engines,
+  partition handling, and deferred navigator enhancements). Design intent, not commitments;
+  expect it to change once the code exists.
 
 Status shorthand: **Built** (in the shipped beta), **Committed** (settled, not yet
 built), **Active** (an ongoing practice).
@@ -62,6 +63,9 @@ built), **Active** (an ongoing practice).
 - No code path emits DML/DDL.
 - Every connection runs as a read-only transaction with a `statement_timeout`.
 - Result sets carry a forced `LIMIT`; queries are parameterised and single-statement.
+- The guarantee holds **per engine**: PostgreSQL runs a read-only transaction; SQLite
+  opens the file `mode=ro` and caps statements against a time budget (see *Multiple
+  database engines* below).
 
 ### Local web-surface hardening
 
@@ -112,7 +116,7 @@ built), **Active** (an ongoing practice).
   a DBA tool): roles, extensions, tablespaces.
 - **Edges** are visually distinct by meaning: **foreign-key** (declared, solid),
   **view-dependency** (a view → the relations it reads, dashed) and **manual** (dotted).
-  Manual links are now built: a user draws the relationship the database does not declare,
+  Manual links are built: a user draws the relationship the database does not declare,
   column to column, so foreign-key-less schemas stop scattering on the map. They are saved
   per profile and never touch the target database, and are styled apart from the other two.
 - Relationships are drawn from **declared foreign keys**. **Rule-based name inference is
@@ -134,7 +138,7 @@ built), **Active** (an ongoing practice).
   action), not auto-loaded — the map stays the focus. Rows are read-only (forced `LIMIT`,
   `statement_timeout`) with click-to-sort columns, AND-combined column filters, and
   paging. Showing a user their own data is not a privacy concern; sending values to an AI
-  is (see *AI: external-send privacy*, Tentative).
+  is (see *AI: external-send privacy*).
 - For views, the definition SQL is de-emphasised — dependencies and output columns first.
 
 ### Local persistence: SQLite, keyed to profiles
@@ -143,11 +147,14 @@ built), **Active** (an ongoing practice).
 
 - shirube's own state is a single **SQLite** file in the OS data directory
   (`platformdirs`); secrets stay in the keychain. Chosen over JSON/TOML for being
-  structured and transactional as the data grows, and it reuses SQLAlchemy.
+  structured and transactional as the data grows, and it reuses SQLAlchemy. (This is
+  shirube's *own* state, distinct from a SQLite database a user connects to and explores —
+  see *Multiple database engines*.)
 - Per-database state is keyed to the **profile**, not host+port+database — SSH tunnels
   make every database look like `localhost:5432`, so a user-named profile disambiguates.
-  The **manual links a user draws are already persisted this way**; the ER map's layout is
-  **not** persisted, and there is no plan to — the map is laid out afresh each session.
+  The **manual links a user draws are persisted this way**, as is each connection's
+  **navigator conversation**; the ER map's layout is **not** persisted, and there is no
+  plan to — the map is laid out afresh each session.
 
 ### Schema introspection: fresh per connect, drift-tolerant
 
@@ -155,8 +162,9 @@ built), **Active** (an ongoing practice).
 
 - Re-introspected on each connect and held in memory for the session — **no persistent
   schema cache** (introspection is fast; this avoids stale, misleading metadata). A
-  manual "refresh" covers mid-session changes. Read from `pg_catalog` as lightweight
-  structures, not full ORM reflection.
+  manual "refresh" covers mid-session changes. Read from `pg_catalog` (or SQLite's
+  `sqlite_master` / `PRAGMA` introspection) as lightweight structures, not full ORM
+  reflection.
 - On drift: layout for vanished tables is skipped; a manual link whose endpoint has since
   vanished — a renamed or dropped table, or one outside the currently selected schemas — is
   kept in storage but simply not drawn, so it reappears on its own if the object returns
@@ -171,7 +179,8 @@ built), **Active** (an ongoing practice).
   list. shirube reconnects to the **last-used profile on reload**, so a refresh doesn't
   drop the user back to the connection screen — but it never connects to a *new* database
   without the user choosing it. Sample databases are available for development via
-  `scripts/dev-db.sh`.
+  `scripts/dev-db.sh`, and a bundled Chinook sample ships as a ready-made profile (see *A
+  bundled sample database*).
 - *(Revised: originally "never auto-connects on launch"; restoring the last profile on
   reload proved worth it, and it is scoped to the profile the user last chose.)*
 
@@ -182,6 +191,100 @@ built), **Active** (an ongoing practice).
 - One profile = one database (matches PostgreSQL; browsing another means another
   profile). Schemas chosen at connect time share one map, with schema-qualified names and
   cross-schema foreign keys drawn; system schemas are excluded by default.
+
+### Multiple database engines: dialect adapters behind kind-tagged connections
+
+**Built (PostgreSQL, SQLite); committed (MySQL).**
+
+- PostgreSQL shipped first; **SQLite** (local, file-based — the natural fit for the
+  local-first, read-only stance) is now built, and **MySQL** is the next committed engine.
+  This is the database being *explored*, distinct from shirube's own SQLite state file.
+- The ports (`SchemaInspector`, `DataReader`, `DatabaseConnector`) were already
+  engine-neutral in **shape**; what leaked PostgreSQL was the **data flowing through them** —
+  `ConnectionProfile` / `ConnectionParams` assumed a server (host / port / user / password /
+  sslmode). So the connection model was generalised **before** the first SQLite adapter, not
+  after — otherwise server assumptions would have scattered through the domain, persistence,
+  ports, adapters and the connection form, to be unpicked later.
+- Each engine has its own inspection + data-reader + connector adapter behind the shared
+  ports; a **factory picks the adapter by kind** (mirrors `adapters/ai/factory.py`, so the
+  application layer never names a concrete engine), and a per-request dispatcher routes to
+  the engine matching the connection's kind. The read-only and safety guarantees —
+  read-only open, forced `LIMIT`, statement timeout, no DML/DDL — hold for every engine.
+
+### Connection model: kind-tagged, so a file path is a first-class connection
+
+**Built.**
+
+- A `DatabaseKind` (`postgresql`, `sqlite`, later `mysql`) tags each profile, which carries
+  the **common** parts (id, name, kind) plus a **kind-specific target**:
+  - PostgreSQL / MySQL: host, port, database, username, SSL settings (+ password in the
+    keychain).
+  - SQLite: a **single file path** — no host, port, user, password or SSL.
+- A **discriminated union** (a typed target per kind) was chosen over one wide profile with
+  every field nullable: a SQLite profile is structurally unable to hold a stray port, and
+  the `kind` tells both the form and the adapter factory what to expect. `sslmode` lives on
+  the server-kinds' target, out of the common shape.
+- **Secrets:** SQLite has no password, so it stores nothing in the keychain — the same "some
+  connections carry no secret" shape already accepted for local AI models (Ollama needs no
+  key). `SecretStore` is unchanged; a SQLite profile simply has no entry.
+- **Persistence:** the app-state `profiles` table gained a `kind` column (default
+  `postgresql` for existing rows) and room for the SQLite target — a lightweight *additive*
+  migration in bootstrap. Pre-1.0 local state, so add-a-column was enough; no migration
+  framework.
+- **Frontend:** the connection form is kind-aware — choose the engine, then see only that
+  engine's fields (a file picker for SQLite, with a native "Browse…" dialog and a
+  type-the-path fallback; the server fields for PostgreSQL). "Test connection" works per
+  engine. A saved SQLite connection shows its file name, with the full path on hover.
+
+### Schema-less engines: map onto `main`, keep object ids unchanged
+
+**Built (SQLite).**
+
+- Object ids are `schema.name` throughout — the ER map, the look-up tools, `find_path`, and
+  the data reader's `object_id`. SQLite has no schemas (one namespace, whose real name *is*
+  `main`); MySQL's "database" is itself the namespace.
+- **Decision: do not special-case the id format.** For SQLite the schema is its genuine
+  `main`; for MySQL it is the database name. This keeps the entire object-id surface — map,
+  `get_object`, `find_path`, `read_rows`, schema-qualified labels — **unchanged**, which is
+  the whole point: a new engine is an adapter, not a rewrite of the core.
+- The connect-time "choose schemas" step **collapses to the single namespace** for
+  schema-less engines (auto-selected, selector hidden); `list_schemas()` returns the one
+  entry; cross-schema FK drawing never triggers. Introspection reads SQLite's `sqlite_master`
+  / `PRAGMA foreign_key_list` into the same `SchemaGraph` the map already consumes.
+
+### A bundled sample database: try shirube with no Docker
+
+**Built (Chinook).**
+
+- The Docker pagila sample is great for contributors, but **without Docker there was
+  nothing to try on the spot**. SQLite closes that: a small sample database ships *in the
+  product* so `uvx shirube` lands the user in an explorable schema immediately, as a **saved
+  connection that is already there**.
+- **Dataset: Chinook** — SQLite's canonical sample (a music store: Artist → Album → Track →
+  InvoiceLine → Invoice → Customer, plus a self-referencing Employee). Its foreign keys make
+  the ER map and the navigator demo well; it is small (~1 MB) and permissively licensed
+  (MIT — © 2008–2024 Luis Rocha; bundled unmodified with its notice in
+  `api/src/shirube/samples/CHINOOK-LICENSE.txt`). A SQLite build of Sakila/pagila (parity
+  with the Postgres sample) was the alternative; Chinook won as the native SQLite convention
+  and lighter. The Docker/pagila PostgreSQL sample **stays** — the "real server DB" example
+  for development.
+- **Provisioning — copied to a stable user-data path on first run, not read from the
+  wheel.** `uvx` runs from an ephemeral venv whose path changes each invocation, so a profile
+  pointing into `site-packages` would break next run. Instead the `.sqlite` ships as package
+  data and is **copied once** into the `platformdirs` data directory (beside the app-state
+  file); the seeded profile points at that stable path, so it keeps working across `uvx` runs
+  and installs.
+- **Auto-seed — once, idempotent, read-only, and it respects deletion.** On startup, if the
+  sample has never been seeded (a **one-time marker**, *not* "are there no profiles"), the
+  file is copied if absent and a "Sample database (Chinook)" profile is added. If the user
+  **deletes** it, it does **not** come back — the marker prevents nagging. The sample opens
+  **read-only** (SQLite `mode=ro`), consistent with the read-only safety model.
+  `SHIRUBE_SEED_SAMPLE=false` opts out entirely.
+- **"No surprise connections" still holds.** Seeding a *profile* is not *connecting*: the
+  sample appears in the saved list, but shirube still connects only when the user picks it
+  (see *Reconnect on reload; no surprise connections*). This augments *Local-first,
+  single-command distribution*, where Docker Compose was the bundled-sample option — the
+  bundled sample is now zero-dependency, and Docker becomes specifically the PostgreSQL one.
 
 ### Error UX: translated, non-destructive
 
@@ -198,8 +301,187 @@ built), **Active** (an ongoing practice).
 **Built.**
 
 - Fast, case-insensitive substring matching over table and column names; results navigate
-  the map. Conceptual look-ups ("where is 売上?") are the AI's job, not an embedding index
-  here.
+  the map. Conceptual look-ups ("where is 売上?") are the AI navigator's job, not an
+  embedding index here.
+
+### AI navigator: foundation first, then the navigator
+
+**Built.**
+
+- **Milestone 1 — Foundation** (connection, schema, ER, detail, data preview, search,
+  navigation) shipped first as a public beta; **Milestone 2 — the AI navigator**, the
+  feature shirube is ultimately built around, followed, layered on Milestone 1's schema
+  look-up tools. Releasing the foundation first got real-world feedback and de-risked the AI
+  work. Both are now shipped; the explorer works fully without the navigator, which is
+  entirely optional.
+
+### AI navigator: metadata only, proposes, never auto-executes
+
+**Built.**
+
+- The navigator reasons over **schema metadata only** (names, types, PK/FK, comments,
+  counts) and **proposes**; a human clicks to run. It never executes SQL itself — resolving
+  "answer where sales lives" against "never feel dangerous", and keeping data values away
+  from the AI. It is a *navigator, not a SQL generator*.
+
+### AI navigator: model tiers and provider abstraction
+
+**Built.**
+
+- Two ways bring intelligence to the navigator:
+  1. **Bring your own API key** — a hosted provider the user already pays for (Claude, or
+     any OpenAI-compatible endpoint).
+  2. **Local model** — a model running on the user's own machine (Ollama and other
+     OpenAI-compatible local runners), for full privacy.
+- Both keep shirube's core promise: no shirube backend, calls go straight from the user's
+  machine to their chosen provider or local model, and only question-relevant metadata
+  leaves (a local model leaves nothing).
+- **Two provider adapters** behind one internal interface (`adapters/ai/`):
+  - **Anthropic native** — talks to the Claude API directly, so Claude (the recommended
+    default) gets first-class tool use and thinking rather than a lowest-common-denominator
+    shim.
+  - **OpenAI-compatible** — one adapter covers OpenAI, Ollama, and the many local runners
+    and gateways that speak the OpenAI chat-completions shape. Ollama is reached this way;
+    there is no separate Ollama adapter.
+- **No provider ships enabled by default** (as with connections — see *external-send
+  privacy* below); the user picks and configures one, and that choice is the consent. The
+  recommended default *model*, once a provider is chosen, is the latest Claude; a
+  schema-navigator may run well on a cheaper or smaller model, so this is a calibration to
+  revisit, not a fixed cost.
+- Adapters expose only what the navigator needs — a chat turn with tool-calling — so adding
+  an engine later is a new adapter rather than a rewrite.
+
+### AI navigator: provider config and key handling
+
+**Built.**
+
+- The chosen provider is configured **once, app-wide** — one active provider at a time, not
+  a separate one per database profile. Non-secret settings (which adapter, base URL, model
+  name) live in the app-state database alongside the other settings.
+- **API keys are secrets → the OS keychain**, via the same `keyring` path as database
+  passwords (macOS Keychain / Windows Credential Manager), never in a config file or the
+  app-state database. Same platform scope as connection credentials: macOS and Windows for
+  the beta, a Linux fallback planned.
+- **Local models need no key** — Ollama and other local runners take only a base URL (e.g.
+  `http://localhost:11434`), so tier 2 stores nothing secret at all.
+- The provider/key being app-wide (while conversations stay per-profile — see *per-profile
+  history* below) means a key set once works across every database profile.
+
+### AI navigator: schema via look-up tools
+
+**Built.**
+
+- The navigator is not handed the whole schema (hundreds of tables blow the context window
+  and cost). It has **tools** to look things up on demand and pulls in only what a question
+  needs — scaling to thousands of tables and minimising what is sent externally. Semantic
+  (embedding-based) retrieval remains a later enhancement.
+
+### AI navigator: the look-up tool set
+
+**Built.**
+
+- A small, fixed set of read-only tools, all metadata-only, over the **already-introspected
+  schema** (built at connect — see *schema introspection* above), so the AI sees exactly
+  what the map sees and no re-query or live database hit is needed:
+  - **`search_objects(query, limit)`** — the entry point ("which table do I start from"):
+    ranked name/column matches, reusing the deterministic search already built. Returns
+    each hit's id, name, kind (table / view / materialised view), schema, and cheap signals
+    (column count, catalogue row-count estimate).
+  - **`get_object(ref)`** — one object's detail: columns (name, type, nullable, primary
+    key, comment) plus relationships split into *references* / *referenced by*, each tagged
+    `foreign_key` or `view_dependency`. This is the map's table detail, for the AI.
+  - **`find_path(from, to)`** — a breadth-first walk over the relationship graph returning
+    the hop sequence between two objects (e.g. Customer → Orders → Payments). One cheap,
+    deterministic call answers "how are these related" instead of many `get_object` hops.
+  - **`list_schemas()`** — cheap orientation on a multi-schema database: schema names with
+    object counts.
+- **What tools return:** metadata only — names, types, keys, nullability, comments,
+  relationship kinds, and count *estimates*. **What they never return: row data or column
+  values.** Row-count *estimates* come from the catalogue, not a scan, and are the only
+  numeric signal exposed. The AI proposes; a human clicks through to the data preview to
+  see actual rows.
+- Tools run **on the local backend**; only their results (question-relevant metadata) enter
+  the conversation and thus the external-send surface. The AI pulls incrementally — one
+  search, then the objects that matter — rather than receiving the schema up front.
+- Cross-object **path finding** is the `find_path` tool above (backend BFS over the
+  relationship graph — fast and reliable regardless of schema size); answers render the hop
+  sequence as clickable text. Only the **visual** route — drawing/highlighting the A → B → C
+  path across the ER diagram — remains deferred.
+- The set assumes a **function-calling-capable model** (see *model tiers*). A no-tool
+  degraded path — packing a bounded, question-relevant metadata slice straight into the
+  prompt for weaker local models — is a later consideration, not part of the first cut.
+
+### AI navigator: external-send privacy
+
+**Built.**
+
+- **Data values never leave the machine.** No default provider ships; the user configures
+  one (Claude, an OpenAI-compatible API, *or* local Ollama — see *model tiers and provider
+  abstraction* above), and that choice is the consent. Only question-relevant schema
+  metadata is sent, and only to the chosen provider; a local model stays fully local. A
+  "preview what will be sent" is a later transparency feature.
+
+### AI navigator: the consent flow
+
+**Built.**
+
+- **Choosing a hosted provider is the consent — and it is an informed one.** The first time
+  a hosted provider (tier 1) is configured, shirube states plainly, in one place, what it
+  will and won't send: it sends the **question, the running conversation, and
+  question-relevant schema metadata** (table/column names, types, keys, comments,
+  relationship structure, row-count estimates) to that provider; it **never** sends row data
+  or column values. The user acknowledges once, and that is the record of consent.
+- **Local models skip it** — Ollama and other local runners send nothing off the machine,
+  so there is no external recipient to consent to. Tier 2 needs no acknowledgement.
+- **No surprise sends** (mirrors *reconnect on reload; no surprise connections*): nothing
+  goes to a provider until one is configured and acknowledged, and then only when the user
+  actually asks the navigator a question. shirube never pings a provider on its own.
+- **Always-visible destination.** The navigator shows where it is pointed at all times —
+  the provider name, or "local — nothing leaves this machine" — so the user is never unsure
+  who is receiving their schema. Switching to a *different* hosted provider re-triggers the
+  one-time acknowledgement (a new external recipient).
+- The per-turn **"preview exactly what will be sent"** panel remains a later transparency
+  enhancement (see *external-send privacy*); the shipped flow is the upfront explanation plus
+  the persistent destination indicator.
+
+### AI navigator: answers wired to the map
+
+**Built (clickable answers); deferred (path overlay).**
+
+- Table names in an answer are clickable and move/highlight the map, so the AI and the map
+  feel like one navigator. Drawing a **path** across the diagram (e.g. Customer → Orders →
+  Payments) as a visual route planner remains deferred; today path questions are answered in
+  text with clickable hops (see *the look-up tool set*).
+
+### AI navigator: per-profile history and token display
+
+**Built.**
+
+- Conversations are scoped to the profile and persisted in SQLite (revisit prior Q&A;
+  new/clear available). Token usage is shown from the provider; there is no built-in
+  currency conversion (pricing drifts and misleads); Ollama shows "local, no API cost".
+
+### AI navigator: the pane (UI)
+
+**Built.**
+
+- The right pane is the working navigator: docked, slid open/closed from the top-bar
+  Sparkles toggle, with the lilac pane styling.
+- **Composer.** A real, multi-line input — Enter sends, Shift+Enter for a newline; the send
+  button enables when there is text and becomes a **stop** control while a request is in
+  flight. When no provider is configured yet, the composer prompts to set one up (a link
+  into provider settings) rather than sitting dead.
+- **Conversation.** A centred intro shows only when the thread is empty; otherwise a
+  scrollable list of turns — the user's question and the AI's streamed answer — scoped and
+  persisted per profile (see *per-profile history*), with new/clear.
+- **Answers wired to the map.** Table names and `find_path` hops render as clickable chips
+  that recentre/highlight the map (see *answers wired to the map*); the visual route overlay
+  stays deferred.
+- **Pane header** carries the always-visible **destination indicator** (provider name, or
+  "local — nothing leaves") from the consent flow, a way into provider settings, and token
+  usage per the *token display* decision (a local model shows "local, no API cost").
+- **Width.** The pane (like the table-detail pane) is **resizable by dragging**, and the
+  chosen width is remembered.
 
 ### Diagnostic logging: local, structured, metadata-only
 
@@ -251,256 +533,34 @@ built), **Active** (an ongoing practice).
 
 ## Tentative
 
-Design intent for parts **not yet built** — chiefly the AI navigator (Milestone 2).
-Recorded so the thinking isn't lost, but expect it to change once implemented.
+Design intent for parts **not yet built**. Recorded so the thinking isn't lost, but expect
+it to change once implemented.
 
-### Build order: foundation first, then the AI navigator
+### MySQL engine
 
-- **Milestone 1 — Foundation** (connection, schema, ER, detail, data preview, search,
-  navigation) is **built and released as a public beta (`0.1.0b1`)**.
-- **Milestone 2 — the AI navigator**, the feature shirube is ultimately built around, is
-  next, layered on Milestone 1's schema look-up tools. Releasing the foundation first
-  gets real-world feedback and de-risks the AI work.
-
-### AI: model tiers and provider abstraction
-
-- Two ways to bring intelligence to the navigator:
-  1. **Bring your own API key** — a hosted provider the user already pays for (Claude, or
-     any OpenAI-compatible endpoint).
-  2. **Local model** — a model running on the user's own machine (Ollama and other
-     OpenAI-compatible local runners), for full privacy.
-- Both keep shirube's core promise: no shirube backend, calls go straight from the user's
-  machine to their chosen provider or local model, and only question-relevant metadata
-  leaves (a local model leaves nothing).
-- **Two provider adapters** behind one internal interface:
-  - **Anthropic native** — talks to the Claude API directly, so Claude (the recommended
-    default) gets first-class tool use and thinking rather than a lowest-common-denominator
-    shim.
-  - **OpenAI-compatible** — one adapter covers OpenAI, Ollama, and the many local runners
-    and gateways that speak the OpenAI chat-completions shape. Ollama is reached this way;
-    there is no separate Ollama adapter.
-- **No provider ships enabled by default** (as with connections — see *external-send
-  privacy* below); the user picks and configures one, and that choice is the consent. The
-  recommended default *model*, once a provider is chosen, is the latest Claude; a
-  schema-navigator may run well on a cheaper or smaller model, so this is a calibration to
-  revisit, not a fixed cost.
-- Adapters expose only what the navigator needs — a chat turn with tool-calling — so
-  adding an engine later is a new adapter rather than a rewrite.
-
-### AI: provider config and key handling
-
-- The chosen provider is configured **once, app-wide** — one active provider at a time, not
-  a separate one per database profile. Non-secret settings (which adapter, base URL, model
-  name) live in the app-state database alongside the other settings.
-- **API keys are secrets → the OS keychain**, via the same `keyring` path as database
-  passwords (macOS Keychain / Windows Credential Manager), never in a config file or the
-  app-state database. Same platform scope as connection credentials: macOS and Windows for
-  the beta, a Linux fallback planned.
-- **Local models need no key** — Ollama and other local runners take only a base URL (e.g.
-  `http://localhost:11434`), so tier 2 stores nothing secret at all.
-- The provider/key being app-wide (while conversations stay per-profile — see *per-profile
-  history* below) means a key set once works across every database profile.
-
-### AI: metadata only, never auto-executes
-
-- The AI will reason over **schema metadata only** (names, types, PK/FK, comments,
-  counts) and **propose**; a human clicks to run. It never executes SQL itself —
-  resolving "answer where sales lives" against "never feel dangerous", and keeping data
-  values away from the AI.
-
-### AI: schema via look-up tools
-
-- The AI won't be handed the whole schema (hundreds of tables blow the context window and
-  cost). It gets **tools** to look things up on demand and pulls in only what a question
-  needs — scaling to thousands of tables and minimising what is sent externally. Semantic
-  (embedding-based) retrieval is a later enhancement.
-
-### AI: the look-up tool set
-
-- A small, fixed set of read-only tools, all metadata-only, over the **already-introspected
-  schema** (built at connect — see *schema introspection* above), so the AI sees exactly
-  what the map sees and no re-query or live database hit is needed:
-  - **`search_objects(query, limit)`** — the entry point ("which table do I start from"):
-    ranked name/column matches, reusing the deterministic search already built. Returns
-    each hit's id, name, kind (table / view / materialised view), schema, and cheap signals
-    (column count, catalogue row-count estimate).
-  - **`get_object(ref)`** — one object's detail: columns (name, type, nullable, primary
-    key, comment) plus relationships split into *references* / *referenced by*, each tagged
-    `foreign_key` or `view_dependency`. This is the map's table detail, for the AI.
-  - **`find_path(from, to)`** — a breadth-first walk over the relationship graph returning
-    the hop sequence between two objects (e.g. Customer → Orders → Payments). One cheap,
-    deterministic call answers "how are these related" instead of many `get_object` hops.
-  - **`list_schemas()`** — cheap orientation on a multi-schema database: schema names with
-    object counts.
-- **What tools return:** metadata only — names, types, keys, nullability, comments,
-  relationship kinds, and count *estimates*. **What they never return: row data or column
-  values.** Row-count *estimates* come from the catalogue, not a scan, and are the only
-  numeric signal exposed. The AI proposes; a human clicks through to the data preview to
-  see actual rows.
-- Tools run **on the local backend**; only their results (question-relevant metadata) enter
-  the conversation and thus the external-send surface. The AI pulls incrementally — one
-  search, then the objects that matter — rather than receiving the schema up front.
-- Cross-object **path finding** is in M2 as the `find_path` tool above (backend BFS over
-  the relationship graph — fast and reliable regardless of schema size). Only the
-  **visual** route — drawing/highlighting the A → B → C path across the ER diagram (see
-  *answers wired to the map*) — is deferred; M2 answers path questions in text with
-  clickable hops.
-- The set assumes a **function-calling-capable model** (see *model tiers*). A no-tool
-  degraded path — packing a bounded, question-relevant metadata slice straight into the
-  prompt for weaker local models — is a later consideration, not part of the first cut.
-
-### AI: external-send privacy
-
-- **Data values never leave the machine.** No default provider ships; the user configures
-  one (Claude, an OpenAI-compatible API, *or* local Ollama — see *model tiers and provider
-  abstraction* above), and that choice is the consent. Only question-relevant schema
-  metadata is sent, and only to the chosen provider; a local model stays fully local. A
-  "preview what will be sent" is a later transparency feature.
-
-### AI: the consent flow
-
-- **Choosing a hosted provider is the consent — but it must be an informed one.** The first
-  time a hosted provider (tier 1) is configured, shirube states plainly, in one place, what
-  it will and won't send: it sends the **question, the running conversation, and
-  question-relevant schema metadata** (table/column names, types, keys, comments,
-  relationship structure, row-count estimates) to that provider; it **never** sends row
-  data or column values. The user acknowledges once, and that is the record of consent.
-- **Local models skip it** — Ollama and other local runners send nothing off the machine,
-  so there is no external recipient to consent to. Tier 2 needs no acknowledgement.
-- **No surprise sends** (mirrors *reconnect on reload; no surprise connections*): nothing
-  goes to a provider until one is configured and acknowledged, and then only when the user
-  actually asks the navigator a question. shirube never pings a provider on its own.
-- **Always-visible destination.** The navigator shows where it is pointed at all times —
-  the provider name, or "local — nothing leaves this machine" — so the user is never unsure
-  who is receiving their schema. Switching to a *different* hosted provider re-triggers the
-  one-time acknowledgement (a new external recipient).
-- The per-turn **"preview exactly what will be sent"** panel stays a later transparency
-  enhancement (see *external-send privacy*); the M2 flow is the upfront explanation plus the
-  persistent destination indicator.
-
-### AI answers wired to the map
-
-- Table names in an answer will be clickable and move/highlight the map, so the AI and the
-  map feel like one navigator. Later, the AI draws a **path** across the diagram (e.g.
-  Customer → Orders → Payments) — a route planner.
-
-### AI chat: per-profile history and token display
-
-- Conversations scoped to the profile and persisted in SQLite (revisit prior Q&A;
-  new/clear available). Token usage shown from the provider; no built-in currency
-  conversion (pricing drifts and misleads); Ollama shows "local, no API cost".
-
-### AI: the navigator pane (UI)
-
-- The right pane (`explorer.tsx`'s `<aside>` — today a static placeholder: a centred intro
-  plus a fake composer) becomes the working navigator. It keeps the current shape: docked,
-  slid open/closed from the top-bar Sparkles toggle, lilac pane styling.
-- **Composer.** The placeholder input becomes real and multi-line — Enter sends,
-  Shift+Enter for a newline; the send button enables when there is text and turns into a
-  **stop** control while a request is in flight. When no provider is configured yet, the
-  composer prompts to set one up (a link into provider settings) rather than sitting dead.
-- **Conversation.** The centred intro shows only when the thread is empty; otherwise a
-  scrollable list of turns — the user's question and the AI's streamed answer — scoped and
-  persisted per profile (see *per-profile history*), with new/clear.
-- **Answers wired to the map.** Table names and `find_path` hops render as clickable chips
-  that recentre/highlight the map (see *answers wired to the map*); the visual route overlay
-  stays deferred.
-- **Pane header** carries the always-visible **destination indicator** (provider name, or
-  "local — nothing leaves") from the consent flow, a way into provider settings, and token
-  usage per the *token display* decision (a local model shows "local, no API cost").
-- **Width.** `w-72` suits a placeholder but is tight for real conversation; the pane may
-  widen or become resizable — a detail to settle in build, not a blocker.
-
-### Manual relationship editing
-
-- For legacy schemas lacking FK constraints, let users **add relationships by hand**,
-  stored locally (the database is never modified) and rendered distinctly from declared
-  foreign keys, so a guess is never mistaken for a fact.
+- The next database engine after PostgreSQL and SQLite. It slots into the kind-tagged
+  connection model and the adapter factory already in place (see *Multiple database
+  engines* and *Connection model* under Decided): a new inspection + data-reader + connector
+  adapter behind the shared ports, a `mysql` `DatabaseKind` with a server-shaped target
+  (host / port / database / user / password + SSL, password in the keychain), and a form
+  case. Its "database" is the namespace, mapped like SQLite's `main` so the object-id
+  surface stays unchanged. The read-only and safety guarantees must hold as for the other
+  engines.
 
 ### Partition handling
 
 - Hide a partitioned table's child partitions behind its parent (a scoped
   expand/collapse), so a partition-heavy schema doesn't flood the map.
 
-### Multiple database engines: dialect adapters behind kind-tagged connections
+### Deferred navigator enhancements
 
-- PostgreSQL is the only target in the beta. Broaden to **SQLite** first (local,
-  file-based — the natural fit for the local-first, read-only stance), then **MySQL**.
-  This is the database being *explored*, distinct from shirube's own SQLite state file.
-- The ports (`SchemaInspector`, `DataReader`, `DatabaseConnector`) are already
-  engine-neutral in **shape**; what leaks PostgreSQL is the **data flowing through them** —
-  `ConnectionProfile` / `ConnectionParams` assume a server (host / port / user / password /
-  sslmode). So the groundwork is to generalise the connection model **before** writing any
-  SQLite adapter, not after — otherwise server assumptions scatter through the domain,
-  persistence, ports, adapters and the connection form, and get unpicked later.
-- Each engine gets its own inspection + data-reader + connector adapter behind the existing
-  ports; a **factory picks the adapter by kind** (mirrors `adapters/ai/factory.py`, so the
-  application layer never names a concrete engine). The read-only and safety guarantees —
-  read-only open, forced `LIMIT`, statement timeout, no DML/DDL — must hold for every engine.
-
-### Connection model: kind-tagged, so a file path is a first-class connection
-
-- Introduce a `DatabaseKind` (`postgresql`, `sqlite`, later `mysql`). A profile carries the
-  **common** parts (id, name, kind) plus a **kind-specific target**:
-  - PostgreSQL / MySQL: host, port, database, username, SSL settings (+ password in the
-    keychain).
-  - SQLite: a **single file path** — no host, port, user, password or SSL.
-- Prefer a **discriminated union** (a typed target per kind) over one wide profile with
-  every field nullable: a SQLite profile should be structurally unable to hold a stray port,
-  and the `kind` tells both the form and the adapter factory what to expect. `sslmode` moves
-  onto the server-kinds' target, out of the common shape.
-- **Secrets:** SQLite has no password, so it stores nothing in the keychain — the same "some
-  connections carry no secret" shape already accepted for local AI models (Ollama needs no
-  key). `SecretStore` is unchanged; a SQLite profile simply has no entry.
-- **Persistence:** the app-state `profiles` table gains a `kind` column (default
-  `postgresql` for existing rows) and room for the SQLite target — a lightweight *additive*
-  migration in bootstrap. Pre-1.0 local state, so add-a-column is enough; no migration
-  framework.
-- **Frontend:** the connection form becomes kind-aware — choose the engine, then show only
-  that engine's fields (a file picker for SQLite; the current server fields for PostgreSQL).
-  "Test connection" stays, per engine.
-
-### Schema-less engines: map onto `main`, keep object ids unchanged
-
-- Object ids are `schema.name` throughout — the ER map, the look-up tools, `find_path`, and
-  the data reader's `object_id`. SQLite has no schemas (one namespace, whose real name *is*
-  `main`); MySQL's "database" is itself the namespace.
-- **Decision: do not special-case the id format.** For SQLite the schema is its genuine
-  `main`; for MySQL it is the database name. This keeps the entire object-id surface — map,
-  `get_object`, `find_path`, `read_rows`, schema-qualified labels — **unchanged**, which is
-  the whole point: a new engine is an adapter, not a rewrite of the core.
-- The connect-time "choose schemas" step **collapses to the single namespace** for
-  schema-less engines (auto-selected, selector hidden); `list_schemas()` returns the one
-  entry; cross-schema FK drawing never triggers. Introspection reads SQLite's `sqlite_master`
-  / `PRAGMA foreign_key_list` into the same `SchemaGraph` the map already consumes.
-
-### A bundled sample database: try shirube with no Docker
-
-- Today the sample schema is PostgreSQL (pagila) via Docker — great for contributors, but it
-  means **without Docker there is nothing to try on the spot**. SQLite closes that: ship a
-  small sample database *in the product* so `uvx shirube` lands the user in an explorable
-  schema immediately, as a **saved connection that is already there**.
-- **Dataset: Chinook** — SQLite's canonical sample (a music store: Artist → Album → Track →
-  InvoiceLine → Invoice → Customer, plus a self-referencing Employee). Its foreign keys make
-  the ER map and the navigator demo well; it is small (~1 MB) and permissively licensed
-  (MIT — © 2008–2024 Luis Rocha; bundled unmodified with its notice in
-  `api/src/shirube/samples/CHINOOK-LICENSE.txt`). A SQLite
-  build of Sakila/pagila (parity with the Postgres sample) was the alternative; Chinook wins
-  as the native SQLite convention and lighter. The Docker/pagila PostgreSQL sample **stays**
-  — the "real server DB" example for development.
-- **Provisioning — copy to a stable user-data path on first run, not read from the wheel.**
-  `uvx` runs from an ephemeral venv whose path changes each invocation, so a profile pointing
-  into `site-packages` would break next run. Instead ship the `.sqlite` as package data and
-  **copy it once** into the `platformdirs` data directory (beside the app-state file); the
-  seeded profile points at that stable path, so it keeps working across `uvx` runs and
-  installs.
-- **Auto-seed — once, idempotent, read-only, and it respects deletion.** On startup, if the
-  sample has never been seeded (a **one-time marker**, *not* "are there no profiles"), copy
-  the file if absent and add a "Sample database (Chinook)" profile. If the user **deletes**
-  it, it does **not** come back — the marker prevents nagging. The sample opens
-  **read-only** (SQLite `mode=ro` / immutable), consistent with the read-only safety model.
-- **"No surprise connections" still holds.** Seeding a *profile* is not *connecting*: the
-  sample appears in the saved list, but shirube still connects only when the user picks it
-  (see *Reconnect on reload; no surprise connections*). This augments *Local-first,
-  single-command distribution*, where Docker Compose was the bundled-sample option — the
-  bundled sample is now zero-dependency, and Docker becomes specifically the PostgreSQL one.
+- **Visual path overlay** — draw/highlight the A → B → C route across the ER diagram (a
+  route planner), beyond today's clickable text hops (see *answers wired to the map*).
+- **Per-turn send preview** — a panel showing exactly what metadata a question will send
+  before it leaves, on top of the upfront consent and always-visible destination (see *the
+  consent flow*).
+- **Semantic retrieval** — embedding-based look-up to complement the deterministic
+  `search_objects` entry point.
+- **No-tool degraded path** — for weaker local models without function-calling, pack a
+  bounded, question-relevant metadata slice straight into the prompt instead of exposing the
+  look-up tools.
