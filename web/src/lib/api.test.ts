@@ -11,6 +11,7 @@ import {
   fetchSchema,
   listProfiles,
   pickSqliteFile,
+  listAiProviderModels,
   saveAiProvider,
   streamChat,
   testAiProvider,
@@ -166,6 +167,19 @@ describe('request shape', () => {
     await testAiProvider({ kind: 'openai_compatible', model: 'llama3.1', base_url: 'http://x/v1' })
     const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('/api/ai/provider/test')
+    expect(init.method).toBe('POST')
+  })
+
+  it('POSTs a model listing and returns the reported ids', async () => {
+    const spy = mockFetch(
+      new Response(JSON.stringify({ models: ['llama3.1', 'qwen2.5'] }), { status: 200 }),
+    )
+
+    await expect(
+      listAiProviderModels({ kind: 'openai_compatible', model: '', base_url: 'http://x/v1' }),
+    ).resolves.toEqual(['llama3.1', 'qwen2.5'])
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/ai/provider/models')
     expect(init.method).toBe('POST')
   })
 

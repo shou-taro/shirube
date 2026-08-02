@@ -295,3 +295,21 @@ def test_list_provider_models_openai_compatible_needs_a_base_url() -> None:
     config = AiProviderConfig(AiProviderKind.OPENAI_COMPATIBLE, "m", None)
     with pytest.raises(InvalidProviderConfigError):
         list_provider_models(config, None)
+
+
+def test_list_provider_models_anthropic_lists_via_its_adapter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The model is irrelevant to listing, so the factory passes it through untouched; stub the
+    # adapter's network call to prove the routing and the returned ids.
+    monkeypatch.setattr(AnthropicProvider, "list_models", lambda self: ["claude-opus-4-8"])
+    config = AiProviderConfig(AiProviderKind.ANTHROPIC, "", None)
+    assert list_provider_models(config, "sk-ant-test") == ["claude-opus-4-8"]
+
+
+def test_list_provider_models_openai_compatible_lists_via_its_adapter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(OpenAiCompatibleProvider, "list_models", lambda self: ["llama3.1"])
+    config = AiProviderConfig(AiProviderKind.OPENAI_COMPATIBLE, "", "http://localhost:11434/v1")
+    assert list_provider_models(config, None) == ["llama3.1"]

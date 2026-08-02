@@ -463,6 +463,37 @@ describe('SettingsDialog — AI provider', () => {
     expect(screen.getByLabelText('settings.aiModel')).toHaveValue('claude-something-new')
   })
 
+  it('shows a loading hint while the models are being fetched', async () => {
+    // A request that stays pending, so the in-flight state is observable.
+    let resolveModels: (ids: string[]) => void = () => {}
+    mockListModels.mockReturnValue(
+      new Promise<string[]>((resolve) => {
+        resolveModels = resolve
+      }),
+    )
+    await openAiSection(configuredClaude)
+
+    fireEvent.focus(screen.getByLabelText('settings.aiModel'))
+
+    expect(await screen.findByText('settings.aiModelLoading')).toBeInTheDocument()
+    resolveModels(['claude-opus-4-8'])
+    await waitFor(() =>
+      expect(screen.queryByText('settings.aiModelLoading')).not.toBeInTheDocument(),
+    )
+  })
+
+  it('does not re-list once the suggestions are loaded', async () => {
+    mockListModels.mockResolvedValue(['claude-opus-4-8'])
+    await openAiSection(configuredClaude)
+
+    const field = screen.getByLabelText('settings.aiModel')
+    fireEvent.focus(field)
+    await waitFor(() => expect(mockListModels).toHaveBeenCalledOnce())
+    // Focusing again does not fetch — the suggestions are already loaded.
+    fireEvent.focus(field)
+    expect(mockListModels).toHaveBeenCalledOnce()
+  })
+
   it('lists approved destinations and revokes one', async () => {
     mockHealth.mockResolvedValue({ status: 'ok', version: '9.9.9' })
     mockFetchProvider.mockResolvedValue(null)
