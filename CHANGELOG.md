@@ -8,6 +8,14 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Changed
+
+- **The navigator works quietly, then writes its answer.** While the AI navigator is thinking
+  and looking things up, only a small, muted "looking things up…" marker shows — the running
+  working-out no longer flashes in the pane. When it's ready, the answer appears and types
+  itself out, so the reply reads as being written. (Answers already in the thread show at once,
+  and the typing is skipped entirely if you prefer reduced motion.)
+
 ## [0.3.0b3] — 2026-08-04
 
 ### Changed

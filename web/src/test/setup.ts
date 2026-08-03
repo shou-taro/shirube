@@ -48,12 +48,14 @@ class MemoryStorage implements Storage {
 
 vi.stubGlobal('localStorage', new MemoryStorage())
 
-// jsdom has no matchMedia; return a stub that never matches and ignores listeners, which
-// is enough for the theme logic (it falls back to the "light" branch under test).
+// jsdom has no matchMedia; return a stub that ignores listeners. It never matches, except
+// for reduced-motion, which reports true so motion (e.g. the navigator's typewriter reveal)
+// resolves instantly and deterministically under test. The theme logic still sees
+// prefers-color-scheme as unmatched and falls back to its "light" branch.
 vi.stubGlobal(
   'matchMedia',
   vi.fn((query: string) => ({
-    matches: false,
+    matches: query.includes('prefers-reduced-motion'),
     media: query,
     onchange: null,
     addEventListener: vi.fn(),

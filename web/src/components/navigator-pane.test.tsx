@@ -405,11 +405,13 @@ describe('NavigatorPane', () => {
     renderPane(LOCAL)
 
     ask('Hi')
-    await screen.findByText('Partial')
-    // While streaming, the send button is replaced by stop.
+    // The answer is withheld while streaming, so streaming shows as the stop button (the
+    // send button is replaced by it), not as visible answer text yet.
+    await screen.findByLabelText('chat.stop')
     fireEvent.click(screen.getByLabelText('chat.stop'))
 
-    // The partial answer stays, no error is shown, and sending is possible again.
+    // Stopping settles the turn, so what had streamed is revealed and kept; no error shows,
+    // and sending is possible again.
     await waitFor(() => expect(screen.getByLabelText('chat.send')).toBeInTheDocument())
     expect(screen.getByText('Partial')).toBeInTheDocument()
   })

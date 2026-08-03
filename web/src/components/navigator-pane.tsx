@@ -36,6 +36,7 @@ import {
 import { type AiProvider, type ChatMessage, streamChat } from '@/lib/api'
 import { describeDestination, isDestinationApproved } from '@/lib/destinations'
 import type { ObjectResolver } from '@/lib/schema-refs'
+import { useMediaQuery } from '@/lib/use-media-query'
 import { cn } from '@/lib/utils'
 
 /** One rendered turn of the conversation. Assistant turns grow as the answer streams in. */
@@ -198,6 +199,67 @@ function Answer({
 }
 
 /**
+ * Render a settled answer, optionally typing it out once.
+ *
+ * The answer is hidden while it streams (only the collapsed "looking things up" markers show),
+ * so it arrives all at once when the turn completes. To keep the sense of a reply being
+ * written, the completed text is then revealed word by word — a purely cosmetic replay of the
+ * streaming we withheld. Revealing by whole words (not characters) keeps Markdown from
+ * flashing half-formed (a dangling `**` or an incomplete table). It plays only for the turn
+ * that just finished in this session — not answers read back from history — and not at all
+ * when the reader prefers reduced motion, where the full answer shows at once.
+ */
+function TypewriterAnswer({
+  text,
+  animate,
+  resolveRef,
+  onNavigate,
+}: {
+  text: string
+  animate: boolean
+  resolveRef: ObjectResolver
+  onNavigate: (objectId: string) => void
+}) {
+  const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const [revealed, setRevealed] = useState(() => (animate && !reduceMotion ? '' : text))
+  // Play once, on mount: a later re-render (e.g. a newer turn finishing) must never replay a
+  // settled answer, so the decision is fixed here rather than tracked through props.
+  const played = useRef(false)
+
+  useEffect(() => {
+    if (played.current) {
+      return
+    }
+    played.current = true
+    if (!animate || reduceMotion) {
+      setRevealed(text)
+      return
+    }
+    // Words and the whitespace between them, so a prefix always ends on a word boundary.
+    const tokens = text.split(/(\s+)/)
+    // Length-scaled but firmly capped: a brief flourish for a short reply, never a wait for a
+    // long one. Kept under the test runner's default findBy timeout so tests stay stable.
+    const durationMs = Math.min(Math.max(text.length * 12, 200), 700)
+    const perToken = durationMs / tokens.length
+    const start = performance.now()
+    let frame = 0
+    const tick = (now: number): void => {
+      const shown = Math.min(tokens.length, Math.floor((now - start) / perToken) + 1)
+      setRevealed(tokens.slice(0, shown).join(''))
+      if (shown < tokens.length) {
+        frame = requestAnimationFrame(tick)
+      }
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+    // Mount-only: the completed answer's text is immutable, and the play/skip choice is fixed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return <Answer text={revealed} resolveRef={resolveRef} onNavigate={onNavigate} />
+}
+
+/**
  * The assistant's look-up steps, shown above its answer.
  *
  * Each step is what the navigator consulted before answering, with any narration it wrote on
@@ -292,6 +354,10 @@ export function NavigatorPane({
   // The pending question held back while the consent gate is shown; null when not gating.
   const [consenting, setConsenting] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  // The assistant turn that finished streaming in this session, so its answer types out once
+  // while answers read back from history appear settled. A ref (not state) since it only needs
+  // to be read during the render that reveals the answer, and must not itself trigger one.
+  const revealTurnRef = useRef<string | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -390,6 +456,10 @@ export function NavigatorPane({
           patchTurn(assistantId, { error: message })
         }
       } finally {
+        // Mark this turn as the one to type out, before the re-render that first shows its
+        // answer body (the ref is read there). Set even on error/abort — the answer body only
+        // renders when there is text, so a bare failure simply never triggers it.
+        revealTurnRef.current = assistantId
         patchTurn(assistantId, { streaming: false })
         setStreaming(false)
         abortRef.current = null
@@ -503,21 +573,25 @@ export function NavigatorPane({
               </div>
             ) : (
               <div key={turn.id} className="space-y-1.5 text-sm">
+                {/* While streaming, the answer stays hidden: only the collapsed, dimmed
+                    look-up markers show, so the working-out never clutters the pane. The
+                    answer appears — and types itself out — once the turn completes. */}
                 <AssistantSteps
                   steps={turn.steps}
                   streaming={turn.streaming}
-                  hasAnswer={turn.content !== ''}
+                  hasAnswer={!turn.streaming && turn.content !== ''}
                 />
-                {turn.streaming && turn.content === '' && turn.steps.length === 0 && (
+                {turn.streaming && turn.steps.length === 0 && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Loader2 className="size-3 animate-spin" />
                     {t('chat.thinking')}
                   </div>
                 )}
-                {turn.content !== '' && (
+                {!turn.streaming && turn.content !== '' && (
                   <div className="break-words text-foreground">
-                    <Answer
+                    <TypewriterAnswer
                       text={turn.content}
+                      animate={turn.id === revealTurnRef.current}
                       resolveRef={resolveRef}
                       onNavigate={onNavigate}
                     />
