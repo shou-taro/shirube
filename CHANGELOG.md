@@ -8,6 +8,8 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.3.0b3] — 2026-08-04
+
 ### Changed
 
 - **The AI model field suggests real models.** In Settings → AI navigator, the model field
