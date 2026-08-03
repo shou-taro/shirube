@@ -164,6 +164,47 @@ describe('NavigatorPane', () => {
     expect(screen.queryByText(/get_object/)).not.toBeInTheDocument()
   })
 
+  it('collapses pre-tool narration into a step, keeping only the final answer as the body', async () => {
+    streamsBack([
+      { type: 'text', text: "I'll check the film table." },
+      { type: 'tool_call', name: 'get_object' },
+      { type: 'text', text: 'It joins to the actor table.' },
+      { type: 'done', usage: { input_tokens: 1, output_tokens: 1 } },
+    ])
+    renderPane(LOCAL)
+
+    ask('Hi')
+
+    // The final answer is the body.
+    await screen.findByText('It joins to the actor table.')
+    // The "I'll check…" narration is tucked into a collapsible step, not glued to the answer.
+    const step = document.querySelector('details')
+    expect(step).not.toBeNull()
+    expect(step).toHaveTextContent("I'll check the film table.")
+    expect(step).not.toHaveTextContent('It joins to the actor table.')
+    expect(screen.getByText('chat.lookedUp')).toBeInTheDocument()
+  })
+
+  it('shows a "looking up" marker while a look-up is in flight', async () => {
+    // Yield a tool call — with a name the label map doesn't know — then block: the pane is
+    // now mid-look-up, a step underway with no answer yet.
+    mockStreamChat.mockImplementation(async function* (_profileId, _messages, signal) {
+      yield { type: 'tool_call', name: 'mystery_tool' }
+      await new Promise<void>((resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+      })
+    })
+    renderPane(LOCAL)
+
+    ask('Hi')
+
+    // Streaming with no answer yet reads "looking up" (not the past-tense count).
+    expect(await screen.findByText('chat.lookingUp')).toBeInTheDocument()
+    // Stop cleanly so the blocked generator is released.
+    fireEvent.click(screen.getByLabelText('chat.stop'))
+    await waitFor(() => expect(screen.getByLabelText('chat.send')).toBeInTheDocument())
+  })
+
   it('turns a named table into a link that recentres the map', async () => {
     streamsBack([
       { type: 'text', text: 'Rentals live in `public.rental`, joined to `film_actor`.' },

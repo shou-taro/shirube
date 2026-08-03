@@ -15,6 +15,10 @@ may still change between releases).
   model tags are easy to mistype. Focus the field to fetch the list; it stays a plain text
   field, so any model (including one not listed) still works, and it falls back to typing if
   the provider can't list its models.
+- **The navigator's answers read clean.** The navigator used to prepend every "I'll look at
+  X" note it made along the way to its answer, so a well-connected table produced a
+  repetitive run-up before the point. Those look-up steps now sit collapsed above the answer
+  (expand to see what it consulted), leaving just the final answer as the body.
 
 ### Fixed
 
