@@ -21,7 +21,7 @@ vi.mock('@/lib/api', async (importOriginal) => ({
   createProfile: vi.fn(),
   updateProfile: vi.fn(),
   testConnection: vi.fn(),
-  testProfileConnection: vi.fn(),
+  testProfileEdit: vi.fn(),
   pickSqliteFile: vi.fn(),
 }))
 
@@ -30,14 +30,14 @@ import {
   createProfile,
   pickSqliteFile,
   testConnection,
-  testProfileConnection,
+  testProfileEdit,
   updateProfile,
 } from '@/lib/api'
 
 const mockCreate = vi.mocked(createProfile)
 const mockUpdate = vi.mocked(updateProfile)
 const mockTest = vi.mocked(testConnection)
-const mockTestProfile = vi.mocked(testProfileConnection)
+const mockTestEdit = vi.mocked(testProfileEdit)
 const mockPick = vi.mocked(pickSqliteFile)
 
 const SAVED: Profile = {
@@ -56,7 +56,7 @@ afterEach(() => {
   mockCreate.mockReset()
   mockUpdate.mockReset()
   mockTest.mockReset()
-  mockTestProfile.mockReset()
+  mockTestEdit.mockReset()
   mockPick.mockReset()
 })
 
@@ -146,7 +146,7 @@ describe('editing a profile', () => {
     schemas: ['public'],
   }
 
-  it('updates the existing profile and omits the password when left blank', async () => {
+  it('verifies the candidate edit before saving, omitting a blank password', async () => {
     mockUpdate.mockResolvedValue(existing)
     render(
       <ConnectionForm
@@ -159,19 +159,19 @@ describe('editing a profile', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /connection.saveAndConnect/ }))
 
+    // The edit is verified first, with the blank password left for the backend to resolve...
     await waitFor(() =>
-      expect(mockUpdate).toHaveBeenCalledWith(
+      expect(mockTestEdit).toHaveBeenCalledWith(
         'p1',
         expect.objectContaining({ name: 'shop', schemas: ['public'], password: undefined }),
       ),
     )
-    // Editing verifies the stored profile (password comes from the keychain).
-    await waitFor(() => expect(mockTestProfile).toHaveBeenCalledWith('p1'))
+    // ...and only then persisted.
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith('p1', expect.anything()))
   })
 
-  it('does not connect when the saved profile fails verification', async () => {
-    mockUpdate.mockResolvedValue(existing)
-    mockTestProfile.mockRejectedValue(new Error('Authentication failed.'))
+  it('does not save when the candidate edit fails verification', async () => {
+    mockTestEdit.mockRejectedValue(new Error('Authentication failed.'))
     const onConnected = vi.fn()
     render(
       <ConnectionForm
@@ -185,6 +185,8 @@ describe('editing a profile', () => {
     fireEvent.click(screen.getByRole('button', { name: /connection.saveAndConnect/ }))
 
     expect(await screen.findByText('Authentication failed.')).toBeInTheDocument()
+    // The saved profile is left untouched — a bad edit can no longer overwrite it.
+    expect(mockUpdate).not.toHaveBeenCalled()
     expect(onConnected).not.toHaveBeenCalled()
   })
 })

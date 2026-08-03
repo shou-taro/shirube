@@ -17,6 +17,7 @@ import {
   testAiProvider,
   testConnection,
   testProfileConnection,
+  testProfileEdit,
   updateProfile,
 } from '@/lib/api'
 
@@ -243,6 +244,25 @@ describe('request shape', () => {
     const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('/api/profiles/p1/test')
     expect(init.method).toBe('POST')
+  })
+
+  it('POSTs a candidate edit to the test-edit endpoint with the edited fields', async () => {
+    const spy = mockFetch(new Response(null, { status: 204 }))
+
+    await testProfileEdit('p1', {
+      kind: 'postgresql',
+      name: 'shop',
+      host: 'new-host',
+      port: 5432,
+      database: 'd',
+      username: 'u',
+      schemas: [],
+    })
+
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/profiles/p1/test-edit')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body as string)).toMatchObject({ host: 'new-host' })
   })
 
   it('fetches a schema', async () => {
