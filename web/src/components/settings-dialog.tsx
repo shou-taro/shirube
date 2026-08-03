@@ -18,6 +18,7 @@ import {
   clearAiProvider,
   fetchAiProvider,
   fetchHealth,
+  listAiProviderModels,
   saveAiProvider,
   testAiProvider,
 } from '@/lib/api'
@@ -160,6 +161,17 @@ function AiProviderSection({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  // Suggestions for the model field, fetched from the provider on demand. The list is only a
+  // convenience over free-text entry, so a failure is swallowed and the field stays typeable.
+  const [modelOptions, setModelOptions] = useState<string[]>([])
+  const [modelsState, setModelsState] = useState<'idle' | 'loading' | 'error'>('idle')
+
+  // Drop any fetched suggestions and reset the picker. Called whenever the provider, its base
+  // URL or its key changes, so stale suggestions from a different endpoint are not shown.
+  function resetModelOptions(): void {
+    setModelOptions([])
+    setModelsState('idle')
+  }
 
   // Seed the form for a preset: the saved values when that preset is the configured provider,
   // otherwise the preset's defaults. Always clears the key field — the stored key is never
@@ -173,6 +185,7 @@ function AiProviderSection({
     setApiKey('')
     setError(null)
     setSaved(false)
+    resetModelOptions()
   }
 
   // Load the configured provider each time the dialog opens, selecting its preset (or Claude
@@ -198,6 +211,7 @@ function AiProviderSection({
         setApiKey('')
         setError(null)
         setSaved(false)
+        resetModelOptions()
       })
       .catch(() => {
         if (active) {
@@ -244,6 +258,26 @@ function AiProviderSection({
       input.api_key = apiKey
     }
     return input
+  }
+
+  // Populate the model picker from the provider itself, on first focus of the field. Skipped
+  // when a hosted provider has no key to authenticate with yet (nothing to list against); a
+  // listing failure is swallowed so the field stays free-text, surfaced only as a quiet hint.
+  async function fetchModels(): Promise<void> {
+    if (modelsState === 'loading' || modelOptions.length > 0) {
+      return
+    }
+    // A hosted provider cannot be listed without a key — typed now, or stored against it.
+    if (spec.key === 'required' && apiKey === '' && !keyStored) {
+      return
+    }
+    setModelsState('loading')
+    try {
+      setModelOptions(await listAiProviderModels(buildInput()))
+      setModelsState('idle')
+    } catch {
+      setModelsState('error')
+    }
   }
 
   // True when a hosted provider is missing its key; reports the miss and stops.
@@ -324,18 +358,40 @@ function AiProviderSection({
         <Field label={t('settings.aiBaseUrl')} hint={t('settings.aiBaseUrlHint')}>
           <Input
             value={baseUrl}
-            onChange={(event) => setBaseUrl(event.target.value)}
+            onChange={(event) => {
+              setBaseUrl(event.target.value)
+              // A different endpoint offers different models — drop stale suggestions.
+              resetModelOptions()
+            }}
             placeholder={spec.baseUrlDefault || 'https://…'}
           />
         </Field>
       ) : null}
 
-      <Field label={t('settings.aiModel')}>
+      <Field
+        label={t('settings.aiModel')}
+        hint={
+          modelsState === 'loading'
+            ? t('settings.aiModelLoading')
+            : modelsState === 'error'
+              ? t('settings.aiModelListFailed')
+              : undefined
+        }
+      >
         <Input
           value={model}
           onChange={(event) => setModel(event.target.value)}
+          onFocus={() => void fetchModels()}
           placeholder={spec.modelPlaceholder}
+          list="ai-model-options"
+          autoComplete="off"
         />
+        {/* Suggestions from the provider; the field stays free-text so any model still works. */}
+        <datalist id="ai-model-options">
+          {modelOptions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
       </Field>
 
       {spec.showContextWindow ? (
@@ -356,7 +412,11 @@ function AiProviderSection({
           <Input
             type="password"
             value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
+            onChange={(event) => {
+              setApiKey(event.target.value)
+              // A new key may unlock a different account's models — drop stale suggestions.
+              resetModelOptions()
+            }}
             placeholder={keyPlaceholder}
             autoComplete="off"
           />

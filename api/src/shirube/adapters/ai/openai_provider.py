@@ -152,15 +152,17 @@ class OpenAiCompatibleProvider:
         )
         yield from parse_openai_stream(stream)
 
-    def check(self) -> None:
-        """Verify the endpoint is reachable and the key (if any) is accepted.
+    def list_models(self) -> list[str]:
+        """List the model ids the endpoint offers.
 
-        Lists the available models — a cheap, read-only call that costs no tokens — so a
-        wrong base URL, an unreachable server or a rejected key is caught at configuration
-        time. Raises :class:`ProviderCheckError` with an actionable message on failure.
+        A cheap, read-only call that costs no tokens, used both to check the configuration
+        and to populate the settings form's model picker — a real boon for a local runner
+        such as Ollama, whose model tags are easy to mistype. Returns the ids in the order the
+        endpoint reports them. Raises :class:`ProviderCheckError` with an actionable message
+        on failure.
         """
         try:
-            self._client.models.list()
+            return [model.id for model in self._client.models.list()]
         except AuthenticationError as exc:
             raise ProviderCheckError("The provider rejected the API key.") from exc
         except APIConnectionError as exc:
@@ -170,3 +172,12 @@ class OpenAiCompatibleProvider:
             ) from exc
         except APIError as exc:
             raise ProviderCheckError(f"The provider returned an error: {exc}") from exc
+
+    def check(self) -> None:
+        """Verify the endpoint is reachable and the key (if any) is accepted.
+
+        Delegates to :meth:`list_models` — listing the models is the cheap, token-free call
+        that both proves reachability and rejects a bad key — so the two share one error
+        translation. Raises :class:`ProviderCheckError` on failure.
+        """
+        self.list_models()

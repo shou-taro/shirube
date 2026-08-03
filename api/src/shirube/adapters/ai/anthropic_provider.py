@@ -112,15 +112,16 @@ class AnthropicProvider:
                 yield TextDelta(text)
             yield from events_from_final_message(stream.get_final_message())
 
-    def check(self) -> None:
-        """Verify the Claude API is reachable and the key is accepted.
+    def list_models(self) -> list[str]:
+        """List the model ids the account can use.
 
-        Lists the available models — a cheap, read-only call that costs no tokens — so a
-        rejected key or an unreachable endpoint is caught at configuration time. Raises
-        :class:`ProviderCheckError` with an actionable message on failure.
+        A cheap, read-only call that costs no tokens, used both to check the configuration
+        and to populate the settings form's model picker. Returns the ids in the order the
+        API reports them (Claude lists newest first). Raises :class:`ProviderCheckError` with
+        an actionable message on failure.
         """
         try:
-            self._client.models.list()
+            return [model.id for model in self._client.models.list()]
         except AuthenticationError as exc:
             raise ProviderCheckError("The provider rejected the API key.") from exc
         except APIConnectionError as exc:
@@ -129,3 +130,12 @@ class AnthropicProvider:
             ) from exc
         except APIError as exc:
             raise ProviderCheckError(f"The provider returned an error: {exc}") from exc
+
+    def check(self) -> None:
+        """Verify the Claude API is reachable and the key is accepted.
+
+        Delegates to :meth:`list_models` — listing the models is the cheap, token-free call
+        that both proves reachability and rejects a bad key — so the two share one error
+        translation. Raises :class:`ProviderCheckError` on failure.
+        """
+        self.list_models()

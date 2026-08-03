@@ -216,6 +216,8 @@ const en = {
     aiPresetOllamaShort: 'Ollama',
     aiPresetCustom: 'OpenAI-compatible',
     aiModel: 'Model',
+    aiModelLoading: 'Finding available models…',
+    aiModelListFailed: "Couldn't list this provider's models — type the name in.",
     aiBaseUrl: 'Base URL',
     aiBaseUrlHint: 'The API endpoint the provider is reached at.',
     aiContextWindow: 'Context window',

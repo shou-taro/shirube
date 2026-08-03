@@ -211,6 +211,58 @@ def test_test_provider_falls_back_to_the_stored_key(
     assert seen["api_key"] == "sk-stored"
 
 
+def test_provider_models_returns_the_listed_ids(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The picker endpoint returns the provider's models without saving anything."""
+    monkeypatch.setattr(
+        "shirube.adapters.api.routes.ai.list_provider_models",
+        lambda config, api_key: ["llama3.1", "qwen2.5"],
+    )
+    response = client.post("/api/ai/provider/models", json=_ollama())
+    assert response.status_code == 200
+    assert response.json() == {"models": ["llama3.1", "qwen2.5"]}
+    # Listing must not configure the provider.
+    assert client.get("/api/ai/provider").json() is None
+
+
+def test_provider_models_reports_a_failure(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A provider that cannot list its models surfaces the translated error as a 400."""
+
+    def _fail(config: AiProviderConfig, api_key: str | None) -> list[str]:
+        raise ProviderCheckError("The provider rejected the API key.")
+
+    monkeypatch.setattr("shirube.adapters.api.routes.ai.list_provider_models", _fail)
+    response = client.post("/api/ai/provider/models", json=_claude())
+    assert response.status_code == 400
+    assert "rejected the API key" in response.json()["detail"]
+
+
+def test_provider_models_falls_back_to_the_stored_key(
+    client: TestClient,
+    secrets: FakeSecretStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Listing a saved provider without re-entering the key uses the stored one."""
+    secrets.set_password(AI_PROVIDER_SECRET_ID, "sk-stored")
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(
+        "shirube.adapters.api.routes.ai.list_provider_models",
+        lambda config, api_key: seen.update(api_key=api_key) or [],
+    )
+    # No api_key in the body → the route must supply the stored one.
+    response = client.post(
+        "/api/ai/provider/models",
+        json={"kind": "anthropic", "model": "claude-opus-4-8"},
+    )
+    assert response.status_code == 200
+    assert seen["api_key"] == "sk-stored"
+
+
 class FailingSecretStore(FakeSecretStore):
     """A keychain whose writes fail — as a locked or unavailable OS keychain would."""
 

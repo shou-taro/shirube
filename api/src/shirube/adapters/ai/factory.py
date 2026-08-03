@@ -69,3 +69,40 @@ def check_provider(
     if not config.base_url:
         raise InvalidProviderConfigError("An OpenAI-compatible provider needs a base URL.")
     OpenAiCompatibleProvider(model=config.model, base_url=config.base_url, api_key=api_key).check()
+
+
+def list_provider_models(
+    config: AiProviderConfig,
+    api_key: str | None,
+) -> list[str]:
+    """List the models a provider offers, for the settings form's model picker.
+
+    Builds the matching adapter and performs its cheap, token-free model listing — the same
+    call the connection check makes — so the form can suggest the models actually available
+    rather than relying on the user to recall an exact id. Sends no schema; only model names
+    are read back.
+
+    Args:
+        config: The provider to list (kind, base URL); the model field is not needed here.
+        api_key: The API key to authenticate with, or ``None`` for a keyless local provider.
+
+    Returns:
+        The model ids the provider reports, in the order it returns them.
+
+    Raises:
+        ProviderCheckError: if the provider cannot be reached or the key is rejected — or, for
+            Claude, if no API key was supplied (it has no keyless mode to fall back on).
+        InvalidProviderConfigError: if an OpenAI-compatible provider has no base URL.
+    """
+    if config.kind is AiProviderKind.ANTHROPIC:
+        if not api_key:
+            raise ProviderCheckError("The Claude provider needs an API key.")
+        return AnthropicProvider(
+            model=config.model, api_key=api_key, base_url=config.base_url
+        ).list_models()
+
+    if not config.base_url:
+        raise InvalidProviderConfigError("An OpenAI-compatible provider needs a base URL.")
+    return OpenAiCompatibleProvider(
+        model=config.model, base_url=config.base_url, api_key=api_key
+    ).list_models()

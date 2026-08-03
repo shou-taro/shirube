@@ -335,6 +335,21 @@ export function testAiProvider(input: AiProviderInput): Promise<void> {
   return apiFetch<void>('/ai/provider/test', { method: 'POST', body: JSON.stringify(input) })
 }
 
+/**
+ * List the models a provider offers, to suggest in the settings model field.
+ *
+ * Uses the supplied key, or the stored one when `api_key` is omitted, exactly as
+ * {@link testAiProvider} does. Rejects with the backend's translated message when the
+ * provider cannot be reached or cannot list its models — callers fall back to free-text
+ * entry, so a provider without a listing endpoint stays usable.
+ */
+export function listAiProviderModels(input: AiProviderInput): Promise<string[]> {
+  return apiFetch<{ models: string[] }>('/ai/provider/models', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }).then((result) => result.models)
+}
+
 /** Unconfigure the AI provider and remove any stored API key. */
 export function clearAiProvider(): Promise<void> {
   return apiFetch<void>('/ai/provider', { method: 'DELETE' })

@@ -21,6 +21,7 @@ vi.mock('@/lib/api', async (importOriginal) => ({
   saveAiProvider: vi.fn(),
   testAiProvider: vi.fn(),
   clearAiProvider: vi.fn(),
+  listAiProviderModels: vi.fn(),
 }))
 
 import { SettingsDialog } from '@/components/settings-dialog'
@@ -29,6 +30,7 @@ import {
   clearAiProvider,
   fetchAiProvider,
   fetchHealth,
+  listAiProviderModels,
   saveAiProvider,
   testAiProvider,
 } from '@/lib/api'
@@ -38,6 +40,7 @@ const mockFetchProvider = vi.mocked(fetchAiProvider)
 const mockSaveProvider = vi.mocked(saveAiProvider)
 const mockTestProvider = vi.mocked(testAiProvider)
 const mockClearProvider = vi.mocked(clearAiProvider)
+const mockListModels = vi.mocked(listAiProviderModels)
 
 afterEach(() => {
   update.mockReset()
@@ -46,6 +49,7 @@ afterEach(() => {
   mockSaveProvider.mockReset()
   mockTestProvider.mockReset()
   mockClearProvider.mockReset()
+  mockListModels.mockReset()
 })
 
 function renderDialog(open = true, provider: AiProvider | null = null, approved: string[] = []) {
@@ -407,6 +411,87 @@ describe('SettingsDialog — AI provider', () => {
 
     await screen.findByLabelText('settings.aiProviderLabel')
     expect(screen.getByLabelText('settings.aiProviderLabel')).toHaveValue('claude')
+  })
+
+  it('suggests the provider’s models in the field once it is focused', async () => {
+    mockListModels.mockResolvedValue(['claude-opus-4-8', 'claude-sonnet-4-6'])
+    await openAiSection(configuredClaude)
+
+    // No listing happens until the field is touched.
+    expect(mockListModels).not.toHaveBeenCalled()
+    fireEvent.focus(screen.getByLabelText('settings.aiModel'))
+
+    await waitFor(() => expect(mockListModels).toHaveBeenCalledOnce())
+    // The stored key is re-used (no api_key in the body), like the test endpoint.
+    expect(mockListModels).toHaveBeenCalledWith({
+      kind: 'anthropic',
+      model: 'claude-sonnet-5',
+      base_url: null,
+    })
+    // The fetched ids become the field's datalist suggestions; the field stays a free text
+    // input, so any model still works.
+    const datalist = document.getElementById('ai-model-options')
+    await waitFor(() =>
+      expect(Array.from(datalist?.querySelectorAll('option') ?? []).map((o) => o.value)).toEqual([
+        'claude-opus-4-8',
+        'claude-sonnet-4-6',
+      ]),
+    )
+  })
+
+  it('does not list a hosted provider that has no key yet', async () => {
+    // Claude with nothing configured: no key typed, none stored — nothing to authenticate a
+    // listing with, so focusing the field must not fire a request.
+    await openAiSection(null)
+
+    fireEvent.focus(screen.getByLabelText('settings.aiModel'))
+
+    expect(mockListModels).not.toHaveBeenCalled()
+  })
+
+  it('stays free-text and warns quietly when listing fails', async () => {
+    mockListModels.mockRejectedValue(new Error('no models endpoint'))
+    await openAiSection(configuredClaude)
+
+    fireEvent.focus(screen.getByLabelText('settings.aiModel'))
+
+    // The failure is surfaced only as a hint, and the field remains editable.
+    expect(await screen.findByText('settings.aiModelListFailed')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('settings.aiModel'), {
+      target: { value: 'claude-something-new' },
+    })
+    expect(screen.getByLabelText('settings.aiModel')).toHaveValue('claude-something-new')
+  })
+
+  it('shows a loading hint while the models are being fetched', async () => {
+    // A request that stays pending, so the in-flight state is observable.
+    let resolveModels: (ids: string[]) => void = () => {}
+    mockListModels.mockReturnValue(
+      new Promise<string[]>((resolve) => {
+        resolveModels = resolve
+      }),
+    )
+    await openAiSection(configuredClaude)
+
+    fireEvent.focus(screen.getByLabelText('settings.aiModel'))
+
+    expect(await screen.findByText('settings.aiModelLoading')).toBeInTheDocument()
+    resolveModels(['claude-opus-4-8'])
+    await waitFor(() =>
+      expect(screen.queryByText('settings.aiModelLoading')).not.toBeInTheDocument(),
+    )
+  })
+
+  it('does not re-list once the suggestions are loaded', async () => {
+    mockListModels.mockResolvedValue(['claude-opus-4-8'])
+    await openAiSection(configuredClaude)
+
+    const field = screen.getByLabelText('settings.aiModel')
+    fireEvent.focus(field)
+    await waitFor(() => expect(mockListModels).toHaveBeenCalledOnce())
+    // Focusing again does not fetch — the suggestions are already loaded.
+    fireEvent.focus(field)
+    expect(mockListModels).toHaveBeenCalledOnce()
   })
 
   it('lists approved destinations and revokes one', async () => {
