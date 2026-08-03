@@ -21,17 +21,48 @@ export interface StoredUsage {
   output: number | null
 }
 
+/**
+ * One look-up step the assistant took before answering: the tools it consulted, and any text
+ * it narrated on the way ("I'll look at the film table…"). These are shown collapsed, apart
+ * from the final answer, so the answer reads clean rather than trailing every intermediate
+ * thought.
+ */
+export interface StoredStep {
+  text: string
+  tools: string[]
+}
+
 /** One stored turn of the conversation. */
 export interface StoredTurn {
   id: string
   role: 'user' | 'assistant'
+  /** The user's question, or — for an assistant turn — its final answer (not the narration). */
   content: string
-  /** The look-up tools the assistant used, for the "checked the schema" marker. */
-  tools: string[]
+  /** The look-up steps the assistant took, shown collapsed above the answer. */
+  steps: StoredStep[]
   /** A user-safe error that ended the turn, if any. */
   error: string | null
   /** Token usage for the answer, when the provider reported it. */
   usage: StoredUsage | null
+}
+
+/** Normalise a stored turn's steps, tolerating the older flat ``tools`` shape. */
+function normaliseSteps(turn: Partial<StoredTurn> & { tools?: unknown }): StoredStep[] {
+  if (Array.isArray(turn.steps)) {
+    return turn.steps
+      .filter((step): step is StoredStep => typeof step === 'object' && step !== null)
+      .map((step) => ({
+        text: typeof step.text === 'string' ? step.text : '',
+        tools: Array.isArray(step.tools) ? step.tools.filter((t) => typeof t === 'string') : [],
+      }))
+  }
+  // Conversations stored before steps existed carried a flat tool list; fold it into a single
+  // narration-less step so the "looked things up" marker still shows on reload.
+  if (Array.isArray(turn.tools)) {
+    const tools = turn.tools.filter((t): t is string => typeof t === 'string')
+    return tools.length > 0 ? [{ text: '', tools }] : []
+  }
+  return []
 }
 
 function keyFor(profileId: string): string {
@@ -67,8 +98,10 @@ export function loadChatHistory(profileId: string): StoredTurn[] {
       return []
     }
     return parsed.filter(isTurn).map((turn) => ({
-      ...turn,
-      tools: Array.isArray(turn.tools) ? turn.tools.filter((t) => typeof t === 'string') : [],
+      id: turn.id,
+      role: turn.role,
+      content: turn.content,
+      steps: normaliseSteps(turn),
       error: typeof turn.error === 'string' ? turn.error : null,
       usage: turn.usage ?? null,
     }))

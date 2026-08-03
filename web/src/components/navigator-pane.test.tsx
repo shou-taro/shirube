@@ -164,6 +164,27 @@ describe('NavigatorPane', () => {
     expect(screen.queryByText(/get_object/)).not.toBeInTheDocument()
   })
 
+  it('collapses pre-tool narration into a step, keeping only the final answer as the body', async () => {
+    streamsBack([
+      { type: 'text', text: "I'll check the film table." },
+      { type: 'tool_call', name: 'get_object' },
+      { type: 'text', text: 'It joins to the actor table.' },
+      { type: 'done', usage: { input_tokens: 1, output_tokens: 1 } },
+    ])
+    renderPane(LOCAL)
+
+    ask('Hi')
+
+    // The final answer is the body.
+    await screen.findByText('It joins to the actor table.')
+    // The "I'll check…" narration is tucked into a collapsible step, not glued to the answer.
+    const step = document.querySelector('details')
+    expect(step).not.toBeNull()
+    expect(step).toHaveTextContent("I'll check the film table.")
+    expect(step).not.toHaveTextContent('It joins to the actor table.')
+    expect(screen.getByText('chat.lookedUp')).toBeInTheDocument()
+  })
+
   it('turns a named table into a link that recentres the map', async () => {
     streamsBack([
       { type: 'text', text: 'Rentals live in `public.rental`, joined to `film_actor`.' },

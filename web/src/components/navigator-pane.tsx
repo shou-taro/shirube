@@ -30,6 +30,7 @@ import {
   clearChatHistory,
   loadChatHistory,
   saveChatHistory,
+  type StoredStep,
   type StoredUsage,
 } from '@/lib/chat-history'
 import { type AiProvider, type ChatMessage, streamChat } from '@/lib/api'
@@ -41,15 +42,21 @@ import { cn } from '@/lib/utils'
 interface Turn {
   id: string
   role: 'user' | 'assistant'
+  /** The user's question, or the assistant's final answer (never its step narration). */
   content: string
-  /** Tools the assistant looked up this turn (assistant turns only). */
-  tools: string[]
+  /** The look-up steps the assistant took, shown collapsed above the answer (assistant only). */
+  steps: StoredStep[]
   /** A user-safe error that ended this turn, if any (assistant turns only). */
   error: string | null
   /** Token usage the provider reported for this answer, when it did. */
   usage: StoredUsage | null
   /** Whether this assistant turn is still streaming. */
   streaming: boolean
+}
+
+/** Total tools consulted across a turn's steps, for the "looked up N things" marker. */
+function toolCount(steps: StoredStep[]): number {
+  return steps.reduce((total, step) => total + step.tools.length, 0)
 }
 
 interface NavigatorPaneProps {
@@ -191,6 +198,70 @@ function Answer({
 }
 
 /**
+ * The assistant's look-up steps, shown above its answer.
+ *
+ * Each step is what the navigator consulted before answering, with any narration it wrote on
+ * the way ("I'll look at the film table…"). Only the count shows by default — the internal
+ * tool names mean nothing to the user, and the running narration would bury the actual answer.
+ * When a step carried narration, the row expands to reveal it; otherwise it is a plain marker.
+ */
+function AssistantSteps({
+  steps,
+  streaming,
+  hasAnswer,
+}: {
+  steps: StoredStep[]
+  streaming: boolean
+  hasAnswer: boolean
+}) {
+  const { t } = useTranslation()
+  if (steps.length === 0) {
+    return null
+  }
+  const label =
+    streaming && !hasAnswer ? t('chat.lookingUp') : t('chat.lookedUp', { count: toolCount(steps) })
+  const title = steps
+    .flatMap((step) => step.tools)
+    .map((tool) => t(TOOL_LABEL_KEYS[tool] ?? ''))
+    .join('\n')
+  const narrations = steps.filter((step) => step.text.trim() !== '')
+  const marker = (
+    <>
+      {streaming && <Loader2 className="size-3 shrink-0 animate-spin" />}
+      <span className="truncate">{label}</span>
+    </>
+  )
+
+  // Nothing to reveal: a plain, non-expandable marker (as before steps carried narration).
+  if (narrations.length === 0) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground" title={title}>
+        {marker}
+      </div>
+    )
+  }
+
+  return (
+    <details className="group text-xs text-muted-foreground">
+      <summary
+        className="flex cursor-pointer list-none items-center gap-1.5 rounded hover:text-foreground"
+        title={title}
+      >
+        {marker}
+        <ChevronDown className="size-3 shrink-0 opacity-60 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="mt-1.5 space-y-1.5 border-l border-brand/20 pl-2.5">
+        {narrations.map((step, index) => (
+          <p key={index} className="whitespace-pre-wrap break-words">
+            {step.text}
+          </p>
+        ))}
+      </div>
+    </details>
+  )
+}
+
+/**
  * The AI navigator pane: a conversation, a composer, an always-visible indicator of where
  * the schema is sent, and a one-time consent before it first reaches a remote provider.
  *
@@ -274,16 +345,36 @@ export function NavigatorPane({
       const controller = new AbortController()
       abortRef.current = controller
       setStreaming(true)
-      let text = ''
-      const tools: string[] = []
+      // The reply is a series of segments: narration text followed by the tool calls it
+      // preceded. A segment that ends without tool calls is the final answer. Splitting it
+      // this way keeps intermediate "I'll look at X" narration in collapsed steps and leaves
+      // the answer clean. The tail segment is in progress; the ones before it are done.
+      const segments: StoredStep[] = [{ text: '', tools: [] }]
+      const sync = (): void => {
+        const tail = segments[segments.length - 1]
+        // While the tail has no tools it is (so far) the answer; once tools attach to it, it
+        // is a step, and any later text starts a fresh answer segment.
+        const tailIsAnswer = tail.tools.length === 0
+        patchTurn(assistantId, {
+          steps: (tailIsAnswer ? segments.slice(0, -1) : segments).map((step) => ({
+            text: step.text,
+            tools: [...step.tools],
+          })),
+          content: tailIsAnswer ? tail.text : '',
+        })
+      }
       try {
         for await (const event of streamChat(profileId, history, controller.signal)) {
           if (event.type === 'text') {
-            text += event.text
-            patchTurn(assistantId, { content: text })
+            // Text after a segment's tool calls belongs to the next segment, not that step.
+            if (segments[segments.length - 1].tools.length > 0) {
+              segments.push({ text: '', tools: [] })
+            }
+            segments[segments.length - 1].text += event.text
+            sync()
           } else if (event.type === 'tool_call') {
-            tools.push(event.name)
-            patchTurn(assistantId, { tools: [...tools] })
+            segments[segments.length - 1].tools.push(event.name)
+            sync()
           } else if (event.type === 'error') {
             patchTurn(assistantId, { error: event.message })
           } else if (event.type === 'done') {
@@ -314,7 +405,7 @@ export function NavigatorPane({
         id: newId(),
         role: 'user',
         content: question,
-        tools: [],
+        steps: [],
         error: null,
         usage: null,
         streaming: false,
@@ -323,7 +414,7 @@ export function NavigatorPane({
         id: newId(),
         role: 'assistant',
         content: '',
-        tools: [],
+        steps: [],
         error: null,
         usage: null,
         streaming: true,
@@ -412,21 +503,12 @@ export function NavigatorPane({
               </div>
             ) : (
               <div key={turn.id} className="space-y-1.5 text-sm">
-                {turn.tools.length > 0 && (
-                  // What it consulted, in the user's terms. The internal tool names mean
-                  // nothing to them, so only a count shows, with the plain-English list of
-                  // what was done in the tooltip.
-                  <div
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                    title={turn.tools.map((tool) => t(TOOL_LABEL_KEYS[tool] ?? '')).join('\n')}
-                  >
-                    {turn.streaming && <Loader2 className="size-3 animate-spin" />}
-                    {turn.streaming && turn.content === ''
-                      ? t('chat.lookingUp')
-                      : t('chat.lookedUp', { count: turn.tools.length })}
-                  </div>
-                )}
-                {turn.streaming && turn.content === '' && turn.tools.length === 0 && (
+                <AssistantSteps
+                  steps={turn.steps}
+                  streaming={turn.streaming}
+                  hasAnswer={turn.content !== ''}
+                />
+                {turn.streaming && turn.content === '' && turn.steps.length === 0 && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Loader2 className="size-3 animate-spin" />
                     {t('chat.thinking')}

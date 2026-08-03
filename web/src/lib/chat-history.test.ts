@@ -9,7 +9,7 @@ import {
 } from '@/lib/chat-history'
 
 function turn(id: string, content = 'hi'): StoredTurn {
-  return { id, role: 'user', content, tools: [], error: null, usage: null }
+  return { id, role: 'user', content, steps: [], error: null, usage: null }
 }
 
 afterEach(() => {
@@ -24,7 +24,7 @@ describe('round trip', () => {
         id: '2',
         role: 'assistant' as const,
         content: 'In public.store.',
-        tools: ['search_objects'],
+        steps: [{ text: "I'll search for it.", tools: ['search_objects'] }],
         error: null,
         usage: { input: 120, output: 18 },
       },
@@ -33,6 +33,27 @@ describe('round trip', () => {
     saveChatHistory('p1', turns)
 
     expect(loadChatHistory('p1')).toEqual(turns)
+  })
+
+  it('migrates a conversation stored with the older flat tool list', () => {
+    // Before steps existed, a turn carried a flat `tools` array and no narration.
+    localStorage.setItem(
+      'shirube.chat.p1',
+      JSON.stringify([
+        {
+          id: '1',
+          role: 'assistant',
+          content: 'In public.store.',
+          tools: ['search_objects', 'get_object'],
+          error: null,
+          usage: null,
+        },
+      ]),
+    )
+
+    const [restored] = loadChatHistory('p1')
+    // The flat list folds into one narration-less step, so the marker still shows on reload.
+    expect(restored.steps).toEqual([{ text: '', tools: ['search_objects', 'get_object'] }])
   })
 
   it('keeps each profile’s conversation apart', () => {
