@@ -48,7 +48,7 @@ jobs:
       # versions, and this report is merged with the integration job's under the same flag.
       - name: Upload backend coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./api/coverage.xml
@@ -95,7 +95,7 @@ jobs:
       # Merged with the unit report under the backend flag so the postgres adapters —
       # exercised only here — count toward the backend total.
       - name: Upload backend coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./api/coverage.xml
@@ -152,7 +152,7 @@ jobs:
         run: pnpm run test
       - name: Upload frontend coverage to Codecov
         if: matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./web/coverage/lcov.info
