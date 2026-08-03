@@ -130,6 +130,69 @@ def test_no_cors_headers_on_a_preflight() -> None:
     assert "access-control-allow-origin" not in {key.lower() for key in response.headers}
 
 
+# --- No cross-site state changes (CSRF surface) ---------------------------------------
+#
+# Having no CORS stops another site *reading* our responses, but a plain form POST still
+# reaches an endpoint. A body-less one like /api/connections/pick-file could pop a native
+# file dialog from a page the user merely has open. Every modern browser marks such a
+# request "cross-site" (or "same-site" across ports) via Sec-Fetch-Site; we refuse those.
+
+
+def test_rejects_a_cross_site_state_change() -> None:
+    with TestClient(create_app()) as client:
+        response = client.post(
+            "/api/connections/pick-file",
+            headers={"Sec-Fetch-Site": "cross-site"},
+        )
+
+    # A page on another site cannot drive the local API, even for a body-less endpoint.
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Cross-site requests are not allowed."}
+
+
+def test_rejects_a_same_site_state_change() -> None:
+    """A different port on localhost is "same-site" — a rogue local server is refused too."""
+    with TestClient(create_app()) as client:
+        response = client.post(
+            "/api/connections/pick-file",
+            headers={"Sec-Fetch-Site": "same-site"},
+        )
+
+    assert response.status_code == 403
+
+
+def test_allows_a_same_origin_state_change() -> None:
+    """The bundled SPA's own calls report "same-origin" and pass straight through."""
+    with _client() as client:
+        response = client.post(
+            "/api/profiles",
+            json=_PROFILE,
+            headers={"Sec-Fetch-Site": "same-origin"},
+        )
+
+    assert response.status_code == 201
+
+
+def test_allows_a_state_change_without_the_header() -> None:
+    """Non-browser callers (the packaged app, curl, tests) send no Sec-Fetch-Site — allowed."""
+    with _client() as client:
+        response = client.post("/api/profiles", json=_PROFILE)
+
+    assert response.status_code == 201
+
+
+def test_a_cross_site_read_is_still_allowed() -> None:
+    """Only state-changing methods are guarded; a cross-site GET reads nothing it shouldn't.
+
+    Reads are already same-origin-locked by having no CORS (the browser cannot read the
+    response), so blocking them here would add nothing but would break, e.g., a health probe.
+    """
+    with TestClient(create_app()) as client:
+        response = client.get("/api/health", headers={"Sec-Fetch-Site": "cross-site"})
+
+    assert response.status_code == 200
+
+
 # --- Credentials never leak -----------------------------------------------------------
 
 

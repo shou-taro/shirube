@@ -12,7 +12,8 @@ from pathlib import Path
 from uuid import uuid4
 
 import structlog
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, status
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -39,6 +40,18 @@ from shirube.logging_config import get_logger
 STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
 
 _logger = get_logger("shirube.request")
+
+# State-changing requests that a browser marks as coming from another site are refused.
+# Every modern browser labels each request with a Sec-Fetch-Site header: a genuine call from
+# the bundled SPA reports "same-origin", while a page on another website reports "cross-site"
+# (or "same-site" for a different port on the same registrable domain, e.g. another localhost
+# server). Non-browser callers — the packaged app's own start-up checks, curl, the test
+# client — send no such header and are unaffected. This closes the gap that having no CORS
+# leaves open: CORS stops another page *reading* our responses, but a plain HTML form POST
+# still *reaches* a body-less endpoint such as /api/connections/pick-file and could pop a
+# native file dialog. Only unsafe methods are guarded; GET/HEAD read nothing that changes state.
+_STATE_CHANGING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+_CROSS_SITE_FETCH = frozenset({"cross-site", "same-site"})
 
 # A conservative Content-Security-Policy for the bundled SPA. Everything is same-origin
 # (scripts, styles, the API), so only 'self' is allowed; inline styles are permitted
@@ -105,6 +118,27 @@ def create_app() -> FastAPI:
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Content-Security-Policy"] = _CONTENT_SECURITY_POLICY
         return response
+
+    @app.middleware("http")
+    async def _reject_cross_site_writes(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        """Refuse state-changing requests a browser reports as coming from another site.
+
+        Guards against a malicious page the user happens to have open driving this local API
+        through their browser (a CSRF-style attack). See ``_CROSS_SITE_FETCH`` for why
+        Sec-Fetch-Site is the right signal and why non-browser callers are unaffected.
+        """
+        if (
+            request.method in _STATE_CHANGING_METHODS
+            and request.headers.get("sec-fetch-site") in _CROSS_SITE_FETCH
+        ):
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"detail": "Cross-site requests are not allowed."},
+            )
+        return await call_next(request)
 
     @app.middleware("http")
     async def _log_requests(

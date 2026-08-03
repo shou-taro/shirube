@@ -153,6 +153,25 @@ def test_update_switches_a_profile_to_sqlite(client: TestClient, secrets: FakeSe
     assert "host" not in body
 
 
+def test_update_switching_to_sqlite_drops_the_stored_password(
+    client: TestClient,
+    secrets: FakeSecretStore,
+) -> None:
+    """Switching a PostgreSQL profile to keyless SQLite removes its now-orphaned password.
+
+    Otherwise the old password would linger under the profile's id and be silently reused
+    if it were ever switched back to PostgreSQL.
+    """
+    created = client.post("/api/profiles", json=_new_profile()).json()
+    assert secrets.get_password(created["id"]) == "s3cret"
+
+    # Switch to SQLite with no password supplied (SQLite needs none).
+    response = client.put(f"/api/profiles/{created['id']}", json=_new_sqlite_profile())
+
+    assert response.status_code == 200
+    assert secrets.get_password(created["id"]) is None
+
+
 class FailingSecretStore(FakeSecretStore):
     """A keychain whose writes fail — as a locked or unavailable OS keychain would."""
 
@@ -170,3 +189,29 @@ def test_create_rolls_back_the_profile_when_the_password_cannot_be_stored() -> N
         assert response.status_code == 500
         # The profile was rolled back, so nothing is listed.
         assert test_client.get("/api/profiles").json() == []
+
+
+def test_update_rolls_back_the_fields_when_the_password_cannot_be_stored() -> None:
+    """A keychain write failure during an edit must not leave the new fields saved.
+
+    Otherwise the profile's host (and the rest) would be updated while its password was
+    not, drifting the two stores apart and leaving the earlier working profile lost.
+    """
+    secrets = FakeSecretStore()
+    app = create_app()
+    app.dependency_overrides[get_secret_store] = lambda: secrets
+    with TestClient(app, raise_server_exceptions=False) as test_client:
+        created = test_client.post("/api/profiles", json=_new_profile()).json()
+        # Now make keychain writes fail, and edit the host with a new password.
+        secrets.set_password = _raise_secret_store_error  # type: ignore[method-assign]
+        edited = {**_new_profile(), "host": "new-host.example.com", "password": "changed"}
+        response = test_client.put(f"/api/profiles/{created['id']}", json=edited)
+
+        assert response.status_code == 500
+        # The field write was rolled back: the original host survives, unchanged.
+        fetched = test_client.get(f"/api/profiles/{created['id']}").json()
+        assert fetched["host"] == "db.example.com"
+
+
+def _raise_secret_store_error(profile_id: str, password: str) -> None:
+    raise SecretStoreError
