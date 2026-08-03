@@ -222,15 +222,11 @@ function TypewriterAnswer({
 }) {
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [revealed, setRevealed] = useState(() => (animate && !reduceMotion ? '' : text))
-  // Play once, on mount: a later re-render (e.g. a newer turn finishing) must never replay a
-  // settled answer, so the decision is fixed here rather than tracked through props.
-  const played = useRef(false)
 
+  // Mount-only (empty deps): the reveal plays once when the answer first appears. A later
+  // re-render — e.g. a newer turn finishing — keeps this component mounted (it is keyed by
+  // turn id), so the effect never re-runs and a settled answer is never replayed.
   useEffect(() => {
-    if (played.current) {
-      return
-    }
-    played.current = true
     if (!animate || reduceMotion) {
       setRevealed(text)
       return
@@ -240,7 +236,7 @@ function TypewriterAnswer({
     // Length-scaled but firmly capped: an unhurried "being written" pace for a short reply,
     // never a long wait for a big one. (Under test the reveal is skipped via reduced motion,
     // so this duration never gates a findBy.)
-    const durationMs = Math.min(Math.max(text.length * 22, 350), 1600)
+    const durationMs = Math.min(Math.max(text.length * 32, 450), 2400)
     const perToken = durationMs / tokens.length
     const start = performance.now()
     let frame = 0

@@ -147,6 +147,39 @@ describe('NavigatorPane', () => {
     expect(screen.queryByText(/\*\*Columns\*\*/)).not.toBeInTheDocument()
   })
 
+  it('types the finished answer out when motion is allowed', async () => {
+    // The suite forces reduced motion for determinism; opt this turn out of it so the reveal
+    // actually runs, then restore the default so other tests stay instant.
+    const reducedMotionDefault = window.matchMedia
+    window.matchMedia = vi.fn((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia
+    try {
+      streamsBack([
+        { type: 'text', text: 'Joins the actor.' },
+        { type: 'done', usage: { input_tokens: 1, output_tokens: 1 } },
+      ])
+      renderPane(LOCAL)
+
+      ask('Hi')
+
+      // The word-by-word reveal runs to completion, so the whole answer arrives (generous
+      // timeout: this turn actually animates rather than resolving instantly).
+      expect(
+        await screen.findByText('Joins the actor.', undefined, { timeout: 3000 }),
+      ).toBeInTheDocument()
+    } finally {
+      window.matchMedia = reducedMotionDefault
+    }
+  })
+
   it('reports look-ups by count, never by internal tool name', async () => {
     streamsBack([
       { type: 'tool_call', name: 'search_objects' },
