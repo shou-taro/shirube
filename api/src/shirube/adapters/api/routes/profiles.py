@@ -247,3 +247,21 @@ def test_profile_connection(
     """Test a saved profile's connection, using its password from the keychain."""
     service.test_profile(profile_id)
     return ConnectionTestResult()
+
+
+@router.post("/{profile_id}/test-edit", response_model=ConnectionTestResult)
+def test_profile_edit(
+    profile_id: str,
+    body: ProfileUpdate,
+    service: ConnectionServiceDep,
+) -> ConnectionTestResult:
+    """Test a candidate edit to a saved profile, without persisting it.
+
+    Lets the connection form verify an edit *before* it overwrites the saved profile — the way
+    creating verifies before saving — so a bad host, password or path can no longer replace a
+    working profile. The password is resolved server-side (the entered one, or the stored one
+    when the field is left blank), so a blank-password edit is testable without the client ever
+    handling the secret. Returns ``{"ok": true}`` on success; a failure surfaces as a 400.
+    """
+    service.test_candidate(profile_id, body.to_fields(), body.secret())
+    return ConnectionTestResult()

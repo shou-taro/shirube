@@ -279,6 +279,20 @@ export function testProfileConnection(id: string): Promise<void> {
 }
 
 /**
+ * Test a candidate edit to a saved profile before saving it.
+ *
+ * The password is resolved on the server — omit it (leave the field blank) to reuse the
+ * profile's stored password. Lets the form verify an edit before it overwrites the saved
+ * profile; rejects with the translated message on failure.
+ */
+export function testProfileEdit(id: string, input: ProfileInput): Promise<void> {
+  return apiFetch<void>(`/profiles/${id}/test-edit`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+/**
  * Open the native file dialog (shown by the local server) to pick a SQLite file.
  *
  * Resolves to the chosen absolute path, or `null` if the user cancelled. Rejects with the

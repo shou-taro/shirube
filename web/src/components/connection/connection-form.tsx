@@ -9,7 +9,7 @@ import {
   createProfile,
   pickSqliteFile,
   testConnection,
-  testProfileConnection,
+  testProfileEdit,
   updateProfile,
   type ConnectionTestParams,
   type DatabaseKind,
@@ -192,10 +192,12 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
         await testConnection(toTestParams(form))
         saved = await createProfile(input)
       } else {
-        // Editing: a PostgreSQL password may be blank ("keep the stored one"), so save first
-        // and verify the stored profile, which reads the password from the keychain.
+        // Editing: verify the candidate edit *before* saving, so a bad host, password or path
+        // can't overwrite the previous working profile. A blank PostgreSQL password means "keep
+        // the stored one", so the backend resolves it from the keychain — which is why this
+        // posts the edit to test rather than testing the already-saved profile.
+        await testProfileEdit(editingId, input)
         saved = await updateProfile(editingId, input)
-        await testProfileConnection(editingId)
       }
       onConnected(saved)
     } catch (err) {

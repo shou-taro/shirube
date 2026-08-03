@@ -17,28 +17,39 @@ from shirube.domain.connection import (
 from shirube.ports.repositories import SecretStore
 
 
-def build_connection_params(profile: ConnectionProfile, secrets: SecretStore) -> ConnectionParams:
+def build_connection_params(
+    profile: ConnectionProfile,
+    secrets: SecretStore,
+    *,
+    password_override: str | None = None,
+) -> ConnectionParams:
     """Build the parameters to open a profile's database, reading any password from the keychain.
 
     Args:
         profile: The saved profile to connect with.
         secrets: The keychain store the password is read from (unused for a keyless engine
-            such as SQLite).
+            such as SQLite, or when ``password_override`` is given).
+        password_override: A password to use instead of the stored one. Given (even as an empty
+            string) it wins; ``None`` falls back to the profile's keychain password. Used to
+            test a candidate edit whose password was just entered but not yet saved.
 
     Returns:
         The engine-specific connection parameters: a :class:`SqliteConnectionParams` for a
-        file target, or a :class:`PostgresConnectionParams` (with the keychain password) for
-        a server target.
+        file target, or a :class:`PostgresConnectionParams` (with the keychain password, or the
+        override) for a server target.
     """
     target = profile.target
     if isinstance(target, SqliteTarget):
         # SQLite has no secret — the path is the whole connection.
         return SqliteConnectionParams(path=target.path)
+    password = (
+        password_override if password_override is not None else secrets.get_password(profile.id)
+    )
     return PostgresConnectionParams(
         host=target.host,
         port=target.port,
         database=target.database,
         username=target.username,
-        password=secrets.get_password(profile.id) or "",
+        password=password or "",
         sslmode=target.sslmode,
     )

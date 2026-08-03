@@ -95,3 +95,62 @@ def test_profile_test_missing_returns_404() -> None:
         response = client.post("/api/profiles/does-not-exist/test")
 
     assert response.status_code == 404
+
+
+def test_candidate_edit_uses_new_fields_and_the_stored_password() -> None:
+    """A blank-password edit is tested with the new fields and the profile's stored password.
+
+    This is what lets the form verify an edit before it overwrites the saved profile, without
+    the client ever handling the secret.
+    """
+    connector = FakeConnector()
+    secrets = FakeSecretStore()
+    with _client(connector, secrets) as client:
+        created = client.post("/api/profiles", json={**_PARAMS, "name": "staging"}).json()
+        edit = {**_PARAMS, "name": "staging", "host": "new-host.example.com"}
+        edit.pop("password")  # blank: keep the stored one
+        response = client.post(f"/api/profiles/{created['id']}/test-edit", json=edit)
+
+    assert response.status_code == 200
+    # The new host is tested, with the password read from the keychain.
+    assert connector.calls[0].host == "new-host.example.com"
+    assert connector.calls[0].password == "s3cret"
+
+
+def test_candidate_edit_uses_a_newly_entered_password() -> None:
+    """A password supplied with the edit is used as-is, in preference to the stored one."""
+    connector = FakeConnector()
+    secrets = FakeSecretStore()
+    with _client(connector, secrets) as client:
+        created = client.post("/api/profiles", json={**_PARAMS, "name": "staging"}).json()
+        edit = {**_PARAMS, "name": "staging", "password": "changed"}
+        response = client.post(f"/api/profiles/{created['id']}/test-edit", json=edit)
+
+    assert response.status_code == 200
+    assert connector.calls[0].password == "changed"
+
+
+def test_candidate_edit_does_not_persist_the_edit() -> None:
+    """Testing a candidate edit must not change the saved profile — it only tests."""
+    connector = FakeConnector(ConnectionFailedError("nope"))
+    secrets = FakeSecretStore()
+    with _client(connector, secrets) as client:
+        created = client.post("/api/profiles", json={**_PARAMS, "name": "staging"}).json()
+        edit = {**_PARAMS, "name": "renamed", "host": "new-host.example.com"}
+        response = client.post(f"/api/profiles/{created['id']}/test-edit", json=edit)
+        assert response.status_code == 400
+        # The saved profile is untouched: neither the failed test's host nor name stuck.
+        fetched = client.get(f"/api/profiles/{created['id']}").json()
+
+    assert fetched["host"] == "db.example.com"
+    assert fetched["name"] == "staging"
+
+
+def test_candidate_edit_missing_profile_returns_404() -> None:
+    with _client(FakeConnector()) as client:
+        response = client.post(
+            "/api/profiles/does-not-exist/test-edit",
+            json={**_PARAMS, "name": "staging"},
+        )
+
+    assert response.status_code == 404

@@ -28,10 +28,12 @@ may still change between releases).
 - **The AI navigator is told the right database engine.** On a SQLite connection the navigator
   described the database to the model as PostgreSQL; it now names the actual engine (or a
   neutral "database").
-- **Editing a connection can no longer lose it.** If saving a profile edit failed to write its
-  password to the keychain, the new fields were already saved — leaving the profile changed
-  but its password not, and the previous working connection lost. A failed edit now rolls back
-  the field changes too, so the profile is left exactly as it was.
+- **Editing a connection can no longer lose it.** A profile edit used to be saved *before* the
+  connection was verified, so a mistyped host or password overwrote the working profile and
+  then failed — leaving nothing to fall back to. An edit is now verified before it is saved,
+  exactly as creating a connection is, so a bad edit is rejected without touching the saved
+  profile. (And should the keychain write itself fail, the field changes are rolled back too,
+  so the profile is left exactly as it was.)
 
 ### Security
 
