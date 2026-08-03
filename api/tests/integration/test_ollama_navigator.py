@@ -23,6 +23,7 @@ from shirube.domain.chat import (
     NavigatorTextDelta,
     NavigatorToolCall,
 )
+from shirube.domain.connection import DatabaseKind
 from shirube.domain.schema import (
     Column,
     ObjectKind,
@@ -86,6 +87,9 @@ class _FixedSchemaService:
 
     def introspect_profile(self, profile_id: str) -> SchemaGraph:
         return _GRAPH
+
+    def profile_kind(self, profile_id: str) -> DatabaseKind:
+        return DatabaseKind.POSTGRESQL
 
 
 def test_navigator_answers_a_question_over_a_real_model() -> None:

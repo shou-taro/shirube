@@ -25,7 +25,7 @@ from shirube.domain.connection import (
     SqliteConnectionParams,
     SqliteTarget,
 )
-from shirube.domain.data import ColumnFilter, FilterOperator, RowQuery, SortOrder
+from shirube.domain.data import ColumnFilter, FilterOperator, RowQuery, SortDirection, SortOrder
 from shirube.domain.errors import ConnectionFailedError, InvalidQueryError, ObjectNotFoundError
 from shirube.domain.schema import ObjectKind, RelationshipKind
 
@@ -190,6 +190,43 @@ def test_read_rows_filters_and_sorts(chinook_like: SqliteConnectionParams) -> No
     assert names == ["Bowie", "Queen"]
 
 
+def test_read_rows_pages_stably_by_the_primary_key(
+    chinook_like: SqliteConnectionParams,
+) -> None:
+    """Consecutive pages are contiguous and never overlap, because paging orders by the key."""
+    reader = SqliteDataReader()
+
+    def ids(offset: int) -> list[object]:
+        page = reader.read_rows(
+            chinook_like,
+            schemas=(),
+            object_id=f"{SQLITE_SCHEMA}.album",
+            query=RowQuery(limit=2, offset=offset),
+        )
+        return [row[page.columns.index("id")] for row in page.rows]
+
+    first, second = ids(0), ids(2)
+    # Ordered by the primary key: each page is sorted, they do not overlap, and together they
+    # form the full, gap-free sequence — the guarantee OFFSET paging needs.
+    assert first == sorted(first)
+    assert set(first).isdisjoint(second)
+    assert first + second == sorted(first + second)
+
+
+def test_read_rows_reads_a_view_without_a_stable_key(
+    chinook_like: SqliteConnectionParams,
+) -> None:
+    """A view has no primary key or rowid; it is still read (best-effort order), not rejected."""
+    page = SqliteDataReader().read_rows(
+        chinook_like,
+        schemas=(),
+        object_id=f"{SQLITE_SCHEMA}.album_view",
+        query=RowQuery(limit=10, offset=0),
+    )
+    assert page.columns == ("id", "title")
+    assert len(page.rows) == 3
+
+
 def test_read_rows_handles_quoting_hostile_identifiers(
     chinook_like: SqliteConnectionParams,
 ) -> None:
@@ -324,6 +361,47 @@ def test_build_select_quotes_identifiers_and_binds_values() -> None:
     assert 'FROM "we""ird"' in statement
     assert "x" not in statement
     assert params == ["%x%", 6, 0]
+
+
+def test_build_select_orders_by_the_primary_key_when_unsorted() -> None:
+    statement, _ = build_select(
+        name="album", columns=["id", "title"], query=RowQuery(limit=5, offset=0), order_key=["id"]
+    )
+
+    assert 'ORDER BY "id" ASC' in statement
+
+
+def test_build_select_appends_the_primary_key_as_a_tiebreaker() -> None:
+    statement, _ = build_select(
+        name="album",
+        columns=["id", "title"],
+        query=RowQuery(
+            limit=5, offset=0, sort=SortOrder(column="title", direction=SortDirection.DESC)
+        ),
+        order_key=["id"],
+    )
+
+    assert 'ORDER BY "title" DESC, "id" ASC' in statement
+
+
+def test_build_select_falls_back_to_rowid_for_a_keyless_table() -> None:
+    # A rowid table without a declared primary key still pages stably by its implicit rowid,
+    # written bare (never quoted, which SQLite would read as a string literal).
+    statement, _ = build_select(
+        name="log", columns=["message"], query=RowQuery(limit=5, offset=0), rowid_fallback=True
+    )
+
+    assert "ORDER BY rowid ASC" in statement
+    assert '"rowid"' not in statement
+
+
+def test_build_select_leaves_a_view_unordered_when_no_stable_key_exists() -> None:
+    # No primary key and not a rowid table (e.g. a view): no stable order can be formed.
+    statement, _ = build_select(
+        name="v_summary", columns=["message"], query=RowQuery(limit=5, offset=0)
+    )
+
+    assert "ORDER BY" not in statement
 
 
 def test_build_select_rejects_an_unknown_filter_column() -> None:

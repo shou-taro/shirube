@@ -37,6 +37,8 @@ def build_select(
     name: str,
     columns: Sequence[str],
     query: RowQuery,
+    order_key: Sequence[str] = (),
+    rowid_fallback: bool = False,
 ) -> tuple[str, list[Any]]:
     """Assemble a safe ``SELECT`` for a page of an object's rows.
 
@@ -46,10 +48,20 @@ def build_select(
     works on any column type — fine for a preview. One extra row beyond the limit is requested
     so the caller can tell whether a further page exists.
 
+    A deterministic ``ORDER BY`` is emitted when a stable key exists: the requested sort first
+    (if any), then the primary key (``order_key``) as a tiebreaker, or — for a keyless rowid
+    table — the implicit ``rowid``. Without it, ``LIMIT``/``OFFSET`` could repeat or skip rows
+    between pages, since SQLite does not otherwise guarantee row order.
+
     Args:
         name: The object's name.
         columns: The object's real column names, used to validate the query.
         query: The page to read — limit, offset, sort and filters.
+        order_key: The primary-key columns in key order, appended as a tiebreaker. Empty for a
+            keyless table or a view.
+        rowid_fallback: When ``order_key`` is empty, whether the object is a rowid table whose
+            implicit ``rowid`` gives a stable order (false for a view or a WITHOUT ROWID table,
+            which always has a primary key instead).
 
     Returns:
         The SQL text and the ordered list of parameters to run it with.
@@ -87,11 +99,27 @@ def build_select(
     statement = f"SELECT * FROM {_quote(name)}"  # nosec B608
     if conditions:
         statement += " WHERE " + " AND ".join(conditions)
+
+    order_terms: list[str] = []
+    sort_column: str | None = None
     if query.sort is not None:
         if query.sort.column not in known:
             raise InvalidQueryError(f"Unknown column '{query.sort.column}'")
         direction = "ASC" if query.sort.direction is SortDirection.ASC else "DESC"
-        statement += f" ORDER BY {_quote(query.sort.column)} {direction}"
+        order_terms.append(f"{_quote(query.sort.column)} {direction}")
+        sort_column = query.sort.column
+    # The primary key breaks ties and orders an unsorted page; skip a key column already sorted.
+    for key_column in order_key:
+        if key_column != sort_column:
+            order_terms.append(f"{_quote(key_column)} ASC")
+    # No primary key, but a rowid table has a stable implicit key. ``rowid`` is written bare and
+    # never quoted: a quoted "rowid" with no such column is read by SQLite as a string literal,
+    # which would silently order by a constant (i.e. not at all).
+    if not order_key and rowid_fallback:
+        order_terms.append("rowid ASC")
+    if order_terms:
+        statement += " ORDER BY " + ", ".join(order_terms)
+
     statement += " LIMIT ? OFFSET ?"
     # Ask for one more than the limit; its presence is how has_more is decided.
     params.append(query.limit + 1)
@@ -150,22 +178,27 @@ class SqliteDataReader:
             raise ObjectNotFoundError(f"'{object_id}' is not a table or view here")
 
         with read_only_connection(params) as connection:
-            # Prove the object is a real table or view before trusting its name, and read its
-            # columns to validate the query against.
-            exists = connection.execute(
-                "SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
+            # Prove the object is a real table or view before trusting its name; the type also
+            # tells whether an implicit rowid is available for stable ordering.
+            row = connection.execute(
+                "SELECT type FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
                 (name,),
             ).fetchone()
-            if exists is None:
+            if row is None:
                 raise ObjectNotFoundError(f"'{object_id}' is not a table or view here")
-            columns = [
-                row[0]
-                for row in connection.execute(
-                    "SELECT name FROM pragma_table_info(?)", (name,)
-                ).fetchall()
-            ]
+            is_table = row[0] == "table"
 
-            statement, statement_params = build_select(name, columns, query)
+            # Read the columns to validate the query, and the primary key (``pk`` > 0, in key
+            # order) to page stably. A rowid table with no declared key falls back to rowid.
+            info = connection.execute(
+                "SELECT name, pk FROM pragma_table_info(?)", (name,)
+            ).fetchall()
+            columns = [info_row[0] for info_row in info]
+            order_key = [name for _pk, name in sorted((r[1], r[0]) for r in info if r[1] > 0)]
+
+            statement, statement_params = build_select(
+                name, columns, query, order_key, rowid_fallback=is_table
+            )
             cursor = connection.execute(statement, statement_params)
             fetched = cursor.fetchall()
             # SELECT * fixes the display order and names; read them straight off the cursor.
