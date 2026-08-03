@@ -15,10 +15,12 @@ may still change between releases).
   working-out no longer flashes in the pane. When it's ready, the answer appears and types
   itself out, so the reply reads as being written. (Answers already in the thread show at once,
   and the typing is skipped entirely if you prefer reduced motion.)
-- **A saved AI key shows as masked dots.** The AI provider's API key is never fetched back
-  from the keychain, so its field is blank after saving. When a key is stored it now shows
-  masked dots (`••••••••`) as a placeholder, alongside the existing "saved" hint, so it reads
-  as "a key is stored — leave blank to keep it" rather than looking empty.
+- **A saved secret shows as masked dots.** Neither the AI provider's API key nor a connection's
+  password is ever fetched back from the keychain, so those fields are blank after saving. When
+  one is stored it now shows masked dots (`••••••••`) as a placeholder — for the AI key, and for
+  a connection's password while editing — so it reads as "one is stored, leave blank to keep it"
+  rather than looking empty. (Duplicating a connection still asks for a fresh password, since
+  passwords are never copied.)
 
 ## [0.3.0b3] — 2026-08-04
 
