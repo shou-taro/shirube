@@ -384,6 +384,19 @@ def test_build_select_appends_the_primary_key_as_a_tiebreaker() -> None:
     assert 'ORDER BY "title" DESC, "id" ASC' in statement
 
 
+def test_build_select_does_not_repeat_a_key_column_already_sorted() -> None:
+    # Sorting on the key column already gives a unique order — it is not appended a second time.
+    statement, _ = build_select(
+        name="album",
+        columns=["id", "title"],
+        query=RowQuery(limit=5, offset=0, sort=SortOrder(column="id", direction=SortDirection.ASC)),
+        order_key=["id"],
+    )
+
+    assert 'ORDER BY "id" ASC' in statement
+    assert '"id" ASC, "id"' not in statement
+
+
 def test_build_select_falls_back_to_rowid_for_a_keyless_table() -> None:
     # A rowid table without a declared primary key still pages stably by its implicit rowid,
     # written bare (never quoted, which SQLite would read as a string literal).
