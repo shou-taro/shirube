@@ -28,6 +28,10 @@ may still change between releases).
 - **The AI navigator is told the right database engine.** On a SQLite connection the navigator
   described the database to the model as PostgreSQL; it now names the actual engine (or a
   neutral "database").
+- **Editing a connection can no longer lose it.** If saving a profile edit failed to write its
+  password to the keychain, the new fields were already saved — leaving the profile changed
+  but its password not, and the previous working connection lost. A failed edit now rolls back
+  the field changes too, so the profile is left exactly as it was.
 
 ### Security
 
@@ -41,6 +45,15 @@ may still change between releases).
   Anthropic key there. The stored key is now reused only when the destination is unchanged
   (same kind and base URL); change the endpoint and it authenticates with the key you enter,
   and saving a new destination without a key drops the old one rather than leaving it behind.
+- **Another website can no longer drive the local API.** shirube served no CORS headers, which
+  stops another site *reading* its responses but not a plain form POST *reaching* an endpoint —
+  so a page you merely had open could, for instance, pop shirube's native file-open dialog.
+  State-changing requests a browser marks as coming from another site (via `Sec-Fetch-Site`)
+  are now refused; the app's own same-origin calls are unaffected.
+- **A stale connection password no longer lingers.** Switching a saved PostgreSQL connection to
+  keyless SQLite left its password in the keychain, where it would be silently reused if the
+  connection were ever switched back. Changing a connection's engine now removes the password
+  that belonged to the old one.
 
 ## [0.3.0b2] — 2026-07-30
 

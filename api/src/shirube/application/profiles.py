@@ -105,10 +105,16 @@ class ProfileService:
         """Replace a profile's fields, and its password when one is supplied.
 
         A ``None`` password leaves the stored password untouched, so the client need not
-        re-send it on every edit.
+        re-send it on every edit — *unless the engine changed*. Switching to a different
+        engine (e.g. PostgreSQL to keyless SQLite) makes any stored password belong to the
+        *old* engine, so it is removed rather than left paired with — and later reused by —
+        the new one. If the keychain write (or removal) fails, the field write is rolled back
+        so profile and password never drift, mirroring :meth:`create`.
 
         Raises:
             ProfileNotFoundError: if no profile has that id.
+            SecretStoreError: if the password cannot be written to (or removed from) the
+                keychain.
         """
         existing = self.get(profile_id)
         updated = ConnectionProfile(
@@ -118,8 +124,18 @@ class ProfileService:
             schemas=fields.schemas,
         )
         self._repository.update(updated)
-        if password is not None:
-            self._secrets.set_password(profile_id, password)
+        try:
+            if password is not None:
+                self._secrets.set_password(profile_id, password)
+            elif updated.kind is not existing.kind:
+                # The stored password belonged to the previous engine; on an engine change
+                # with no new password it no longer applies, so drop it rather than leave it
+                # lingering under — and later reused by — a profile of a different engine.
+                self._secrets.delete_password(profile_id)
+        except Exception:
+            # Undo the field write so the two stores never drift apart.
+            self._repository.update(existing)
+            raise
         return updated
 
     def delete(self, profile_id: str) -> None:
