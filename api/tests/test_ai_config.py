@@ -12,8 +12,8 @@ from fastapi.testclient import TestClient
 
 from shirube.adapters.api.app import create_app
 from shirube.adapters.api.dependencies import get_secret_store
-from shirube.application.ai_config import AI_PROVIDER_SECRET_ID
-from shirube.domain.ai import AiProviderConfig
+from shirube.application.ai_config import AI_PROVIDER_SECRET_ID, AiConfigService
+from shirube.domain.ai import AiProviderConfig, AiProviderKind
 from shirube.domain.errors import ProviderCheckError, SecretStoreError
 
 
@@ -190,25 +190,49 @@ def test_test_provider_reports_a_failure(
     assert "rejected the API key" in response.json()["detail"]
 
 
-def test_test_provider_falls_back_to_the_stored_key(
+def test_test_provider_reuses_the_stored_key_for_the_same_destination(
     client: TestClient,
-    secrets: FakeSecretStore,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Re-testing a saved provider without re-entering the key uses the stored one."""
-    secrets.set_password(AI_PROVIDER_SECRET_ID, "sk-stored")
+    """Re-testing the saved provider without re-entering the key uses the stored one."""
+    client.put("/api/ai/provider", json=_claude())  # stores sk-secret for Claude
     seen: dict[str, object] = {}
     monkeypatch.setattr(
         "shirube.adapters.api.routes.ai.check_provider",
         lambda config, api_key: seen.update(api_key=api_key),
     )
-    # No api_key in the body → the route must supply the stored one.
+    # Same destination (Claude), no api_key → the stored key is reused.
     response = client.post(
         "/api/ai/provider/test",
         json={"kind": "anthropic", "model": "claude-opus-4-8"},
     )
     assert response.status_code == 200
-    assert seen["api_key"] == "sk-stored"
+    assert seen["api_key"] == "sk-secret"
+
+
+def test_test_provider_does_not_reuse_a_key_for_a_different_destination(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A key saved for one provider is never sent to a different endpoint the user typed in."""
+    client.put("/api/ai/provider", json=_claude())  # stores sk-secret for Claude
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(
+        "shirube.adapters.api.routes.ai.check_provider",
+        lambda config, api_key: seen.update(api_key=api_key),
+    )
+    # A different destination (a custom OpenAI-compatible URL), no key supplied.
+    response = client.post(
+        "/api/ai/provider/test",
+        json={
+            "kind": "openai_compatible",
+            "model": "gpt-4o",
+            "base_url": "https://elsewhere.example/v1",
+        },
+    )
+    assert response.status_code == 200
+    # The Claude key must NOT be reused for the custom endpoint.
+    assert seen["api_key"] is None
 
 
 def test_provider_models_returns_the_listed_ids(
@@ -242,25 +266,64 @@ def test_provider_models_reports_a_failure(
     assert "rejected the API key" in response.json()["detail"]
 
 
-def test_provider_models_falls_back_to_the_stored_key(
+def test_provider_models_reuses_the_stored_key_for_the_same_destination(
     client: TestClient,
-    secrets: FakeSecretStore,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Listing a saved provider without re-entering the key uses the stored one."""
-    secrets.set_password(AI_PROVIDER_SECRET_ID, "sk-stored")
+    """Listing the saved provider without re-entering the key uses the stored one."""
+    client.put("/api/ai/provider", json=_claude())  # stores sk-secret for Claude
     seen: dict[str, object] = {}
     monkeypatch.setattr(
         "shirube.adapters.api.routes.ai.list_provider_models",
         lambda config, api_key: seen.update(api_key=api_key) or [],
     )
-    # No api_key in the body → the route must supply the stored one.
+    # Same destination (Claude), no api_key → the stored key is reused.
     response = client.post(
         "/api/ai/provider/models",
         json={"kind": "anthropic", "model": "claude-opus-4-8"},
     )
     assert response.status_code == 200
-    assert seen["api_key"] == "sk-stored"
+    assert seen["api_key"] == "sk-secret"
+
+
+def test_provider_models_does_not_reuse_a_key_for_a_different_destination(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Listing a different endpoint's models must not send it the saved provider's key."""
+    client.put("/api/ai/provider", json=_claude())  # stores sk-secret for Claude
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(
+        "shirube.adapters.api.routes.ai.list_provider_models",
+        lambda config, api_key: seen.update(api_key=api_key) or [],
+    )
+    # The reported leak: switch to a custom OpenAI-compatible URL, blank key, list its models.
+    response = client.post(
+        "/api/ai/provider/models",
+        json={
+            "kind": "openai_compatible",
+            "model": "gpt-4o",
+            "base_url": "https://elsewhere.example/v1",
+        },
+    )
+    assert response.status_code == 200
+    assert seen["api_key"] is None
+
+
+def test_changing_destination_without_a_key_drops_the_old_key(
+    client: TestClient,
+    secrets: FakeSecretStore,
+) -> None:
+    """Saving a new destination with no key removes the key that belonged to the old one."""
+    client.put("/api/ai/provider", json=_claude())
+    assert secrets.get_password(AI_PROVIDER_SECRET_ID) == "sk-secret"
+
+    # Switch to a local Ollama (needs no key). The Anthropic key must not linger.
+    response = client.put("/api/ai/provider", json=_ollama())
+
+    assert response.status_code == 200
+    assert response.json()["has_api_key"] is False
+    assert secrets.get_password(AI_PROVIDER_SECRET_ID) is None
 
 
 class FailingSecretStore(FakeSecretStore):
@@ -280,3 +343,34 @@ def test_configure_rolls_back_when_key_cannot_be_stored() -> None:
         assert response.status_code == 500
         # The config was rolled back, so nothing is configured.
         assert test_client.get("/api/ai/provider").json() is None
+
+
+class _MemoryConfigRepo:
+    """In-memory AiConfigRepository for testing the service without a database."""
+
+    def __init__(self) -> None:
+        self._config: AiProviderConfig | None = None
+
+    def get(self) -> AiProviderConfig | None:
+        return self._config
+
+    def set(self, config: AiProviderConfig) -> None:
+        self._config = config
+
+    def clear(self) -> None:
+        self._config = None
+
+
+def test_set_restores_the_previous_config_when_the_key_write_fails() -> None:
+    """A failed key write over an existing provider rolls back to it, not to nothing."""
+    repo = _MemoryConfigRepo()
+    repo.set(AiProviderConfig(AiProviderKind.ANTHROPIC, "claude-opus-4-8", None))
+    service = AiConfigService(repo, FailingSecretStore())  # type: ignore[arg-type]
+
+    with pytest.raises(SecretStoreError):
+        service.set(AiProviderConfig(AiProviderKind.ANTHROPIC, "claude-sonnet-5", None), "sk-new")
+
+    # The prior configuration survives intact rather than being cleared.
+    restored = repo.get()
+    assert restored is not None
+    assert restored.model == "claude-opus-4-8"

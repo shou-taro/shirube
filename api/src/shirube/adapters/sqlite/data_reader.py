@@ -112,11 +112,20 @@ def build_select(
     for key_column in order_key:
         if key_column != sort_column:
             order_terms.append(f"{_quote(key_column)} ASC")
-    # No primary key, but a rowid table has a stable implicit key. ``rowid`` is written bare and
-    # never quoted: a quoted "rowid" with no such column is read by SQLite as a string literal,
-    # which would silently order by a constant (i.e. not at all).
+    # No primary key, but a rowid table has a stable implicit key. SQLite exposes it under three
+    # spellings (``rowid``, ``_rowid_``, ``oid``); a real column of that name shadows the alias,
+    # so pick one that is not a declared column (matched case-insensitively, as SQLite does). If
+    # all three are taken, the internal rowid is unreachable — no stable order can be formed, so
+    # none is emitted rather than silently ordering by a shadowing column (which may repeat or be
+    # NULL). The alias is written bare, never quoted: a quoted ``"rowid"`` with no such column is
+    # read as a string literal, which would order by a constant — i.e. not at all.
     if not order_key and rowid_fallback:
-        order_terms.append("rowid ASC")
+        taken = {column.lower() for column in columns}
+        rowid_alias = next(
+            (alias for alias in ("rowid", "_rowid_", "oid") if alias not in taken), None
+        )
+        if rowid_alias is not None:
+            order_terms.append(f"{rowid_alias} ASC")
     if order_terms:
         statement += " ORDER BY " + ", ".join(order_terms)
 
