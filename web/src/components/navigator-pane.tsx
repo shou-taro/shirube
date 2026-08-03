@@ -237,9 +237,10 @@ function TypewriterAnswer({
     }
     // Words and the whitespace between them, so a prefix always ends on a word boundary.
     const tokens = text.split(/(\s+)/)
-    // Length-scaled but firmly capped: a brief flourish for a short reply, never a wait for a
-    // long one. Kept under the test runner's default findBy timeout so tests stay stable.
-    const durationMs = Math.min(Math.max(text.length * 12, 200), 700)
+    // Length-scaled but firmly capped: an unhurried "being written" pace for a short reply,
+    // never a long wait for a big one. (Under test the reveal is skipped via reduced motion,
+    // so this duration never gates a findBy.)
+    const durationMs = Math.min(Math.max(text.length * 22, 350), 1600)
     const perToken = durationMs / tokens.length
     const start = performance.now()
     let frame = 0
