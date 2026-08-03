@@ -212,16 +212,22 @@ function Answer({
 function TypewriterAnswer({
   text,
   animate,
+  onReveal,
   resolveRef,
   onNavigate,
 }: {
   text: string
   animate: boolean
+  onReveal: () => void
   resolveRef: ObjectResolver
   onNavigate: (objectId: string) => void
 }) {
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [revealed, setRevealed] = useState(() => (animate && !reduceMotion ? '' : text))
+
+  // As each word appears the answer grows taller, so keep the foot of it in view — the
+  // conversation rises to follow the text being written, rather than typing off-screen.
+  useEffect(onReveal, [revealed, onReveal])
 
   // Mount-only (empty deps): the reveal plays once when the answer first appears. A later
   // re-render — e.g. a newer turn finishing — keeps this component mounted (it is keyed by
@@ -365,10 +371,14 @@ export function NavigatorPane({
     [provider, t],
   )
 
-  // Keep the newest turn in view as the answer grows. (Guarded: jsdom has no scrollTo.)
-  useEffect(() => {
+  // Pin the conversation to its foot, so the newest content stays in view. (Guarded: jsdom
+  // has no scrollTo.) Stable, so it can also drive the answer's type-out without re-subscribing.
+  const scrollToBottom = useCallback((): void => {
     scrollRef.current?.scrollTo?.({ top: scrollRef.current.scrollHeight })
-  }, [turns])
+  }, [])
+
+  // Keep the newest turn in view as turns are added or settle.
+  useEffect(scrollToBottom, [turns, scrollToBottom])
 
   // Abort any in-flight stream on unmount (e.g. disconnecting).
   useEffect(() => () => abortRef.current?.abort(), [])
@@ -589,6 +599,7 @@ export function NavigatorPane({
                     <TypewriterAnswer
                       text={turn.content}
                       animate={turn.id === revealTurnRef.current}
+                      onReveal={scrollToBottom}
                       resolveRef={resolveRef}
                       onNavigate={onNavigate}
                     />
