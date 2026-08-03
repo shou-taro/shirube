@@ -183,8 +183,11 @@ describe('SettingsDialog — AI provider', () => {
 
     expect(screen.getByLabelText('settings.aiProviderLabel')).toHaveValue('claude')
     expect(screen.getByLabelText('settings.aiModel')).toHaveValue('claude-sonnet-5')
-    // The stored key is never fetched back — the field is blank with a "saved" hint.
-    expect(screen.getByLabelText('settings.aiApiKey')).toHaveValue('')
+    // The stored key is never fetched back — the field is blank, but a masked-dots
+    // placeholder and a "saved" hint signal that a key is stored (leave blank to keep it).
+    const keyField = screen.getByLabelText('settings.aiApiKey')
+    expect(keyField).toHaveValue('')
+    expect(keyField).toHaveAttribute('placeholder', '••••••••')
     expect(screen.getByText('settings.aiApiKeySaved')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'settings.aiRemove' })).toBeInTheDocument()
   })
