@@ -82,6 +82,57 @@ describe('bounds and robustness', () => {
     expect(stored.at(-1)?.id).toBe(String(MAX_STORED_TURNS + 9))
   })
 
+  it('cleans malformed steps and drops junk entries', () => {
+    localStorage.setItem(
+      'shirube.chat.p1',
+      JSON.stringify([
+        {
+          id: '1',
+          role: 'assistant',
+          content: 'ok',
+          error: null,
+          usage: null,
+          steps: [
+            null,
+            'nope',
+            { text: 5, tools: ['a', 3, null] }, // bad text → '', tools filtered to strings
+            { tools: ['b'] }, // missing text → ''
+            { text: 'hi' }, // missing tools → []
+          ],
+        },
+      ]),
+    )
+
+    expect(loadChatHistory('p1')[0].steps).toEqual([
+      { text: '', tools: ['a'] },
+      { text: '', tools: ['b'] },
+      { text: 'hi', tools: [] },
+    ])
+  })
+
+  it('defaults to no steps when a turn carries neither steps nor a tool list', () => {
+    localStorage.setItem(
+      'shirube.chat.p1',
+      JSON.stringify([{ id: '1', role: 'user', content: 'hi', error: null, usage: null }]),
+    )
+
+    expect(loadChatHistory('p1')[0].steps).toEqual([])
+  })
+
+  it('drops non-string entries and an empty legacy tool list', () => {
+    localStorage.setItem(
+      'shirube.chat.p1',
+      JSON.stringify([
+        { id: '1', role: 'assistant', content: 'a', tools: ['search_objects', 7], error: null },
+        { id: '2', role: 'assistant', content: 'b', tools: [], error: null },
+      ]),
+    )
+
+    const [one, two] = loadChatHistory('p1')
+    expect(one.steps).toEqual([{ text: '', tools: ['search_objects'] }])
+    expect(two.steps).toEqual([])
+  })
+
   it('drops entries that are not shaped like a turn', () => {
     localStorage.setItem(
       'shirube.chat.p1',

@@ -185,6 +185,26 @@ describe('NavigatorPane', () => {
     expect(screen.getByText('chat.lookedUp')).toBeInTheDocument()
   })
 
+  it('shows a "looking up" marker while a look-up is in flight', async () => {
+    // Yield a tool call — with a name the label map doesn't know — then block: the pane is
+    // now mid-look-up, a step underway with no answer yet.
+    mockStreamChat.mockImplementation(async function* (_profileId, _messages, signal) {
+      yield { type: 'tool_call', name: 'mystery_tool' }
+      await new Promise<void>((resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+      })
+    })
+    renderPane(LOCAL)
+
+    ask('Hi')
+
+    // Streaming with no answer yet reads "looking up" (not the past-tense count).
+    expect(await screen.findByText('chat.lookingUp')).toBeInTheDocument()
+    // Stop cleanly so the blocked generator is released.
+    fireEvent.click(screen.getByLabelText('chat.stop'))
+    await waitFor(() => expect(screen.getByLabelText('chat.send')).toBeInTheDocument())
+  })
+
   it('turns a named table into a link that recentres the map', async () => {
     streamsBack([
       { type: 'text', text: 'Rentals live in `public.rental`, joined to `film_actor`.' },
