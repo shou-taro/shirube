@@ -57,11 +57,30 @@ _RESOLVE_OBJECT_SQL = f"""
 """  # nosec B608
 
 
+# The object's primary-key columns, in key order — used as a stable tiebreaker so LIMIT/OFFSET
+# paging cannot repeat or skip rows. Read from ``pg_constraint.conkey`` (a real ``smallint[]``,
+# so ``unnest`` needs no int2vector cast); a view or a table without a primary key returns no
+# rows, and the reader then falls back to no implicit ordering.
+_RESOLVE_PK_SQL = f"""
+    SELECT a.attname
+    FROM pg_catalog.pg_constraint con
+    JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    JOIN unnest(con.conkey) WITH ORDINALITY AS key(attnum, ord) ON TRUE
+    JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum = key.attnum
+    WHERE con.contype = 'p'
+      AND n.nspname || '.' || c.relname = %(object_id)s
+      AND {_schema_filter("n")}
+    ORDER BY key.ord
+"""  # nosec B608
+
+
 def build_select(
     schema: str,
     name: str,
     columns: Sequence[str],
     query: RowQuery,
+    order_key: Sequence[str] = (),
 ) -> tuple[sql.Composed, list[Any]]:
     """Assemble a safe ``SELECT`` for a page of an object's rows.
 
@@ -72,11 +91,18 @@ def build_select(
     matter. One extra row beyond the limit is requested so the caller can tell whether a
     further page exists.
 
+    A deterministic ``ORDER BY`` is always emitted when an ordering can be formed: the
+    requested sort first (if any), then ``order_key`` (the primary key) as a tiebreaker — and
+    the sole ordering when nothing was requested. Without it, ``LIMIT``/``OFFSET`` could repeat
+    or skip rows between pages, since the database does not otherwise guarantee row order.
+
     Args:
         schema: The object's schema (namespace).
         name: The object's name.
         columns: The object's real column names, used to validate the query.
         query: The page to read — limit, offset, sort and filters.
+        order_key: Columns forming a stable key (the primary key, in key order), appended as a
+            tiebreaker. Empty for a view or a keyless table, where no stable order exists.
 
     Returns:
         The composed statement and the ordered list of parameters to run it with.
@@ -112,11 +138,22 @@ def build_select(
     )
     if conditions:
         statement += sql.SQL(" WHERE ") + sql.SQL(" AND ").join(conditions)
+
+    order_terms: list[sql.Composed] = []
+    sort_column: str | None = None
     if query.sort is not None:
         if query.sort.column not in known:
             raise InvalidQueryError(f"Unknown column '{query.sort.column}'")
         direction = sql.SQL("ASC") if query.sort.direction is SortDirection.ASC else sql.SQL("DESC")
-        statement += sql.SQL(" ORDER BY {} ").format(sql.Identifier(query.sort.column)) + direction
+        order_terms.append(sql.SQL("{} ").format(sql.Identifier(query.sort.column)) + direction)
+        sort_column = query.sort.column
+    # Append the primary key as a tiebreaker, skipping a key column already used as the sort.
+    for key_column in order_key:
+        if key_column != sort_column:
+            order_terms.append(sql.SQL("{} ASC").format(sql.Identifier(key_column)))
+    if order_terms:
+        statement += sql.SQL(" ORDER BY ") + sql.SQL(", ").join(order_terms)
+
     statement += sql.SQL(" LIMIT {} OFFSET {}").format(sql.Placeholder(), sql.Placeholder())
     # Ask for one more than the limit; its presence is how has_more is decided.
     params.append(query.limit + 1)
@@ -179,7 +216,12 @@ class PostgresDataReader:
                 schema, name = meta[0][0], meta[0][1]
                 columns = [row[2] for row in meta]
 
-                statement, statement_params = build_select(schema, name, columns, query)
+                # The primary key gives a stable paging order (empty for a view or keyless
+                # table). Resolved from the catalogue, so its column names are trusted.
+                cursor.execute(_RESOLVE_PK_SQL, resolve_params)
+                order_key = [row[0] for row in cursor.fetchall()]
+
+                statement, statement_params = build_select(schema, name, columns, query, order_key)
                 cursor.execute(statement, statement_params)
                 fetched = cursor.fetchall()
                 # SELECT * fixes the display order and names (dropped/system columns are

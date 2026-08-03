@@ -1,6 +1,7 @@
 """Use cases for introspecting a database schema."""
 
 from shirube.application.connection_params import build_connection_params
+from shirube.domain.connection import DatabaseKind
 from shirube.domain.errors import ProfileNotFoundError
 from shirube.domain.schema import ManualRelationship, Relationship, SchemaGraph
 from shirube.ports.repositories import (
@@ -56,6 +57,27 @@ class SchemaService:
             objects=graph.objects,
             relationships=graph.relationships + self._manual_edges(manual, graph),
         )
+
+    def profile_kind(self, profile_id: str) -> DatabaseKind:
+        """Return the database engine a profile targets.
+
+        The schema graph is engine-neutral, so the kind is read from the profile itself —
+        used to tailor engine-aware messaging (e.g. the navigator's system prompt) without
+        threading the engine through the graph.
+
+        Args:
+            profile_id: The profile to look up.
+
+        Returns:
+            The profile's :class:`DatabaseKind`.
+
+        Raises:
+            ProfileNotFoundError: if no profile has that id.
+        """
+        profile = self._repository.get(profile_id)
+        if profile is None:
+            raise ProfileNotFoundError
+        return profile.kind
 
     @staticmethod
     def _manual_edges(

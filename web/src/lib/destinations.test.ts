@@ -33,16 +33,31 @@ describe('describeDestination', () => {
     const destination = describeDestination(provider({ base_url: 'http://localhost:11434/v1' }))
     expect(destination.isLocal).toBe(true)
     expect(destination.host).toBe('localhost')
-    expect(destination.id).toBe('openai:localhost')
+    // The identifier is the full normalised destination, not the host alone.
+    expect(destination.id).toBe('openai:http://localhost:11434/v1')
   })
 
-  it('treats a remote OpenAI-compatible endpoint as hosted, keyed by host', () => {
+  it('treats a remote OpenAI-compatible endpoint as hosted, keyed by the whole destination', () => {
     const destination = describeDestination(
       provider({ base_url: 'https://mac-studio.example.ts.net:8443/v1' }),
     )
     expect(destination.isLocal).toBe(false)
     expect(destination.host).toBe('mac-studio.example.ts.net')
-    expect(destination.id).toBe('openai:mac-studio.example.ts.net')
+    expect(destination.id).toBe('openai:https://mac-studio.example.ts.net:8443/v1')
+  })
+
+  it('keys consent to scheme, port and path, so a changed endpoint is a new destination', () => {
+    // These share a host but are genuinely different services; consenting to one must not
+    // silently cover the others — an HTTPS→HTTP downgrade especially.
+    const https = describeDestination(provider({ base_url: 'https://example.com/v1' }))
+    const httpPort = describeDestination(provider({ base_url: 'http://example.com:8080/another' }))
+    const trailingSlash = describeDestination(provider({ base_url: 'https://example.com/v1/' }))
+
+    expect(https.id).not.toBe(httpPort.id)
+    // Approving the HTTPS endpoint does not approve the plain-HTTP one on another port/path.
+    expect(isDestinationApproved(httpPort, [https.id])).toBe(false)
+    // A trailing slash is normalised away, so it is the same destination (no re-consent).
+    expect(trailingSlash.id).toBe(https.id)
   })
 
   it('handles a missing base URL without a host', () => {

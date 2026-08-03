@@ -16,6 +16,22 @@ may still change between releases).
   field, so any model (including one not listed) still works, and it falls back to typing if
   the provider can't list its models.
 
+### Fixed
+
+- **Data preview paging no longer repeats or skips rows.** Row previews now page in a stable
+  order — by primary key, falling back to SQLite's `rowid` — so moving between pages can no
+  longer show a row twice or miss one when no sort, or a non-unique sort, is applied.
+- **The AI navigator is told the right database engine.** On a SQLite connection the navigator
+  described the database to the model as PostgreSQL; it now names the actual engine (or a
+  neutral "database").
+
+### Security
+
+- **AI send-consent is scoped to the exact endpoint.** Approving a remote AI provider was
+  remembered by hostname alone, so changing that endpoint's scheme, port or path — including
+  HTTPS to plain HTTP — silently reused the old approval. Consent is now keyed to the full
+  destination, so any such change asks again. Existing approvals are re-confirmed once.
+
 ## [0.3.0b2] — 2026-07-30
 
 ### Added

@@ -7,9 +7,9 @@
  * Settings — so it never nags. A loopback endpoint (a local model) reaches nothing off the
  * machine and so is approved implicitly, without ever asking.
  *
- * What is stored is only an identifier for a destination (`anthropic`, `openai:<host>`);
- * credentials never appear here — an API key lives in the OS keychain and is held by the
- * backend alone.
+ * What is stored is only an identifier for a destination (`anthropic`, or `openai:<origin><path>`
+ * for a URL); credentials never appear here — an API key lives in the OS keychain and is held
+ * by the backend alone.
  */
 
 import type { AiProvider } from '@/lib/api'
@@ -20,7 +20,12 @@ const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::
 
 /** Where a configured provider sends the schema, described for the UI and consent decisions. */
 export interface Destination {
-  /** Stable identifier used to remember approval — `anthropic`, or `openai:<host>` for a URL. */
+  /**
+   * Stable identifier used to remember approval — `anthropic`, or `openai:<origin><path>` for a
+   * URL. The identifier spans scheme, host, port *and* path, so `https://x/v1` and
+   * `http://x:8080/other` are distinct destinations, each needing its own consent: consent to
+   * one HTTPS endpoint must never silently cover a plain-HTTP one, or a different service.
+   */
   id: string
   /** Short label to show: a provider name or the endpoint's host. */
   label: string
@@ -30,13 +35,24 @@ export interface Destination {
   isLocal: boolean
 }
 
-/** The hostname of a base URL, or null when it is empty or cannot be parsed. */
-function hostOf(baseUrl: string | null): string | null {
+/** A parsed base URL: the host (for locality and the label) and a normalised destination. */
+interface ParsedEndpoint {
+  host: string
+  /**
+   * Origin plus path with any trailing slash removed — scheme, host and port included — so it
+   * identifies exactly where the schema would be sent. This is what consent is keyed on.
+   */
+  destination: string
+}
+
+/** Parse a base URL into its host and normalised destination, or null when unparseable. */
+function parseEndpoint(baseUrl: string | null): ParsedEndpoint | null {
   if (!baseUrl) {
     return null
   }
   try {
-    return new URL(baseUrl).hostname
+    const url = new URL(baseUrl)
+    return { host: url.hostname, destination: `${url.origin}${url.pathname.replace(/\/+$/, '')}` }
   } catch {
     return null
   }
@@ -47,12 +63,22 @@ export function describeDestination(provider: AiProvider): Destination {
   if (provider.kind === 'anthropic') {
     return { id: 'anthropic', label: 'Claude', host: 'api.anthropic.com', isLocal: false }
   }
-  const host = hostOf(provider.base_url)
+  const endpoint = parseEndpoint(provider.base_url)
+  if (endpoint === null) {
+    // An empty or unparseable base URL: key consent to the raw string, and never treat it as
+    // local (loopback can only be confirmed from a host we could parse).
+    return {
+      id: `openai:${provider.base_url ?? ''}`,
+      label: provider.base_url || 'OpenAI-compatible',
+      host: null,
+      isLocal: false,
+    }
+  }
   return {
-    id: host !== null ? `openai:${host}` : `openai:${provider.base_url ?? ''}`,
-    label: host ?? (provider.base_url || 'OpenAI-compatible'),
-    host,
-    isLocal: host !== null && LOOPBACK_HOSTS.has(host),
+    id: `openai:${endpoint.destination}`,
+    label: endpoint.host,
+    host: endpoint.host,
+    isLocal: LOOPBACK_HOSTS.has(endpoint.host),
   }
 }
 

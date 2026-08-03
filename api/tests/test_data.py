@@ -71,6 +71,45 @@ def test_build_select_applies_sort_with_quoted_column() -> None:
     assert params == [26, 50]
 
 
+def _render_with_key(query: RowQuery, order_key: Sequence[str]) -> str:
+    statement, _ = build_select("public", "users", _COLUMNS, query, order_key)
+    return statement.as_string(None)
+
+
+def test_build_select_orders_by_the_primary_key_when_unsorted() -> None:
+    # Without an explicit sort, the primary key gives paging a stable order.
+    sql = _render_with_key(RowQuery(limit=100, offset=0), ["id"])
+
+    assert 'ORDER BY "id" ASC' in sql
+
+
+def test_build_select_appends_the_primary_key_as_a_tiebreaker() -> None:
+    # A non-unique sort is made deterministic by the primary key after it.
+    sql = _render_with_key(
+        RowQuery(limit=25, offset=0, sort=SortOrder("created_at", SortDirection.DESC)),
+        ["id"],
+    )
+
+    assert 'ORDER BY "created_at" DESC, "id" ASC' in sql
+
+
+def test_build_select_does_not_repeat_a_key_column_already_sorted() -> None:
+    # Sorting on the key column already gives a unique order — do not add it twice.
+    sql = _render_with_key(
+        RowQuery(limit=25, offset=0, sort=SortOrder("id", SortDirection.ASC)),
+        ["id"],
+    )
+
+    assert 'ORDER BY "id" ASC' in sql
+    assert 'ORDER BY "id" ASC, "id"' not in sql
+
+
+def test_build_select_composite_key_orders_by_each_column() -> None:
+    sql = _render_with_key(RowQuery(limit=100, offset=0), ["id", "email"])
+
+    assert 'ORDER BY "id" ASC, "email" ASC' in sql
+
+
 def test_build_select_filters_are_parameterised() -> None:
     sql, params = _render(
         RowQuery(

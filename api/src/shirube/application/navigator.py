@@ -43,6 +43,7 @@ from shirube.domain.chat import (
     TurnMessage,
     TurnRequest,
 )
+from shirube.domain.connection import DatabaseKind
 from shirube.domain.errors import ShirubeError
 from shirube.ports.repositories import AiProvider
 
@@ -50,8 +51,16 @@ from shirube.ports.repositories import AiProvider
 # looping on tool calls forever without ever answering.
 MAX_TURNS = 12
 
-SYSTEM_PROMPT = """\
-You are the navigator for shirube, a read-only PostgreSQL schema explorer. You help the \
+# The engine named in the system prompt, per connection kind — so the model reasons with the
+# right dialect in mind rather than assuming PostgreSQL on, say, a SQLite profile. An unknown
+# kind falls back to the engine-neutral "database".
+_ENGINE_LABELS: dict[DatabaseKind, str] = {
+    DatabaseKind.POSTGRESQL: "PostgreSQL",
+    DatabaseKind.SQLITE: "SQLite",
+}
+
+SYSTEM_PROMPT_TEMPLATE = """\
+You are the navigator for shirube, a read-only {engine} schema explorer. You help the \
 user understand the database they are connected to and find their way around it.
 
 You reason over the schema's structure only — table, view and column names, data types, \
@@ -70,6 +79,21 @@ Pull in only what the question needs. When you name a table or column in your an
 its exact name. Be concise and concrete, and when the user should look at a specific table \
 to go further, say which one.
 """
+
+
+def build_system_prompt(kind: DatabaseKind) -> str:
+    """Fill the system prompt for a connection's engine.
+
+    Names the actual engine (PostgreSQL, SQLite, …) so the model does not answer with
+    another dialect's assumptions; an unrecognised kind falls back to a neutral "database".
+
+    Args:
+        kind: The connected database's engine.
+
+    Returns:
+        The system prompt for that engine.
+    """
+    return SYSTEM_PROMPT_TEMPLATE.format(engine=_ENGINE_LABELS.get(kind, "database"))
 
 
 def _search_objects(lookup: SchemaLookup, arguments: dict[str, object]) -> dict[str, object]:
@@ -201,9 +225,10 @@ def _fixed_prompt_tokens() -> int:
     """Estimate the tokens the fixed prompt always costs: the system prompt and tool schemas.
 
     These are sent every turn regardless of the conversation, so they count against the
-    context window before any history does.
+    context window before any history does. The engine name varies the prompt by only a
+    token or two, well within the reserves, so a representative engine is estimated here.
     """
-    total = estimate_tokens(SYSTEM_PROMPT)
+    total = estimate_tokens(build_system_prompt(DatabaseKind.POSTGRESQL))
     for tool in TOOL_DEFINITIONS:
         total += estimate_tokens(tool.name)
         total += estimate_tokens(tool.description)
@@ -254,11 +279,14 @@ class NavigatorService:
             The navigator's events — text, tool-call markers, then done or error.
         """
         try:
+            # The engine tailors the system prompt; introspection reads the schema itself.
+            kind = self._schema.profile_kind(profile_id)
             graph = self._schema.introspect_profile(profile_id)
         except ShirubeError as exc:
             yield NavigatorError(exc.detail)
             return
 
+        system_prompt = build_system_prompt(kind)
         lookup = SchemaLookup(graph)
         # Trim the oldest history so the prompt fits the model's context window, keeping the
         # current question. This bounds a long conversation before the turn even starts.
@@ -284,7 +312,7 @@ class NavigatorService:
             try:
                 for event in self._provider.stream_turn(
                     TurnRequest(
-                        system=SYSTEM_PROMPT, messages=tuple(messages), tools=TOOL_DEFINITIONS
+                        system=system_prompt, messages=tuple(messages), tools=TOOL_DEFINITIONS
                     )
                 ):
                     if isinstance(event, TextDelta):

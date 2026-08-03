@@ -6,12 +6,22 @@ and the endpoint is exercised with a fake inspector standing in for the real ada
 
 from collections.abc import Sequence
 
+import pytest
 from fastapi.testclient import TestClient
 
 from shirube.adapters.api.app import create_app
 from shirube.adapters.api.dependencies import get_schema_inspector, get_secret_store
 from shirube.adapters.postgres.schema_inspector import build_graph
-from shirube.domain.connection import ConnectionParams
+from shirube.application.schema import SchemaService
+from shirube.domain.connection import (
+    ConnectionParams,
+    ConnectionProfile,
+    DatabaseKind,
+    PostgresTarget,
+    SqliteTarget,
+    SslMode,
+)
+from shirube.domain.errors import ProfileNotFoundError
 from shirube.domain.schema import (
     Column,
     ObjectKind,
@@ -363,3 +373,43 @@ def test_get_schema_missing_profile_returns_404() -> None:
         response = client.get("/api/profiles/does-not-exist/schema")
 
     assert response.status_code == 404
+
+
+# --- profile_kind (engine-aware messaging) -------------------------------------------
+
+
+class _FakeProfileRepo:
+    """Returns a single canned profile, or ``None`` for any other id."""
+
+    def __init__(self, profile: ConnectionProfile | None) -> None:
+        self._profile = profile
+
+    def get(self, profile_id: str) -> ConnectionProfile | None:
+        return self._profile
+
+
+def _schema_service(profile: ConnectionProfile | None) -> SchemaService:
+    # Only the profile repository is exercised by profile_kind; the other collaborators are
+    # stored but never called here.
+    return SchemaService(_FakeProfileRepo(profile), object(), object(), object())  # type: ignore[arg-type]
+
+
+def test_profile_kind_reports_a_postgresql_profile() -> None:
+    profile = ConnectionProfile(
+        id="p1",
+        name="shop",
+        target=PostgresTarget(
+            host="h", port=5432, database="d", username="u", sslmode=SslMode.REQUIRE
+        ),
+    )
+    assert _schema_service(profile).profile_kind("p1") is DatabaseKind.POSTGRESQL
+
+
+def test_profile_kind_reports_a_sqlite_profile() -> None:
+    profile = ConnectionProfile(id="p1", name="local", target=SqliteTarget(path="/tmp/x.sqlite"))
+    assert _schema_service(profile).profile_kind("p1") is DatabaseKind.SQLITE
+
+
+def test_profile_kind_missing_profile_raises() -> None:
+    with pytest.raises(ProfileNotFoundError):
+        _schema_service(None).profile_kind("nope")

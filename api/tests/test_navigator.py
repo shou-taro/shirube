@@ -27,6 +27,7 @@ from shirube.domain.chat import (
     TurnComplete,
     TurnRequest,
 )
+from shirube.domain.connection import DatabaseKind
 from shirube.domain.errors import ConnectionFailedError
 from shirube.domain.schema import (
     Column,
@@ -79,17 +80,28 @@ _GRAPH = SchemaGraph(
 
 
 class FakeSchemaService:
-    """Returns a canned graph, or raises when asked to fail."""
+    """Returns a canned graph and engine kind, or raises when asked to fail."""
 
-    def __init__(self, graph: SchemaGraph | None = _GRAPH, error: Exception | None = None) -> None:
+    def __init__(
+        self,
+        graph: SchemaGraph | None = _GRAPH,
+        error: Exception | None = None,
+        kind: DatabaseKind = DatabaseKind.POSTGRESQL,
+    ) -> None:
         self._graph = graph
         self._error = error
+        self._kind = kind
 
     def introspect_profile(self, profile_id: str) -> SchemaGraph:
         if self._error is not None:
             raise self._error
         assert self._graph is not None
         return self._graph
+
+    def profile_kind(self, profile_id: str) -> DatabaseKind:
+        if self._error is not None:
+            raise self._error
+        return self._kind
 
 
 class FakeProvider:
@@ -294,6 +306,21 @@ def test_introspection_failure_yields_a_navigator_error() -> None:
 
     assert events == [NavigatorError("Could not connect to the database")]
     assert provider.requests == []
+
+
+def test_system_prompt_names_the_connected_engine() -> None:
+    # A SQLite profile must not be described to the model as PostgreSQL, and vice versa.
+    for kind, engine in [
+        (DatabaseKind.SQLITE, "SQLite"),
+        (DatabaseKind.POSTGRESQL, "PostgreSQL"),
+    ]:
+        provider = FakeProvider([[TextDelta("hi"), TurnComplete("end_turn", TokenUsage())]])
+        _ask(_navigator(provider, FakeSchemaService(kind=kind)))
+        system = provider.requests[0].system
+        assert f"read-only {engine} schema explorer" in system
+        # The other engine's name must not leak into the prompt.
+        other = "PostgreSQL" if engine == "SQLite" else "SQLite"
+        assert other not in system
 
 
 def test_token_usage_is_accumulated_across_turns() -> None:
