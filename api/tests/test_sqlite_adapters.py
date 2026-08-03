@@ -417,6 +417,33 @@ def test_build_select_leaves_a_view_unordered_when_no_stable_key_exists() -> Non
     assert "ORDER BY" not in statement
 
 
+def test_build_select_rowid_fallback_avoids_a_shadowing_column() -> None:
+    # A real column named "rowid" (matched case-insensitively) shadows the internal rowid, so
+    # the next free alias is used to reach it instead — never the shadowing column.
+    statement, _ = build_select(
+        name="logs",
+        columns=["RowId", "message"],
+        query=RowQuery(limit=5, offset=0),
+        rowid_fallback=True,
+    )
+
+    assert "ORDER BY _rowid_ ASC" in statement
+    assert "ORDER BY rowid ASC" not in statement
+
+
+def test_build_select_disables_rowid_fallback_when_every_alias_is_a_column() -> None:
+    # rowid, _rowid_ and oid are all declared columns, so the internal rowid is unreachable —
+    # no stable order can be formed, so none is emitted (rather than ordering by a shadow).
+    statement, _ = build_select(
+        name="logs",
+        columns=["rowid", "_rowid_", "oid", "message"],
+        query=RowQuery(limit=5, offset=0),
+        rowid_fallback=True,
+    )
+
+    assert "ORDER BY" not in statement
+
+
 def test_build_select_rejects_an_unknown_filter_column() -> None:
     """A filter on a column the object lacks is refused before any SQL runs."""
     with pytest.raises(InvalidQueryError):

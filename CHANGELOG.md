@@ -35,6 +35,12 @@ may still change between releases).
   remembered by hostname alone, so changing that endpoint's scheme, port or path — including
   HTTPS to plain HTTP — silently reused the old approval. Consent is now keyed to the full
   destination, so any such change asks again. Existing approvals are re-confirmed once.
+- **A saved API key is never sent to a different AI endpoint.** Testing or listing models
+  for a provider, or saving one, without re-entering the key reused the stored key regardless
+  of where the request pointed — so switching a saved Claude to a custom URL could send your
+  Anthropic key there. The stored key is now reused only when the destination is unchanged
+  (same kind and base URL); change the endpoint and it authenticates with the key you enter,
+  and saving a new destination without a key drops the old one rather than leaving it behind.
 
 ## [0.3.0b2] — 2026-07-30
 

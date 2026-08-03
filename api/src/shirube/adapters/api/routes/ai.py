@@ -11,10 +11,9 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
 from shirube.adapters.ai.factory import check_provider, list_provider_models
-from shirube.adapters.api.dependencies import get_ai_config_service, get_secret_store
-from shirube.application.ai_config import AI_PROVIDER_SECRET_ID, AiConfigService, ProviderStatus
+from shirube.adapters.api.dependencies import get_ai_config_service
+from shirube.application.ai_config import AiConfigService, ProviderStatus
 from shirube.domain.ai import AiProviderConfig, AiProviderKind
-from shirube.ports.repositories import SecretStore
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -78,7 +77,6 @@ class ProviderModelsResult(BaseModel):
 
 
 ServiceDep = Annotated[AiConfigService, Depends(get_ai_config_service)]
-SecretsDep = Annotated[SecretStore, Depends(get_secret_store)]
 
 
 @router.get("/provider", response_model=AiProviderRead | None)
@@ -94,30 +92,35 @@ def set_provider(body: AiProviderWrite, service: ServiceDep) -> AiProviderRead |
 
 
 @router.post("/provider/test", response_model=ProviderTestResult)
-def test_provider(body: AiProviderWrite, secrets: SecretsDep) -> ProviderTestResult:
+def test_provider(body: AiProviderWrite, service: ServiceDep) -> ProviderTestResult:
     """Check that a provider configuration can be reached and authenticated.
 
-    Uses the supplied API key, or the stored one when none is given — so a saved provider
-    can be re-checked without re-entering its key. Returns ``{"ok": true}`` on success; a
-    failure surfaces as a 400 with a translated, actionable message.
+    Uses the supplied API key, or the stored one when none is given *and the destination is
+    unchanged* — so a saved provider can be re-checked without re-entering its key, but a key
+    saved for one provider is never sent to a different endpoint the user has just typed in.
+    Returns ``{"ok": true}`` on success; a failure surfaces as a 400 with a translated,
+    actionable message.
     """
-    api_key = body.api_key or secrets.get_password(AI_PROVIDER_SECRET_ID)
-    check_provider(body.to_config(), api_key)
+    config = body.to_config()
+    check_provider(config, service.resolve_api_key(config, body.api_key))
     return ProviderTestResult()
 
 
 @router.post("/provider/models", response_model=ProviderModelsResult)
-def get_provider_models(body: AiProviderWrite, secrets: SecretsDep) -> ProviderModelsResult:
+def get_provider_models(body: AiProviderWrite, service: ServiceDep) -> ProviderModelsResult:
     """List the models the entered (or configured) provider offers.
 
-    Uses the supplied API key, or the stored one when none is given — exactly as the test
-    endpoint does — so a saved provider can be listed without re-entering its key. Sends no
-    schema; only model names are read back, so it does not change what leaves the machine. A
-    provider that cannot be reached or list its models fails with a 4xx and a translated
-    message, and the form falls back to free-text entry.
+    Resolves the API key exactly as the test endpoint does — the supplied key, or the stored
+    one only when the destination is unchanged — so a key saved for one provider is never sent
+    to a different endpoint just to list its models. Sends no schema; only model names are read
+    back, so it does not change what leaves the machine. A provider that cannot be reached or
+    list its models fails with a 4xx and a translated message, and the form falls back to
+    free-text entry.
     """
-    api_key = body.api_key or secrets.get_password(AI_PROVIDER_SECRET_ID)
-    return ProviderModelsResult(models=list_provider_models(body.to_config(), api_key))
+    config = body.to_config()
+    return ProviderModelsResult(
+        models=list_provider_models(config, service.resolve_api_key(config, body.api_key))
+    )
 
 
 @router.delete("/provider", status_code=status.HTTP_204_NO_CONTENT)
