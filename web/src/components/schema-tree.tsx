@@ -108,7 +108,7 @@ export function SchemaTree({ objects, relationships, activeId, onSelect }: Schem
       </Button>
 
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-1 flex max-h-[70vh] w-80 flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md">
+        <div className="absolute right-0 top-full z-30 mt-1 flex max-h-[70vh] w-80 origin-top-right animate-[shirube-menu-in_140ms_ease-out] flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md">
           <div className="flex items-center justify-between border-b px-2.5 py-1.5">
             <span className="text-xs font-medium text-muted-foreground">{t('tree.open')}</span>
             <button
