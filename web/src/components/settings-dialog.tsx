@@ -329,8 +329,11 @@ function AiProviderSection({
     }
   }
 
+  // A stored key is never fetched back, so the field is blank; show masked dots as its
+  // placeholder to signal a key *is* saved (leave blank to keep it, type to replace), rather
+  // than looking empty. Not the real key — just a fixed-length mask.
   const keyPlaceholder = keyStored
-    ? ''
+    ? '••••••••'
     : spec.key === 'required'
       ? t('settings.aiApiKeyEnter')
       : t('settings.aiApiKeyOptionalPlaceholder')

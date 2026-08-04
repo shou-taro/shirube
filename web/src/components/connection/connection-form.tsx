@@ -295,6 +295,11 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
                 value={form.password}
                 onChange={(event) => set('password', event.target.value)}
                 required={editingId === null}
+                // Editing keeps the stored password unless a new one is typed, but it is never
+                // fetched back — so show masked dots to signal one is stored (leave blank to
+                // keep it). Not shown when creating or duplicating: those have no stored
+                // password and must be given one. A fixed-length mask, not the real password.
+                placeholder={editingId ? '••••••••' : undefined}
               />
             </div>
           </Field>

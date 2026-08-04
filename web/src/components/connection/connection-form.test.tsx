@@ -170,6 +170,35 @@ describe('editing a profile', () => {
     await waitFor(() => expect(mockUpdate).toHaveBeenCalledWith('p1', expect.anything()))
   })
 
+  it('shows the stored password as masked dots when editing', () => {
+    render(
+      <ConnectionForm initial={existing} editingId="p1" onConnected={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    // The stored password is never fetched back, so the field is blank; masked dots signal
+    // one is kept (leave blank) rather than looking unset.
+    const password = field(/connection.fields.password/)
+    expect(password).toHaveValue('')
+    expect(password).toHaveAttribute('placeholder', '••••••••')
+  })
+
+  it('does not mask the password when duplicating, which needs a fresh one', () => {
+    // Duplicate opens the form as a create (editingId null) with the fields prefilled but no
+    // stored password — passwords are never copied — so it must be entered, not shown as kept.
+    render(
+      <ConnectionForm
+        initial={{ ...existing, name: 'shop copy' }}
+        editingId={null}
+        onConnected={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    const password = field(/connection.fields.password/)
+    expect(password).not.toHaveAttribute('placeholder', '••••••••')
+    expect(password).toBeRequired()
+  })
+
   it('does not save when the candidate edit fails verification', async () => {
     mockTestEdit.mockRejectedValue(new Error('Authentication failed.'))
     const onConnected = vi.fn()
