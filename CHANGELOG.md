@@ -8,6 +8,8 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.3.0b4] — 2026-08-04
+
 ### Changed
 
 - **The navigator works quietly, then writes its answer.** While the AI navigator is thinking
