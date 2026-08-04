@@ -102,6 +102,11 @@
       </div>
       <div class="wordmark">shirube</div>
     </div>
+    <!-- When the splash first paints, so the app can keep it up for a minimum time rather
+         than flashing it away the instant it's ready to render. -->
+    <script>
+      window.__splashShownAt = Date.now()
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
