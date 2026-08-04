@@ -101,8 +101,8 @@ Everything below works today, in the beta:
   with click-to-sort columns, simple column filters, and paging.
 - ⚡ **Instant search.** Press <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> to jump straight to any
   table or column.
-- 🔐 **Saved connections.** Manage several PostgreSQL profiles; passwords are kept in your
-  operating system's keychain, never in a config file.
+- 🔐 **Saved connections.** Manage several database profiles — PostgreSQL or SQLite;
+  passwords are kept in your operating system's keychain, never in a config file.
 - 🌗 **Light and dark themes.**
 
 ## 🤖 The AI navigator
@@ -178,12 +178,14 @@ To turn on the [AI navigator](#-the-ai-navigator), open **Settings → AI naviga
 add a provider — your own Claude or OpenAI key, or a local model. It's optional; the
 explorer works fully without it.
 
-### 🧪 Try it with a sample database
+### 🧪 Try it with a PostgreSQL sample
 
-No PostgreSQL to hand? You can take shirube for a spin against a range of sample
-databases — [pagila](https://github.com/devrimgunduz/pagila) (a DVD-rental shop),
-chinook (a music store), lego, employees (large), and Microsoft's AdventureWorks (many
-tables across several schemas). This needs **Docker** and a clone of this repository.
+For a quick spin, the bundled SQLite sample (the **Sample database (Chinook)** above) is
+all you need. To try shirube against a real **PostgreSQL** server, you can spin up a range
+of sample databases with Docker — [pagila](https://github.com/devrimgunduz/pagila) (a
+DVD-rental shop), chinook (a music store), lego, employees (large), and Microsoft's
+AdventureWorks (many tables across several schemas). This needs **Docker** and a clone of
+this repository.
 
 ```bash
 git clone https://github.com/shou-taro/shirube.git
