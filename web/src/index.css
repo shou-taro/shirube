@@ -177,6 +177,13 @@
   animation: shirube-fade-in 160ms ease-out;
 }
 
+/* Top-level view entrance (connection screen, explorer): a slightly longer opacity fade
+   so switching screens or landing after the restore spinner eases in rather than snapping.
+   Opacity only — no transform — so a full-height screen never nudges layout or scroll. */
+.animate-view-in {
+  animation: shirube-fade-in 220ms ease-out;
+}
+
 /* Dropdown menus (Radix keeps the content mounted through the exit animation). A small
    fade with a slight zoom from the trigger, applied via the data-state variants on
    DropdownMenuContent. */

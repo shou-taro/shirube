@@ -252,7 +252,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   }, [centreId, centreOverride])
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
+    <div className="animate-view-in flex h-screen flex-col bg-background text-foreground">
       <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-[var(--topbar)] px-3">
         <span className="flex items-center gap-1.5 font-medium">
           <Logo className="size-5" />
