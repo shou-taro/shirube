@@ -78,7 +78,9 @@ built), **Active** (an ongoing practice).
   `127.0.0.1` to reach the API through the browser. This is why loopback binding alone is
   not enough.
 - Plus same-origin **security headers** (CSP, `X-Frame-Options: DENY`, `nosniff`,
-  `Referrer-Policy`) and a loud **warning** if bound to a non-loopback address.
+  `Referrer-Policy`). The bind address is **fixed to loopback and not configurable** —
+  there is no supported way to expose shirube on the network, so an unauthenticated API
+  can't be put there by accident. Reach a remote instance over an SSH tunnel instead.
 - A loopback auth token (to fend off *other local processes*) is deferred as a heavier,
   SPA-touching follow-up.
 
