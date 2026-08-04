@@ -170,10 +170,12 @@ describe('NavigatorPane', () => {
 
       ask('Hi')
 
-      // The word-by-word reveal runs to completion, so the whole answer arrives (generous
-      // timeout: this turn actually animates rather than resolving instantly).
+      // The word-by-word reveal runs to completion, so the whole answer arrives. This turn
+      // actually animates rather than resolving instantly, and it is one of the first
+      // component tests to run, so a cold CI runner (macOS especially) can be slow to reach
+      // the finished text — keep the timeout generous so real animation time never flakes.
       expect(
-        await screen.findByText('Joins the actor.', undefined, { timeout: 3000 }),
+        await screen.findByText('Joins the actor.', undefined, { timeout: 8000 }),
       ).toBeInTheDocument()
     } finally {
       window.matchMedia = reducedMotionDefault
