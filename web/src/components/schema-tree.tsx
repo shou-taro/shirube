@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Folder, KeyRound, Link2, ListTree, X } from 'lucide-react'
+import { ChevronRight, Folder, KeyRound, Link2, ListTree, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -133,11 +133,13 @@ export function SchemaTree({ objects, relationships, activeId, onSelect }: Schem
                     onClick={() => toggleSchema(group.schema)}
                     className="flex w-full items-center gap-1.5 rounded-sm px-1.5 py-1 text-left text-sm font-medium hover:bg-brand/10"
                   >
-                    {schemaOpen(group.schema) ? (
-                      <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    ) : (
-                      <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    )}
+                    <ChevronRight
+                      className={cn(
+                        'size-3.5 shrink-0 text-muted-foreground transition-transform',
+                        schemaOpen(group.schema) && 'rotate-90',
+                      )}
+                      aria-hidden="true"
+                    />
                     <Folder className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <span className="min-w-0 truncate">{group.schema}</span>
                     <span className="ml-auto shrink-0 text-xs font-normal text-muted-foreground">
@@ -167,11 +169,13 @@ export function SchemaTree({ objects, relationships, activeId, onSelect }: Schem
                                 onClick={() => toggleObject(object.id)}
                                 className="flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:text-brand"
                               >
-                                {expanded ? (
-                                  <ChevronDown className="size-3.5" aria-hidden="true" />
-                                ) : (
-                                  <ChevronRight className="size-3.5" aria-hidden="true" />
-                                )}
+                                <ChevronRight
+                                  className={cn(
+                                    'size-3.5 transition-transform',
+                                    expanded && 'rotate-90',
+                                  )}
+                                  aria-hidden="true"
+                                />
                               </button>
                             ) : (
                               <span className="size-5 shrink-0" />

@@ -185,7 +185,7 @@ export function SchemaSearch({ objects, onSelect }: SchemaSearchProps) {
           id={LISTBOX_ID}
           role="listbox"
           aria-label={t('search.placeholder')}
-          className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
+          className="absolute inset-x-0 top-full z-20 mt-1 origin-top animate-[shirube-menu-in_140ms_ease-out] overflow-hidden rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
           onMouseDown={() => {
             // Keep focus on the input so onBlur's timer does not fire mid-click.
             if (blurTimer.current) {
