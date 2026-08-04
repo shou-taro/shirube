@@ -30,6 +30,10 @@ const edgeTypes = { routed: RoutedEdge }
 // while still leaving room for the vertical off-map stubs above and below the cards.
 const FIT_PADDING = 0.15
 
+// How long the travel cross-fade takes each way. Must match the `.react-flow__viewport`
+// opacity-transition duration in index.css so the layout swaps exactly when it has faded out.
+const TRAVEL_FADE_MS = 300
+
 /**
  * Refit the view when the focus changes — travelling to a new centre or toggling the
  * show-everything view — so the fresh set of nodes is framed. Lives inside <ReactFlow>
@@ -109,16 +113,17 @@ export function ErDiagram({
   const [showAll, setShowAll] = useState(defaultShowAll)
   const [travelling, setTravelling] = useState(false)
 
-  // Travel to a new centre with a brief cross-fade: fade the map out, swap the whole
-  // layout while it is faded (so the jump is hidden), then fade back in as the view
-  // refits — reading as a smooth transition rather than a snap.
+  // Travel to a new centre with a cross-fade: fade the map out, swap the whole layout while
+  // it is faded (so the jump is hidden), then fade back in as the view refits — reading as a
+  // smooth transition rather than a snap. The wait matches the viewport's opacity-transition
+  // duration in index.css (keep the two in step) so the swap lands once it has fully faded.
   const travelTo = useCallback((id: string) => {
     setTravelling(true)
     window.setTimeout(() => {
       setCentreId(id)
       setShowAll(false)
       requestAnimationFrame(() => setTravelling(false))
-    }, 180)
+    }, TRAVEL_FADE_MS)
   }, [])
 
   // A fresh schema keeps the current centre when that table is still present — so reloading,
