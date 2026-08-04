@@ -28,6 +28,9 @@ export function DropdownMenuContent({
         sideOffset={sideOffset}
         className={cn(
           'z-50 min-w-36 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md',
+          'origin-[var(--radix-dropdown-menu-content-transform-origin)]',
+          'data-[state=open]:animate-[shirube-menu-in_140ms_ease-out]',
+          'data-[state=closed]:animate-[shirube-menu-out_120ms_ease-in]',
           className,
         )}
         {...props}

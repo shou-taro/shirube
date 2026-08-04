@@ -469,7 +469,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
             onClick={() => setNavigatorOpen(false)}
             // A blur (not just a tint) is what separates the overlay from the map in dark
             // mode, where a translucent black scrim would vanish into the dark canvas.
-            className="absolute inset-0 z-30 bg-black/40 backdrop-blur-sm"
+            className="animate-fade-in absolute inset-0 z-30 bg-black/40 backdrop-blur-sm"
           />
         )}
         {/* Right pane: the AI navigator. Docked beside the map on a wide window; on a narrow

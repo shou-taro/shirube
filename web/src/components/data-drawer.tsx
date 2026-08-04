@@ -155,7 +155,7 @@ export function DataDrawer({ profileId, object, open, onClose }: DataDrawerProps
   const canNext = (page?.has_more ?? false) && status !== 'loading'
 
   return (
-    <div className="flex h-[32vh] max-h-[44vh] min-h-40 shrink-0 flex-col border-t border-brand/25 bg-card shadow-[0_-6px_20px_-10px_rgba(0,0,0,0.18)]">
+    <div className="animate-drawer-in flex h-[32vh] max-h-[44vh] min-h-40 shrink-0 flex-col border-t border-brand/25 bg-card shadow-[0_-6px_20px_-10px_rgba(0,0,0,0.18)]">
       {/* Header: which object, the current row range, paging and close. */}
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-brand/20 bg-brand/10 px-3 text-xs">
         <span className="font-medium text-foreground">{object?.name ?? t('data.title')}</span>

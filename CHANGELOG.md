@@ -8,6 +8,14 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Changed
+
+- **Small motions where things appear.** The data preview drawer now slides up as it
+  opens rather than blinking into place, dropdown menus fade in from their trigger, and
+  the dim behind the navigator's slide-in overlay fades rather than snapping on. All of it
+  is skipped if you prefer reduced motion — now applied across the interface, not just the
+  navigator's typewriter reveal.
+
 ### Security
 
 - **The server binds to loopback only, and that can no longer be changed.** shirube is a
