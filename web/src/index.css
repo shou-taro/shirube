@@ -193,6 +193,18 @@
   }
 }
 
+/* The settings dialog: a gentle fade with a slight scale as the modal appears (its
+   backdrop fades in via .animate-fade-in). */
+@keyframes shirube-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+.animate-dialog-in {
+  animation: shirube-dialog-in 160ms ease-out;
+}
+
 /* Blanket safety net for a reduced-motion preference: collapse the CSS animations above
    and any Tailwind transitions to near-instant. The navigator's typewriter reveal already
    opts out in JS; this covers the CSS layer. A loading spinner is essential feedback, not

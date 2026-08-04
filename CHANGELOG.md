@@ -11,10 +11,11 @@ may still change between releases).
 ### Changed
 
 - **Small motions where things appear.** Menus that pop from a button — the connection
-  actions and the schema browser — fade in from their trigger, and the dim behind the
-  navigator's slide-in overlay fades rather than snapping on. All of it is skipped if you
-  prefer reduced motion — now applied across the interface, not just the navigator's
-  typewriter reveal.
+  actions and the schema browser — fade in from their trigger; the settings dialog and its
+  backdrop fade in as it opens; the ⌘K search results drop in; the schema browser's
+  expand arrows rotate rather than swap; and the dim behind the navigator's slide-in
+  overlay fades rather than snapping on. All of it is skipped if you prefer reduced motion
+  — now applied across the interface, not just the navigator's typewriter reveal.
 
 ### Security
 
