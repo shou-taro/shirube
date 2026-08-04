@@ -8,6 +8,13 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Added
+
+- **A branded loading screen.** Starting shirube now opens onto a small splash — the logo
+  with its "you are here" node pulsing like a map beacon — the instant the page paints,
+  rather than a blank window while the app loads. It fades out into the app once things are
+  ready, and holds still if you prefer reduced motion.
+
 ### Changed
 
 - **Small motions where things appear.** Menus that pop from a button — the connection

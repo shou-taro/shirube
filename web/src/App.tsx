@@ -43,6 +43,22 @@ export default function App() {
       .finally(() => setRestoring(false))
   }, [])
 
+  // Once the app knows what to show (restore finished), fade out the boot splash from
+  // index.html and remove it. Until then the splash covers the load, so there is no bare
+  // flash between the spinner and the first screen.
+  useEffect(() => {
+    if (restoring) {
+      return
+    }
+    const splash = document.getElementById('splash')
+    if (splash === null) {
+      return
+    }
+    splash.classList.add('is-hidden')
+    const timer = window.setTimeout(() => splash.remove(), 450)
+    return () => window.clearTimeout(timer)
+  }, [restoring])
+
   function connect(profile: Profile): void {
     localStorage.setItem(ACTIVE_PROFILE_KEY, profile.id)
     setActiveProfile(profile)
