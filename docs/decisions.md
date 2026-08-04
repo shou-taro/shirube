@@ -6,9 +6,9 @@ future contributors and maintainers can understand a trade-off instead of re-ope
 It has two parts:
 
 - **Decided** — settled choices that shape the shipped product.
-- **Tentative** — current thinking on parts **not yet built** (further database engines,
-  partition handling, and deferred navigator enhancements). Design intent, not commitments;
-  expect it to change once the code exists.
+- **Tentative** — current thinking on parts **not yet built** (further database engines
+  and deferred navigator enhancements). Design intent, not commitments; expect it to change
+  once the code exists.
 
 Status shorthand: **Built** (in the shipped beta), **Committed** (settled, not yet
 built), **Active** (an ongoing practice).
@@ -109,11 +109,20 @@ built), **Active** (an ongoing practice).
 
 ### Objects and edges on the map
 
-**Built (tables/views/matviews; foreign-key, view-dependency and manual edges).**
+**Built (tables/views/matviews/partitioned tables; foreign-key, view-dependency and
+manual edges).**
 
-- **Nodes:** tables, views, materialised views. Indexes, constraints, triggers, types,
-  sequences and comments belong **in the detail panel, not as nodes**. Out of scope (not
-  a DBA tool): roles, extensions, tablespaces.
+- **Nodes:** tables, views, materialised views, and **partitioned tables** (shown as one
+  node — see below). Indexes, constraints, triggers, types, sequences and comments belong
+  **in the detail panel, not as nodes**. Out of scope (not a DBA tool): roles, extensions,
+  tablespaces.
+- **A partitioned table folds into a single node.** It stands in for the whole table; its
+  child partitions are **folded away** rather than scattered across the map, and are listed
+  in the detail panel's *Partitions* section (name + bound). This keeps a partition-heavy
+  schema readable. A folded design was chosen over an on-map expand/collapse — the children
+  are an implementation detail of the one logical table, not places to travel to. A foreign
+  key declared on a **child** partition is re-attributed to the parent, so the parent node's
+  edges are complete even when the database records them per child.
 - **Edges** are visually distinct by meaning: **foreign-key** (declared, solid),
   **view-dependency** (a view → the relations it reads, dashed) and **manual** (dotted).
   Manual links are built: a user draws the relationship the database does not declare,
@@ -123,8 +132,8 @@ built), **Active** (an ongoing practice).
   rejected:** on legacy schemas its accuracy is unpredictable, and a *wrong* edge
   misleads worse than a missing one. If inference ever returns, it should be "the AI
   proposes, the user confirms", verified against real data.
-- Deferred: hiding child partitions behind their parent; foreign tables;
-  functions/procedures (they don't fit the "node with columns" model).
+- Deferred: foreign tables; functions/procedures (they don't fit the "node with columns"
+  model).
 
 ### Table detail and data preview
 
@@ -405,11 +414,16 @@ built), **Active** (an ongoing practice).
   search, then the objects that matter — rather than receiving the schema up front.
 - Cross-object **path finding** is the `find_path` tool above (backend BFS over the
   relationship graph — fast and reliable regardless of schema size); answers render the hop
-  sequence as clickable text. Only the **visual** route — drawing/highlighting the A → B → C
-  path across the ER diagram — remains deferred.
-- The set assumes a **function-calling-capable model** (see *model tiers*). A no-tool
-  degraded path — packing a bounded, question-relevant metadata slice straight into the
-  prompt for weaker local models — is a later consideration, not part of the first cut.
+  sequence as **clickable text hops**, which is the intended form. A *visual* route overlay
+  drawn across the diagram is **not planned**: the map is a neighbourhood view (one centre
+  plus its one-hop neighbours), so a multi-hop path rarely fits on screen at once, and
+  drawing it would mean abandoning the travel model. Clicking the hops walks the same route
+  within that model.
+- The set **assumes a function-calling-capable model** (see *model tiers*), and that is a
+  deliberate line: a no-tool degraded path — packing a guessed, question-relevant metadata
+  slice straight into the prompt for models that can't call tools — is **not planned**. It
+  would mean a permanent second retrieval architecture for a narrowing niche, and a model too
+  weak to call tools is generally too weak for the navigator anyway.
 
 ### AI navigator: external-send privacy
 
@@ -446,12 +460,13 @@ built), **Active** (an ongoing practice).
 
 ### AI navigator: answers wired to the map
 
-**Built (clickable answers); deferred (path overlay).**
+**Built.**
 
 - Table names in an answer are clickable and move/highlight the map, so the AI and the map
-  feel like one navigator. Drawing a **path** across the diagram (e.g. Customer → Orders →
-  Payments) as a visual route planner remains deferred; today path questions are answered in
-  text with clickable hops (see *the look-up tool set*).
+  feel like one navigator. Path questions are answered in text with **clickable hops** — the
+  intended form. Drawing a *path* across the diagram (e.g. Customer → Orders → Payments) as a
+  visual route planner is **not planned**: it conflicts with the neighbourhood-travel map,
+  where a multi-hop path rarely fits on screen at once (see *the look-up tool set*).
 
 ### AI navigator: per-profile history and token display
 
@@ -475,8 +490,8 @@ built), **Active** (an ongoing practice).
   scrollable list of turns — the user's question and the AI's streamed answer — scoped and
   persisted per profile (see *per-profile history*), with new/clear.
 - **Answers wired to the map.** Table names and `find_path` hops render as clickable chips
-  that recentre/highlight the map (see *answers wired to the map*); the visual route overlay
-  stays deferred.
+  that recentre/highlight the map (see *answers wired to the map*); a visual route overlay is
+  not planned.
 - **Pane header** carries the always-visible **destination indicator** (provider name, or
   "local — nothing leaves") from the consent flow, a way into provider settings, and token
   usage per the *token display* decision (a local model shows "local, no API cost").
@@ -547,20 +562,23 @@ it to change once implemented.
   surface stays unchanged. The read-only and safety guarantees must hold as for the other
   engines.
 
-### Partition handling
+### Full interface localisation
 
-- Hide a partitioned table's child partitions behind its parent (a scoped
-  expand/collapse), so a partition-heavy schema doesn't flood the map.
+- Ship a **fully localised UI** (Japanese first). The i18n layer is already in place (see
+  *UI language: English base with i18n* under Decided) and every string routes through it, so
+  this is translation and review work rather than plumbing: supply the dictionaries and add a
+  language switcher. English stays the canonical base. (The docs already carry a native
+  Japanese README; the *app* UI is still English-only for now.)
 
 ### Deferred navigator enhancements
 
-- **Visual path overlay** — draw/highlight the A → B → C route across the ER diagram (a
-  route planner), beyond today's clickable text hops (see *answers wired to the map*).
 - **Per-turn send preview** — a panel showing exactly what metadata a question will send
   before it leaves, on top of the upfront consent and always-visible destination (see *the
-  consent flow*).
+  consent flow*). Design tension to settle first: because the navigator is **tool-calling**,
+  the full payload isn't known upfront — only the first turn (question + history + tool
+  definitions) is; the metadata slices are decided turn-by-turn as the model calls the
+  look-up tools. So a true "before it leaves" preview can only cover the first turn, and the
+  realistic shape is either a first-turn preview or a **per-turn transmission log** (what
+  actually went out, after each turn), or a hybrid. Pin this down before building.
 - **Semantic retrieval** — embedding-based look-up to complement the deterministic
   `search_objects` entry point.
-- **No-tool degraded path** — for weaker local models without function-calling, pack a
-  bounded, question-relevant metadata slice straight into the prompt instead of exposing the
-  look-up tools.
