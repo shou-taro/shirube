@@ -20,6 +20,13 @@ may still change between releases).
 - **Small motions where things appear.** Menus that pop from a button — the connection
   actions and the schema browser — fade in from their trigger; the settings dialog and its
   backdrop fade in as it opens; the ⌘K search results drop in; the schema browser's
+  expand arrows rotate rather than swap; and the dim behind the navigator's slide-in
+  overlay fades rather than snapping on. All of it is skipped if you prefer reduced motion
+  — now applied across the interface, not just the navigator's typewriter reveal.
+- **Map travel is smoother.** Moving the map to a new table used to stutter as the whole
+  neighbourhood swapped in and the view panned on the same frame. The pan now waits for the
+  new layout to paint before it runs, and the table cards re-render less, so the map eases
+  across instead of jumping.
   expand arrows rotate rather than swap; the dim behind the navigator's slide-in overlay
   fades rather than snapping on; and whole screens — the connection screen and the explorer
   — fade in as they appear instead of snapping onto the page. All of it is skipped if you

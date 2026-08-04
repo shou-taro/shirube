@@ -147,9 +147,10 @@
 
 /* Travelling to a new centre swaps the whole neighbourhood layout at once. Cross-fade
    the nodes and edges (the viewport layer) so the change reads as a smooth transition
-   rather than a jump; the controls and minimap stay put. */
+   rather than a jump; the controls and minimap stay put. The duration is paired with the
+   fade-out wait in er-diagram.tsx's travelTo (keep the two in step). */
 .react-flow__viewport {
-  transition: opacity 180ms ease;
+  transition: opacity 300ms ease;
 }
 .er-canvas--travelling .react-flow__viewport {
   opacity: 0.12;
