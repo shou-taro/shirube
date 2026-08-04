@@ -164,3 +164,50 @@
   --xy-controls-button-color-hover: var(--foreground);
   --xy-controls-button-border-color: var(--border);
 }
+
+/* --- Micro-interactions --------------------------------------------------- */
+
+/* The scrim that dims the map behind the navigator overlay on a narrow window. */
+@keyframes shirube-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.animate-fade-in {
+  animation: shirube-fade-in 160ms ease-out;
+}
+
+/* Dropdown menus (Radix keeps the content mounted through the exit animation). A small
+   fade with a slight zoom from the trigger, applied via the data-state variants on
+   DropdownMenuContent. */
+@keyframes shirube-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+}
+@keyframes shirube-menu-out {
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+}
+
+/* Blanket safety net for a reduced-motion preference: collapse the CSS animations above
+   and any Tailwind transitions to near-instant. The navigator's typewriter reveal already
+   opts out in JS; this covers the CSS layer. A loading spinner is essential feedback, not
+   decoration, so it keeps turning (a touch slower). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-spin {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
