@@ -38,7 +38,18 @@ const FIT_PADDING = 0.15
 function FitOnChange({ signature }: { signature: string }) {
   const { fitView } = useReactFlow()
   useEffect(() => {
-    void fitView({ padding: FIT_PADDING, duration: 400 })
+    // Start the pan only once the freshly-swapped layout has painted, so the animation
+    // runs on an unblocked main thread instead of stuttering against the node mount and
+    // the surrounding re-render on the same frame. Two frames: the first lets React's
+    // commit paint, the second starts the pan on a clear frame.
+    let inner = 0
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => void fitView({ padding: FIT_PADDING, duration: 400 }))
+    })
+    return () => {
+      cancelAnimationFrame(outer)
+      cancelAnimationFrame(inner)
+    }
   }, [signature, fitView])
   return null
 }

@@ -1,6 +1,6 @@
 import { Handle, type NodeProps, Position } from '@xyflow/react'
 import { ArrowRight, ChevronDown, KeyRound, Table2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { KindBadge } from '@/components/kind-badge'
@@ -148,7 +148,7 @@ function HiddenStub({
  * The centre of the neighbourhood is ringed for emphasis. Neighbours are clickable —
  * clicking one recentres the map on it — so they lift on hover to read as interactive.
  */
-export function TableNode({ data }: NodeProps<TableFlowNode>) {
+function TableNodeComponent({ data }: NodeProps<TableFlowNode>) {
   const { t } = useTranslation()
   const { object, isCentre, hiddenReferenced = [], hiddenReferencing = [], onTravel } = data
   return (
@@ -213,3 +213,8 @@ export function TableNode({ data }: NodeProps<TableFlowNode>) {
     </div>
   )
 }
+
+// Memoised so a node only re-renders when its own data changes — not when the map pans,
+// zooms, or a sibling node updates. Recommended for React Flow custom nodes, and it keeps
+// the neighbourhood swap on travel cheaper.
+export const TableNode = memo(TableNodeComponent)

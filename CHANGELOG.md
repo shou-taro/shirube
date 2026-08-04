@@ -16,6 +16,10 @@ may still change between releases).
   expand arrows rotate rather than swap; and the dim behind the navigator's slide-in
   overlay fades rather than snapping on. All of it is skipped if you prefer reduced motion
   — now applied across the interface, not just the navigator's typewriter reveal.
+- **Map travel is smoother.** Moving the map to a new table used to stutter as the whole
+  neighbourhood swapped in and the view panned on the same frame. The pan now waits for the
+  new layout to paint before it runs, and the table cards re-render less, so the map eases
+  across instead of jumping.
 
 ### Security
 
