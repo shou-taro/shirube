@@ -8,6 +8,13 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Added
+
+- **A branded loading screen.** Starting shirube now opens onto a small splash — the logo
+  with its "you are here" node pulsing like a map beacon — the instant the page paints,
+  rather than a blank window while the app loads. It fades out into the app once things are
+  ready, and holds still if you prefer reduced motion.
+
 ### Changed
 
 - **Small motions where things appear.** Menus that pop from a button — the connection
@@ -20,6 +27,11 @@ may still change between releases).
   neighbourhood swapped in and the view panned on the same frame. The pan now waits for the
   new layout to paint before it runs, and the table cards re-render less, so the map eases
   across instead of jumping.
+  expand arrows rotate rather than swap; the dim behind the navigator's slide-in overlay
+  fades rather than snapping on; and whole screens — the connection screen and the explorer
+  — fade in as they appear instead of snapping onto the page. All of it is skipped if you
+  prefer reduced motion — now applied across the interface, not just the navigator's
+  typewriter reveal.
 
 ### Security
 

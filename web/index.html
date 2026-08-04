@@ -5,8 +5,108 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>shirube</title>
+    <!--
+      Boot splash. Shown the instant the page paints — before the JS bundle loads and
+      React mounts — so `uvx shirube` opens onto a branded screen rather than a blank one,
+      then fades out once the app is ready (App.tsx removes it). Styled inline with fixed
+      colours (the app's CSS variables aren't loaded yet); the brand "you are here" node
+      pulses like a map beacon while things load.
+    -->
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: oklch(1 0 0);
+        color: oklch(0.556 0 0);
+        transition: opacity 400ms ease;
+      }
+      #splash.is-hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #splash svg {
+        width: 60px;
+        height: 60px;
+      }
+      #splash .node {
+        fill: oklch(1 0 0);
+      }
+      #splash .mark {
+        animation: splash-in 340ms ease-out both;
+      }
+      #splash .ping {
+        animation: splash-ping 1.6s ease-out infinite;
+      }
+      #splash .wordmark {
+        font: 500 15px ui-sans-serif, system-ui, -apple-system, sans-serif;
+        letter-spacing: 0.01em;
+        animation: splash-in 340ms ease-out 80ms both;
+      }
+      @keyframes splash-in {
+        from {
+          opacity: 0;
+          transform: translateY(4px) scale(0.96);
+        }
+      }
+      @keyframes splash-ping {
+        from {
+          r: 5.5px;
+          opacity: 0.55;
+        }
+        to {
+          r: 14px;
+          opacity: 0;
+        }
+      }
+      @media (prefers-color-scheme: dark) {
+        #splash {
+          background: oklch(0.17 0.014 300);
+          color: oklch(0.7 0 0);
+        }
+        #splash .node {
+          fill: oklch(0.17 0.014 300);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash .ping {
+          animation: none;
+          opacity: 0;
+        }
+        #splash .mark,
+        #splash .wordmark {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash" role="status" aria-label="Loading shirube">
+      <div class="mark">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="12" y1="16" x2="31" y2="11.5" />
+          <line x1="12" y1="16" x2="16" y2="35" />
+          <line x1="32.5" y1="12.5" x2="36" y2="33" />
+          <line x1="16" y1="35" x2="36" y2="33" />
+          <circle class="node" cx="12" cy="16" r="4" />
+          <circle class="node" cx="16" cy="35" r="4" />
+          <circle class="node" cx="36" cy="33" r="4" />
+          <circle class="ping" cx="32" cy="11" r="5.5" fill="none" stroke="#a78bfa" stroke-width="2" />
+          <circle cx="32" cy="11" r="5.5" fill="#a78bfa" stroke="#a78bfa" />
+        </svg>
+      </div>
+      <div class="wordmark">shirube</div>
+    </div>
+    <!-- When the splash first paints, so the app can keep it up for a minimum time rather
+         than flashing it away the instant it's ready to render. -->
+    <script>
+      window.__splashShownAt = Date.now()
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

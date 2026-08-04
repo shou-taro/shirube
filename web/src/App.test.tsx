@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Profile } from '@/lib/api'
@@ -122,5 +122,70 @@ describe('connect and disconnect', () => {
 
     await waitFor(() => expect(screen.getByText('connect')).toBeInTheDocument())
     expect(localStorage.getItem(ACTIVE_PROFILE_KEY)).toBeNull()
+  })
+})
+
+describe('dismissing the boot splash', () => {
+  function addSplash(): HTMLElement {
+    const splash = document.createElement('div')
+    splash.id = 'splash'
+    document.body.appendChild(splash)
+    return splash
+  }
+
+  function setShownAt(when: number): void {
+    ;(window as Window & { __splashShownAt?: number }).__splashShownAt = when
+  }
+
+  afterEach(() => {
+    vi.useRealTimers()
+    document.getElementById('splash')?.remove()
+    delete (window as Window & { __splashShownAt?: number }).__splashShownAt
+  })
+
+  it('holds the splash for a minimum time, then fades it out and removes it', () => {
+    vi.useFakeTimers()
+    const splash = addSplash()
+    // No paint timestamp recorded (the fallback path): the effect treats "now" as the
+    // start, so the full minimum should elapse before it begins hiding.
+
+    // No stored id → App is ready immediately, which triggers the dismissal.
+    render(<App />)
+
+    // Still fully up during the minimum hold.
+    expect(splash.classList.contains('is-hidden')).toBe(false)
+    expect(document.getElementById('splash')).not.toBeNull()
+
+    // After the minimum it fades (gains the class) but is not yet removed.
+    act(() => vi.advanceTimersByTime(3000))
+    expect(splash.classList.contains('is-hidden')).toBe(true)
+    expect(document.getElementById('splash')).not.toBeNull()
+
+    // After the fade it is gone.
+    act(() => vi.advanceTimersByTime(450))
+    expect(document.getElementById('splash')).toBeNull()
+  })
+
+  it('hides promptly when the minimum has already passed by the time the app is ready', () => {
+    vi.useFakeTimers()
+    const splash = addSplash()
+    // Painted well in the past (a slow start), so there is no minimum left to wait.
+    setShownAt(Date.now() - 10_000)
+
+    render(<App />)
+
+    act(() => vi.advanceTimersByTime(0))
+    expect(splash.classList.contains('is-hidden')).toBe(true)
+
+    act(() => vi.advanceTimersByTime(450))
+    expect(document.getElementById('splash')).toBeNull()
+  })
+
+  it('does nothing when there is no splash element', async () => {
+    // The reconnect path keeps App restoring briefly; no splash node means the effect is a
+    // no-op and the app still renders normally.
+    render(<App />)
+
+    expect(await screen.findByText('connect')).toBeInTheDocument()
   })
 })
