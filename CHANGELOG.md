@@ -8,6 +8,14 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Security
+
+- **The server binds to loopback only, and that can no longer be changed.** shirube is a
+  single-user tool with no authentication, so it was never meant to be reachable from the
+  network. The bind address is now fixed to `127.0.0.1` — the `SHIRUBE_HOST` override has
+  been removed, so an unauthenticated API can't be exposed on the network by accident. To
+  reach a remote instance, forward the port over an SSH tunnel (`ssh -L …`).
+
 ## [0.3.0b4] — 2026-08-04
 
 ### Changed

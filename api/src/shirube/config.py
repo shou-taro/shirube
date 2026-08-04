@@ -1,8 +1,9 @@
 """Application configuration and filesystem paths.
 
-Settings are read once at start-up and cached. Every value can be overridden with a
+Settings are read once at start-up and cached. Most values can be overridden with a
 ``SHIRUBE_*`` environment variable, which is how tests redirect the data directory and
-how a user can change the port or bind address without editing code.
+how a user can change the port without editing code. The bind host is the deliberate
+exception — it is fixed to loopback (see ``LOOPBACK_HOST``).
 """
 
 from functools import lru_cache
@@ -14,6 +15,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 APP_NAME = "shirube"
 
+# shirube is a single-user, unauthenticated local tool, so it binds to loopback and
+# nowhere else. This is deliberately not configurable — there is no supported way to
+# expose it on the network. To reach a remote instance, forward the port over an SSH
+# tunnel (``ssh -L …``) and point shirube at ``localhost``.
+LOOPBACK_HOST = "127.0.0.1"
+
 
 class Settings(BaseSettings):
     """Runtime settings for the local shirube server.
@@ -22,9 +29,11 @@ class Settings(BaseSettings):
     variables, a local ``.env`` file, then the defaults below.
 
     Attributes:
-        host: Interface the server binds to. Defaults to loopback so the server is
-            never exposed on the network — shirube is a single-user local tool, which
-            is what lets the MVP skip authentication entirely.
+        host: Loopback interface the server binds to. Fixed to ``127.0.0.1`` and not
+            configurable, so the server is never exposed on the network — shirube is a
+            single-user local tool, which is what lets the MVP skip authentication
+            entirely. Exposed as a property, not a field, so no environment variable can
+            override it.
         port: TCP port to listen on (see the note on the default value below).
         open_browser: Whether to open the browser automatically on start-up. Disabled
             in tests and when running headless.
@@ -44,7 +53,6 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="SHIRUBE_", env_file=".env", extra="ignore")
 
-    host: str = "127.0.0.1"
     # 7472 = "shrb" (the consonants of shirube) on a phone keypad — s7 h4 r7 b2 — and
     # steers clear of the common dev ports (3000, 5173, 8000, 8080, 5432, ...).
     port: int = 7472
@@ -53,6 +61,11 @@ class Settings(BaseSettings):
     data_dir: Path = Field(default_factory=lambda: Path(user_data_dir(APP_NAME)))
     log_level: str = "INFO"
     allowed_hosts: list[str] = Field(default_factory=lambda: ["127.0.0.1", "localhost"])
+
+    @property
+    def host(self) -> str:
+        """Loopback interface the server binds to (fixed; see ``LOOPBACK_HOST``)."""
+        return LOOPBACK_HOST
 
     @property
     def database_path(self) -> Path:
