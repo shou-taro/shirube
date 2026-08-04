@@ -167,18 +167,6 @@
 
 /* --- Micro-interactions --------------------------------------------------- */
 
-/* The data drawer mounts into the layout beneath the map; slide it up as it appears so
-   it reads as opening rather than blinking into place. */
-@keyframes shirube-drawer-in {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-}
-.animate-drawer-in {
-  animation: shirube-drawer-in 480ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
 /* The scrim that dims the map behind the navigator overlay on a narrow window. */
 @keyframes shirube-fade-in {
   from {

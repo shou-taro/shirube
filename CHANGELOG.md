@@ -10,9 +10,8 @@ may still change between releases).
 
 ### Changed
 
-- **Small motions where things appear.** The data preview drawer now slides up as it
-  opens rather than blinking into place; menus that pop from a button — the connection
-  actions and the schema browser — fade in from their trigger; and the dim behind the
+- **Small motions where things appear.** Menus that pop from a button — the connection
+  actions and the schema browser — fade in from their trigger, and the dim behind the
   navigator's slide-in overlay fades rather than snapping on. All of it is skipped if you
   prefer reduced motion — now applied across the interface, not just the navigator's
   typewriter reveal.
