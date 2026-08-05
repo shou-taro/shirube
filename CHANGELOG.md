@@ -8,6 +8,8 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.3.0b5] — 2026-08-05
+
 ### Added
 
 - **A branded loading screen.** Starting shirube now opens onto a small splash — the logo
@@ -399,7 +401,11 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.3.0b1...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.3.0b5...HEAD
+[0.3.0b5]: https://github.com/shou-taro/shirube/compare/v0.3.0b4...v0.3.0b5
+[0.3.0b4]: https://github.com/shou-taro/shirube/compare/v0.3.0b3...v0.3.0b4
+[0.3.0b3]: https://github.com/shou-taro/shirube/compare/v0.3.0b2...v0.3.0b3
+[0.3.0b2]: https://github.com/shou-taro/shirube/compare/v0.3.0b1...v0.3.0b2
 [0.3.0b1]: https://github.com/shou-taro/shirube/compare/v0.2.0b7...v0.3.0b1
 [0.2.0b7]: https://github.com/shou-taro/shirube/compare/v0.2.0b6...v0.2.0b7
 [0.2.0b6]: https://github.com/shou-taro/shirube/compare/v0.2.0b5...v0.2.0b6
