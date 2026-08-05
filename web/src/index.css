@@ -147,13 +147,24 @@
 
 /* Travelling to a new centre swaps the whole neighbourhood layout at once. Cross-fade
    the nodes and edges (the viewport layer) so the change reads as a smooth transition
-   rather than a jump; the controls and minimap stay put. The duration is paired with the
-   fade-out wait in er-diagram.tsx's travelTo (keep the two in step). */
+   rather than a jump; the controls and minimap stay put.
+
+   The two directions run at different speeds on purpose. The fade-OUT (entering the
+   travelling state) is quick, and its duration is paired with the fade-out wait in
+   er-diagram.tsx's travelTo (keep the two in step) so the layout swaps exactly once the
+   map has hidden. The fade-IN on arrival (the base transition, in effect when the
+   travelling class is removed) is slower, so the new neighbourhood eases in gently rather
+   than snapping to full opacity.
+
+   The travelling state dims almost to black (not to a still-legible ghost): a fade that
+   starts from near-nothing has the full perceptual range to travel, so the slow fade-in
+   actually reads as a gradual reveal rather than a barely-there brightening. */
 .react-flow__viewport {
-  transition: opacity 300ms ease;
+  transition: opacity 800ms ease;
 }
 .er-canvas--travelling .react-flow__viewport {
-  opacity: 0.12;
+  transition: opacity 300ms ease;
+  opacity: 0.04;
 }
 
 /* React Flow's controls default to a light button; in dark mode recolour them with the

@@ -29,7 +29,8 @@ may still change between releases).
 - **Map travel is smoother.** Moving the map to a new table used to stutter as the whole
   neighbourhood swapped in and the view panned on the same frame. The pan now waits for the
   new layout to paint before it runs, and the table cards re-render less, so the map eases
-  across instead of jumping.
+  across instead of jumping. The map still hides quickly as you leave, but the new
+  neighbourhood now fades back in more gently on arrival.
 
 ### Security
 
