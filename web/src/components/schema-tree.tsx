@@ -9,6 +9,10 @@ import type { Relationship, SchemaObject } from '@/lib/api'
 import { buildForeignKeys, groupBySchema } from '@/lib/schema-tree'
 import { cn } from '@/lib/utils'
 
+// How long the popover's exit animation runs; the node is kept mounted this long after a
+// close so `shirube-menu-out` can play. Must match the duration in the popover's className.
+const MENU_EXIT_MS = 120
+
 interface SchemaTreeProps {
   objects: SchemaObject[]
   relationships: Relationship[]
@@ -29,11 +33,29 @@ interface SchemaTreeProps {
 export function SchemaTree({ objects, relationships, activeId, onSelect }: SchemaTreeProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  // The popover animates both ways. `mounted` trails `open`: it turns on the moment the
+  // popover opens and off only once the exit animation has run, so closing eases out with
+  // `shirube-menu-out` rather than vanishing the instant `open` goes false (see the
+  // onAnimationEnd handler on the popover).
+  const [mounted, setMounted] = useState(false)
   // Schemas are expanded by default; this holds the ones the user has collapsed. Objects
   // are collapsed by default; this holds the ones the user has expanded.
   const [collapsedSchemas, setCollapsedSchemas] = useState<Set<string>>(() => new Set())
   const [expandedObjects, setExpandedObjects] = useState<Set<string>>(() => new Set())
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Mount the popover as soon as it is asked to open, and keep it mounted through the exit
+  // animation on close — unmount only after `MENU_EXIT_MS` — so closing eases out with
+  // `shirube-menu-out` rather than vanishing the instant `open` goes false. The delay is
+  // paired with that animation's duration in the className below (keep the two in step).
+  useEffect(() => {
+    if (open) {
+      setMounted(true)
+      return
+    }
+    const timer = window.setTimeout(() => setMounted(false), MENU_EXIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [open])
 
   const foreignKeys = useMemo(
     () => buildForeignKeys(objects, relationships),
@@ -107,8 +129,15 @@ export function SchemaTree({ objects, relationships, activeId, onSelect }: Schem
         <ListTree className="size-4" />
       </Button>
 
-      {open && (
-        <div className="absolute right-0 top-full z-30 mt-1 flex max-h-[70vh] w-80 origin-top-right animate-[shirube-menu-in_140ms_ease-out] flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md">
+      {mounted && (
+        <div
+          className={cn(
+            'absolute right-0 top-full z-30 mt-1 flex max-h-[70vh] w-80 origin-top-right flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md',
+            open
+              ? 'animate-[shirube-menu-in_140ms_ease-out]'
+              : 'animate-[shirube-menu-out_120ms_ease-in_forwards]',
+          )}
+        >
           <div className="flex items-center justify-between border-b px-2.5 py-1.5">
             <span className="text-xs font-medium text-muted-foreground">{t('tree.open')}</span>
             <button

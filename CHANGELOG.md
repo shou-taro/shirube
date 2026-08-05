@@ -18,7 +18,8 @@ may still change between releases).
 ### Changed
 
 - **Small motions where things appear.** Menus that pop from a button — the connection
-  actions and the schema browser — fade in from their trigger; the settings dialog and its
+  actions and the schema browser — fade in from their trigger, and ease back out on close
+  rather than blinking away; the settings dialog and its
   backdrop fade in as it opens; the ⌘K search results drop in; the schema browser's
   expand arrows rotate rather than swap; the dim behind the navigator's slide-in overlay
   fades rather than snapping on; and whole screens — the connection screen and the explorer

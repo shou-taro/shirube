@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { Column, ObjectKind, Relationship, SchemaObject } from '@/lib/api'
 
@@ -45,7 +45,20 @@ function open(
   return { onSelect }
 }
 
+// The popover eases out with an exit animation, so it stays mounted for a short delay
+// after a close before unmounting. Advance past that delay to let the unmount complete.
+// Requires fake timers to be installed in the test.
+function finishClosing(): void {
+  act(() => vi.advanceTimersByTime(150))
+}
+
 describe('SchemaTree', () => {
+  // The close tests install fake timers to drive the exit-animation delay; restore real
+  // timers afterwards so the rest are unaffected.
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('lists objects grouped by schema once opened', () => {
     open([object('public.customer'), object('sales.orders')])
 
@@ -135,27 +148,48 @@ describe('SchemaTree', () => {
   })
 
   it('closes from the header close button', () => {
+    vi.useFakeTimers()
     open([object('public.customer')])
 
     fireEvent.click(screen.getByLabelText('tree.close'))
+    finishClosing()
 
     expect(screen.queryByLabelText('tree.close')).not.toBeInTheDocument()
     expect(screen.queryByText('public')).not.toBeInTheDocument()
   })
 
   it('closes on Escape', () => {
+    vi.useFakeTimers()
     open([object('public.customer')])
 
     fireEvent.keyDown(document, { key: 'Escape' })
+    finishClosing()
 
     expect(screen.queryByLabelText('tree.close')).not.toBeInTheDocument()
   })
 
   it('closes on an outside click', () => {
+    vi.useFakeTimers()
     open([object('public.customer')])
 
     fireEvent.mouseDown(document.body)
+    finishClosing()
 
+    expect(screen.queryByLabelText('tree.close')).not.toBeInTheDocument()
+  })
+
+  it('stays mounted through its exit animation, then unmounts', () => {
+    vi.useFakeTimers()
+    open([object('public.customer')])
+
+    fireEvent.click(screen.getByLabelText('tree.close'))
+
+    // Still present while the exit animation runs — this is what makes the close animate
+    // rather than vanish instantly.
+    expect(screen.getByLabelText('tree.close')).toBeInTheDocument()
+
+    // Only once the exit delay elapses does the popover leave the DOM.
+    finishClosing()
     expect(screen.queryByLabelText('tree.close')).not.toBeInTheDocument()
   })
 })
