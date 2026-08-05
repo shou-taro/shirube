@@ -572,6 +572,20 @@ it to change once implemented.
   language switcher. English stays the canonical base. (The docs already carry a native
   Japanese README; the *app* UI is still English-only for now.)
 
+### Path finding in the explorer
+
+- **The graph walk exists as a navigator tool; give it a first-class explorer control too.**
+  `find_path(from, to)` — the breadth-first walk over the relationship graph that returns the
+  hop sequence between two objects (see *the look-up tool set* under Decided) — is today
+  reached only by asking the navigator. The walk is deterministic, so it belongs in the
+  explorer alongside search and neighbourhood travel: pick a start and an end table and
+  shirube lists the hops as **clickable text**, each one travelling the map along the route —
+  the very rendering the navigator already produces for its answers.
+- **Shape.** A from/to picker with the current centre pre-filled as the start; the hop list
+  shown in the navigator pane's space, reusing the existing hop renderer rather than a new
+  surface. No visual route overlay is drawn on the diagram — the map stays a neighbourhood
+  view (one centre plus its one-hop neighbours), consistent with *the look-up tool set*.
+
 ### Deferred navigator enhancements
 
 - **Per-turn send preview** — a panel showing exactly what metadata a question will send
