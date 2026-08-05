@@ -30,8 +30,11 @@ const edgeTypes = { routed: RoutedEdge }
 // while still leaving room for the vertical off-map stubs above and below the cards.
 const FIT_PADDING = 0.15
 
-// How long the travel cross-fade takes each way. Must match the `.react-flow__viewport`
-// opacity-transition duration in index.css so the layout swaps exactly when it has faded out.
+// How long the travel fade-OUT takes — the wait before the layout is swapped. Must match
+// the fade-out duration in index.css (`.er-canvas--travelling .react-flow__viewport`) so
+// the swap lands exactly once the map has hidden. The fade-IN on arrival is deliberately
+// slower and lives entirely in CSS (the base `.react-flow__viewport` transition), so it is
+// not timed here.
 const TRAVEL_FADE_MS = 300
 
 /**
@@ -115,8 +118,9 @@ export function ErDiagram({
 
   // Travel to a new centre with a cross-fade: fade the map out, swap the whole layout while
   // it is faded (so the jump is hidden), then fade back in as the view refits — reading as a
-  // smooth transition rather than a snap. The wait matches the viewport's opacity-transition
-  // duration in index.css (keep the two in step) so the swap lands once it has fully faded.
+  // smooth transition rather than a snap. The wait matches the fade-out duration in index.css
+  // (keep the two in step) so the swap lands once the map has hidden; the slower fade-in on
+  // arrival is CSS-only and needs no timing here.
   const travelTo = useCallback((id: string) => {
     setTravelling(true)
     window.setTimeout(() => {
