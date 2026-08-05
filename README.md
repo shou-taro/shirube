@@ -203,7 +203,8 @@ shirube's development runs in two phases.
 
 - **Now — Explore & navigate (beta).** Everything described above — the ER-map explorer
   and the AI navigator — on PostgreSQL and SQLite.
-- **Later — broadening reach.** More databases beyond these (MySQL next), and a fully
+- **Later — more ways to navigate, more to reach.** Trace how any two tables connect and
+  follow the hops across the map; more databases beyond these (MySQL next); and a fully
   localised interface.
 
 ## 🤝 Contributing
