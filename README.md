@@ -88,6 +88,9 @@ Everything below works today, in the beta:
   reads from.
 - 🔗 **Relationship navigation.** Click a related table to glide the map over to it, and
   keep following the connections.
+- 🧭 **Trace a route between two tables.** Pick a destination and shirube draws the shortest
+  chain of relationships from where you are to it, as a list of clickable hops — click along
+  them to walk the whole route on the map, one table at a time.
 - ✏️ **Draw your own relationships.** When a database declares no foreign key — common in
   ORM-shaped, legacy or warehouse schemas — shirube can't tell that two tables are related,
   so no edge is drawn and you can't travel between them. Draw the missing link yourself,
@@ -203,8 +206,7 @@ shirube's development runs in two phases.
 
 - **Now — Explore & navigate (beta).** Everything described above — the ER-map explorer
   and the AI navigator — on PostgreSQL and SQLite.
-- **Later — more ways to navigate, more to reach.** Trace how any two tables connect and
-  follow the hops across the map; more databases beyond these (MySQL next); and a fully
+- **Later — broadening reach.** More databases beyond these (MySQL next), and a fully
   localised interface.
 
 ## 🤝 Contributing

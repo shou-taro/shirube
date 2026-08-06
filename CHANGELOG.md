@@ -8,6 +8,15 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Added
+
+- **Trace a route between two tables.** Open "Find a route" from a table's detail card,
+  search for a destination, and shirube draws the shortest chain of relationships between
+  the two as a list of hops. Each hop is clickable — the map travels there while the panel
+  stays open, so you can walk the whole route one table at a time, and the table you are on
+  is marked as you go. It works over foreign keys, view dependencies and the links you drew
+  yourself, and needs no AI navigator — the same path finding, reached without a model.
+
 ## [0.3.0b5] — 2026-08-05
 
 ### Added

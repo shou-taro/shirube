@@ -427,6 +427,25 @@ manual edges).**
   would mean a permanent second retrieval architecture for a narrowing niche, and a model too
   weak to call tools is generally too weak for the navigator anyway.
 
+### Path finding in the explorer
+
+**Built.**
+
+- **The graph walk `find_path` runs is also a first-class explorer control, reached without
+  a model.** Of the four look-up tools, three already had a non-AI equivalent in the explorer
+  (`search_objects` = the ⌘K search, `get_object` = the table-detail card, `list_schemas` =
+  the schema tree); `find_path` was the one only the navigator could reach. A **"Find a
+  route" panel**, opened from a table's detail card, closes that gap: the source is fixed to
+  that table, the user searches for a destination, and the shortest chain of relationships is
+  drawn as a list of **clickable hops** — clicking one travels the map there while the panel
+  stays open, so the route is walked one table at a time and the current table is marked.
+- **The walk runs in the browser, not the backend.** The whole graph is already loaded for
+  the map, so the same breadth-first, undirected walk (mirroring `SchemaLookup.find_path`) is
+  done client-side — no round-trip, no re-introspection, and links the user drew count just
+  like foreign keys. It is a **floating panel, not a modal**, so the map stays visible as the
+  route is walked, and **no route is drawn across the diagram** — the map stays a
+  neighbourhood view, and the hop list is the route (consistent with *the look-up tool set*).
+
 ### AI navigator: external-send privacy
 
 **Built.**
@@ -571,20 +590,6 @@ it to change once implemented.
   this is translation and review work rather than plumbing: supply the dictionaries and add a
   language switcher. English stays the canonical base. (The docs already carry a native
   Japanese README; the *app* UI is still English-only for now.)
-
-### Path finding in the explorer
-
-- **The graph walk exists as a navigator tool; give it a first-class explorer control too.**
-  `find_path(from, to)` — the breadth-first walk over the relationship graph that returns the
-  hop sequence between two objects (see *the look-up tool set* under Decided) — is today
-  reached only by asking the navigator. The walk is deterministic, so it belongs in the
-  explorer alongside search and neighbourhood travel: pick a start and an end table and
-  shirube lists the hops as **clickable text**, each one travelling the map along the route —
-  the very rendering the navigator already produces for its answers.
-- **Shape.** A from/to picker with the current centre pre-filled as the start; the hop list
-  shown in the navigator pane's space, reusing the existing hop renderer rather than a new
-  surface. No visual route overlay is drawn on the diagram — the map stays a neighbourhood
-  view (one centre plus its one-hop neighbours), consistent with *the look-up tool set*.
 
 ### Deferred navigator enhancements
 

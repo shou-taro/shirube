@@ -4,6 +4,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   RefreshCw,
+  Route,
   Search,
   Settings,
   Sparkles,
@@ -19,6 +20,7 @@ import { KindBadge } from '@/components/kind-badge'
 import { Logo } from '@/components/logo'
 import { NavigatorPane } from '@/components/navigator-pane'
 import { type ColumnRef, RelationshipTargetPicker } from '@/components/relationship-target-picker'
+import { RouteFinder } from '@/components/route-finder'
 import { SchemaSearch } from '@/components/schema-search'
 import { SchemaTree } from '@/components/schema-tree'
 import { SettingsDialog } from '@/components/settings-dialog'
@@ -80,6 +82,9 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
   const [approved, setApproved] = useState<string[]>(loadApprovedDestinations)
   // Whether the bottom row-preview drawer is showing (for the current centre object).
   const [dataOpen, setDataOpen] = useState(false)
+  // The id the route finder starts from, captured when it opens so walking the route (which
+  // moves the centre) does not shift the source out from under it; null when closed.
+  const [routeSourceId, setRouteSourceId] = useState<string | null>(null)
   // A table chosen via search to centre the ER map on; null lets the map pick the backbone.
   const [centreOverride, setCentreOverride] = useState<string | null>(null)
   // The id of the map's current centre, reported by the ER map; drives the detail card.
@@ -108,6 +113,12 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
     }
   }, [readyGraph, settings.showViewDependencies])
   const centreObject = displayGraph?.objects.find((object) => object.id === centreId) ?? null
+  // The route finder's fixed starting table, resolved from the captured id; null closes it —
+  // including when a schema reload drops the object it started from.
+  const routeSource =
+    routeSourceId === null
+      ? null
+      : (displayGraph?.objects.find((object) => object.id === routeSourceId) ?? null)
   // Lets the navigator recognise the objects it names in an answer and link them to the map.
   const resolveRef = useMemo(
     () => buildObjectResolver(displayGraph?.objects ?? []),
@@ -432,22 +443,53 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
                 {t('panes.detailEmpty')}
               </div>
             )}
-            {/* Footer: reveal the current table's rows in the drawer below. */}
+            {/* Footer actions: reveal the current table's rows, or trace a route from it to
+                another table. */}
             {centreObject && (
-              <button
-                type="button"
-                onClick={() => setDataOpen((open) => !open)}
-                aria-pressed={dataOpen}
-                className={cn(
-                  'flex shrink-0 items-center justify-center gap-1.5 border-t border-brand/20 px-3 py-2 text-xs font-medium hover:bg-brand/10',
-                  dataOpen && 'bg-brand/15 text-brand',
-                )}
-              >
-                <Table2 className="size-3.5" />
-                {t('data.view')}
-              </button>
+              <div className="flex shrink-0 border-t border-brand/20 text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => setDataOpen((open) => !open)}
+                  aria-pressed={dataOpen}
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-1.5 px-3 py-2 hover:bg-brand/10',
+                    dataOpen && 'bg-brand/15 text-brand',
+                  )}
+                >
+                  <Table2 className="size-3.5" />
+                  {t('data.view')}
+                </button>
+                <span className="w-px bg-brand/20" />
+                <button
+                  type="button"
+                  onClick={() => setRouteSourceId(centreObject.id)}
+                  aria-pressed={routeSourceId !== null}
+                  title={t('route.find')}
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-1.5 px-3 py-2 hover:bg-brand/10',
+                    routeSourceId !== null && 'bg-brand/15 text-brand',
+                  )}
+                >
+                  <Route className="size-3.5" />
+                  {t('route.findShort')}
+                </button>
+              </div>
             )}
           </div>
+          )}
+
+          {/* Trace a route from one table to another — the AI navigator's path finding,
+              reached without a model. Floats over the map (not a modal) so the map stays
+              visible as the route is walked hop by hop. */}
+          {routeSource && displayGraph && (
+            <RouteFinder
+              source={routeSource}
+              objects={displayGraph.objects}
+              graph={displayGraph}
+              activeId={centreId}
+              onNavigate={setCentreOverride}
+              onClose={() => setRouteSourceId(null)}
+            />
           )}
           </div>
 
