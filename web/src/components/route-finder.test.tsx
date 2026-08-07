@@ -283,6 +283,19 @@ describe('RouteFinder', () => {
     expect(screen.getByRole('listbox')).toBeInTheDocument()
   })
 
+  it('closes when a press lands outside the panel', () => {
+    const { onClose } = renderFinder()
+    fireEvent.mouseDown(document.body)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('stays open when a press lands inside the panel', () => {
+    const { onClose } = renderFinder()
+    // Pressing on the source field is inside the panel, so the finder must not dismiss.
+    fireEvent.mouseDown(fromField())
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   it('closes from the header button and on Escape', () => {
     const { onClose } = renderFinder()
 

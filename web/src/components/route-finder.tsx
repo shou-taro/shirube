@@ -243,6 +243,7 @@ export function RouteFinder({
   const { t } = useTranslation()
   const [source, setSource] = useState<SchemaObject>(initialSource)
   const [target, setTarget] = useState<SchemaObject | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // The shortest path once a destination is chosen: the hop ids source → target inclusive,
   // an empty array when the two are unconnected, or null before a destination is picked.
@@ -259,20 +260,34 @@ export function RouteFinder({
     return map
   }, [objects])
 
-  // Escape closes the finder — unless a combobox intercepted it to shut its own results.
+  // Dismiss on Escape or a click outside the panel, like the app's other floating surfaces.
+  // The combobox results and the hop boxes are inside the panel, so interacting with them
+  // never counts as an outside click.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key === 'Escape') {
         onClose()
       }
     }
+    function onPointerDown(event: MouseEvent): void {
+      if (panelRef.current !== null && !panelRef.current.contains(event.target as Node)) {
+        onClose()
+      }
+    }
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    document.addEventListener('mousedown', onPointerDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('mousedown', onPointerDown)
+    }
   }, [onClose])
 
   return (
     <div className="absolute left-1/2 top-4 z-40 w-[30rem] max-w-[calc(100%-1.5rem)] -translate-x-1/2">
-      <div className="flex max-h-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-brand/30 bg-popover text-popover-foreground shadow-xl animate-[shirube-menu-in_140ms_ease-out] origin-top">
+      <div
+        ref={panelRef}
+        className="flex max-h-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-brand/30 bg-popover text-popover-foreground shadow-xl animate-[shirube-menu-in_140ms_ease-out] origin-top"
+      >
         {/* Header. */}
         <div className="flex items-center gap-1.5 border-b border-brand/20 bg-brand/10 px-3 py-2 text-sm font-medium">
           <Route className="size-4 shrink-0 text-brand" aria-hidden="true" />
