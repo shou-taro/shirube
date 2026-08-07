@@ -3,10 +3,37 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { KindBadge } from '@/components/kind-badge'
-import type { SchemaGraph, SchemaObject } from '@/lib/api'
+import type { Relationship, SchemaGraph, SchemaObject } from '@/lib/api'
 import { findPath } from '@/lib/find-path'
 import { findMatches } from '@/lib/schema-search'
 import { cn } from '@/lib/utils'
+
+/** The joined columns as `a, b` — or `a → b` when the two sides use different names. */
+function describeJoin(aColumns: string[], bColumns: string[]): string {
+  const a = aColumns.join(', ')
+  const b = bColumns.join(', ')
+  if (a === '' && b === '') {
+    return ''
+  }
+  return a === b ? a : `${a} → ${b}`
+}
+
+/**
+ * The columns that join two adjacent tables on the route, oriented `a → b` in route order
+ * (the relationship itself may point either way). Empty for a view dependency, which joins
+ * on no columns.
+ */
+function joinLabel(relationships: Relationship[], aId: string, bId: string): string {
+  for (const rel of relationships) {
+    if (rel.source === aId && rel.target === bId) {
+      return describeJoin(rel.source_columns, rel.target_columns)
+    }
+    if (rel.source === bId && rel.target === aId) {
+      return describeJoin(rel.target_columns, rel.source_columns)
+    }
+  }
+  return ''
+}
 
 /**
  * A combobox for choosing one endpoint of the route: type to search the schema (reusing the
@@ -244,7 +271,7 @@ export function RouteFinder({
   }, [onClose])
 
   return (
-    <div className="absolute left-1/2 top-4 z-40 w-[24rem] max-w-[calc(100%-1.5rem)] -translate-x-1/2">
+    <div className="absolute left-1/2 top-4 z-40 w-[30rem] max-w-[calc(100%-1.5rem)] -translate-x-1/2">
       <div className="flex max-h-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-brand/30 bg-popover text-popover-foreground shadow-xl animate-[shirube-menu-in_140ms_ease-out] origin-top">
         {/* Header. */}
         <div className="flex items-center gap-1.5 border-b border-brand/20 bg-brand/10 px-3 py-2 text-sm font-medium">
@@ -292,10 +319,16 @@ export function RouteFinder({
               <p className="mb-2 text-xs text-muted-foreground">
                 {t('route.found', { count: hops.length - 1 })}
               </p>
-              <ol className="space-y-0.5">
+              {/* The route as a small diagram: a table box per hop, joined by connectors
+                  that name the columns the two tables meet on. Each box travels the map. */}
+              <ol className="space-y-0">
                 {hops.map((id, index) => {
                   const object = objectById.get(id)
                   const isActive = id === activeId
+                  const join =
+                    index < hops.length - 1
+                      ? joinLabel(graph.relationships, id, hops[index + 1])
+                      : null
                   return (
                     <li key={id}>
                       <button
@@ -304,33 +337,31 @@ export function RouteFinder({
                         aria-current={isActive ? 'true' : undefined}
                         title={t('route.showOnMap', { name: object?.name ?? id })}
                         className={cn(
-                          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-brand/10',
-                          isActive && 'bg-brand/15',
+                          'flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors hover:bg-brand/10',
+                          isActive ? 'border-brand bg-brand/15' : 'border-brand/20 bg-card',
                         )}
                       >
                         <span
                           className={cn(
-                            'flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-medium',
-                            isActive ? 'bg-brand text-brand-foreground' : 'bg-brand/15 text-brand',
+                            'min-w-0 flex-1 truncate text-sm',
+                            isActive && 'font-medium text-brand',
                           )}
-                        >
-                          {index + 1}
-                        </span>
-                        <span
-                          className={cn('min-w-0 truncate', isActive && 'font-medium text-brand')}
                           title={object?.name ?? id}
                         >
                           {object?.name ?? id}
                         </span>
                         {object && <KindBadge kind={object.kind} />}
                       </button>
-                      {index < hops.length - 1 && (
-                        <span
-                          aria-hidden="true"
-                          className="flex h-3 items-center pl-3.5 text-muted-foreground/60"
-                        >
-                          <ArrowDown className="size-3" />
-                        </span>
+                      {join !== null && (
+                        <div className="flex items-center gap-1.5 py-1 pl-4 text-[11px] text-muted-foreground">
+                          <ArrowDown className="size-3 shrink-0" aria-hidden="true" />
+                          <span
+                            className="min-w-0 truncate font-mono"
+                            title={join === '' ? t('route.viaView') : join}
+                          >
+                            {join === '' ? t('route.viaView') : join}
+                          </span>
+                        </div>
                       )}
                     </li>
                   )

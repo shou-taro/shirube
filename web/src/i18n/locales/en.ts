@@ -69,6 +69,8 @@ const en = {
     // How many hops the route takes ({{count}} = the number of steps between the tables).
     found_one: 'One hop:',
     found_other: '{{count}} hops:',
+    // Shown on a connector where the two tables join through a view rather than columns.
+    viaView: 'via a view',
     noRoute: 'No route — these tables are not connected. Draw a relationship to link them.',
     showOnMap: 'Show {{name}} on the map',
   },

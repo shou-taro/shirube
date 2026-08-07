@@ -437,8 +437,11 @@ manual edges).**
   the schema tree); `find_path` was the one only the navigator could reach. A **"Find a
   route" panel**, opened from a table's detail card, closes that gap: it **starts from that
   table but either end can be searched and changed**, and the shortest chain of relationships
-  is drawn as a list of **clickable hops** — clicking one travels the map there while the
-  panel stays open, so the route is walked one table at a time and the current table is marked.
+  is drawn as a **small diagram** — a box per table, joined by connectors that name the
+  columns the two meet on. Each box is **clickable**: it travels the map there while the panel
+  stays open, so the route is walked one table at a time and the current table is marked. The
+  diagram lives **inside the floating panel** (which is roomy enough for it), not on the ER
+  canvas — the map stays a neighbourhood view (see below).
 - **The walk runs in the browser, not the backend.** The whole graph is already loaded for
   the map, so the same breadth-first, undirected walk (mirroring `SchemaLookup.find_path`) is
   done client-side — no round-trip, no re-introspection, and links the user drew count just

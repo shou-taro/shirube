@@ -18,13 +18,13 @@ function object(id: string): SchemaObject {
   return { id, schema, name: name ?? id, kind: 'table', columns: [], partitions: [] }
 }
 
-function edge(source: string, target: string): Relationship {
+function edge(source: string, target: string, columns: string[] = []): Relationship {
   return {
     constraint_name: `${source}->${target}`,
     source,
-    source_columns: [],
+    source_columns: columns,
     target,
-    target_columns: [],
+    target_columns: columns,
     kind: 'foreign_key',
   }
 }
@@ -35,7 +35,10 @@ const OBJECTS = ['public.customer', 'public.customer_note', 'public.address', 'p
 )
 const GRAPH: SchemaGraph = {
   objects: OBJECTS,
-  relationships: [edge('public.customer', 'public.address'), edge('public.address', 'public.city')],
+  relationships: [
+    edge('public.customer', 'public.address', ['address_id']),
+    edge('public.address', 'public.city', ['city_id']),
+  ],
 }
 
 function renderFinder(
@@ -97,6 +100,56 @@ describe('RouteFinder', () => {
     expect(within(steps[0]).getByText('customer')).toBeInTheDocument()
     expect(within(steps[1]).getByText('address')).toBeInTheDocument()
     expect(within(steps[2]).getByText('city')).toBeInTheDocument()
+  })
+
+  it('labels each connector with the columns the tables join on', () => {
+    renderFinder()
+    pick(toField(), 'city', /city/)
+
+    // customer–address meet on address_id, address–city on city_id.
+    expect(screen.getByText('address_id')).toBeInTheDocument()
+    expect(screen.getByText('city_id')).toBeInTheDocument()
+  })
+
+  it('shows differing join columns, and marks a view-dependency link', () => {
+    // a → b joins a_id to id (different names); b–c is a view dependency (no columns), with
+    // its relationship pointing c → b, opposite the route order.
+    const objects = ['s.a', 's.b', 's.c'].map(object)
+    const graph: SchemaGraph = {
+      objects,
+      relationships: [
+        {
+          constraint_name: 'a-b',
+          source: 's.a',
+          source_columns: ['a_id'],
+          target: 's.b',
+          target_columns: ['id'],
+          kind: 'foreign_key',
+        },
+        {
+          constraint_name: 'c-b',
+          source: 's.c',
+          source_columns: [],
+          target: 's.b',
+          target_columns: [],
+          kind: 'view_dependency',
+        },
+      ],
+    }
+    render(
+      <RouteFinder
+        initialSource={object('s.a')}
+        objects={objects}
+        graph={graph}
+        activeId={null}
+        onNavigate={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    )
+    pick(toField(), 'c', /^c/)
+
+    expect(screen.getByText('a_id → id')).toBeInTheDocument()
+    expect(screen.getByText('route.viaView')).toBeInTheDocument()
   })
 
   it('recomputes the route when the source is changed', () => {
