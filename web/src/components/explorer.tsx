@@ -483,7 +483,7 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               visible as the route is walked hop by hop. */}
           {routeSource && displayGraph && (
             <RouteFinder
-              source={routeSource}
+              initialSource={routeSource}
               objects={displayGraph.objects}
               graph={displayGraph}
               activeId={centreId}

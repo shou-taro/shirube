@@ -435,10 +435,10 @@ manual edges).**
   a model.** Of the four look-up tools, three already had a non-AI equivalent in the explorer
   (`search_objects` = the ⌘K search, `get_object` = the table-detail card, `list_schemas` =
   the schema tree); `find_path` was the one only the navigator could reach. A **"Find a
-  route" panel**, opened from a table's detail card, closes that gap: the source is fixed to
-  that table, the user searches for a destination, and the shortest chain of relationships is
-  drawn as a list of **clickable hops** — clicking one travels the map there while the panel
-  stays open, so the route is walked one table at a time and the current table is marked.
+  route" panel**, opened from a table's detail card, closes that gap: it **starts from that
+  table but either end can be searched and changed**, and the shortest chain of relationships
+  is drawn as a list of **clickable hops** — clicking one travels the map there while the
+  panel stays open, so the route is walked one table at a time and the current table is marked.
 - **The walk runs in the browser, not the backend.** The whole graph is already loaded for
   the map, so the same breadth-first, undirected walk (mirroring `SchemaLookup.find_path`) is
   done client-side — no round-trip, no re-introspection, and links the user drew count just

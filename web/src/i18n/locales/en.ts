@@ -64,13 +64,12 @@ const en = {
     close: 'Close',
     from: 'From',
     to: 'To',
-    toPlaceholder: 'Search for a table…',
+    searchPlaceholder: 'Search for a table…',
     hint: 'Pick a table to route to.',
     // How many hops the route takes ({{count}} = the number of steps between the tables).
     found_one: 'One hop:',
     found_other: '{{count}} hops:',
     noRoute: 'No route — these tables are not connected. Draw a relationship to link them.',
-    sameTable: 'That is the table you are already on.',
     showOnMap: 'Show {{name}} on the map',
   },
   tree: {

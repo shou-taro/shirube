@@ -55,7 +55,8 @@ export function findPath(
   while (queue.length > 0) {
     const current = queue.shift() as string
     // Sorted so that, among equally short paths, the same one is chosen every time.
-    const adjacent = [...(neighbours.get(current) ?? [])].sort()
+    // `current` came off the queue, which only ever holds ids seeded into `neighbours`.
+    const adjacent = [...(neighbours.get(current) as Set<string>)].sort()
     for (const neighbour of adjacent) {
       if (predecessor.has(neighbour)) {
         continue

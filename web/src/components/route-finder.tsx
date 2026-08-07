@@ -1,4 +1,4 @@
-import { ArrowDown, MapPin, Route, Search, X } from 'lucide-react'
+import { ArrowDown, Route, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -8,97 +8,70 @@ import { findPath } from '@/lib/find-path'
 import { findMatches } from '@/lib/schema-search'
 import { cn } from '@/lib/utils'
 
-interface RouteFinderProps {
-  /** The table to route from — the map's current centre when the finder is opened. */
-  source: SchemaObject
-  /** Every object, for the destination search and for labelling each hop. */
-  objects: SchemaObject[]
-  /** The whole schema, whose relationships the route is walked over. */
-  graph: SchemaGraph
-  /** The map's current centre, so the hop the user is standing on is marked. */
-  activeId: string | null
-  /** Travel the map to a hop; the finder stays open so the route can be walked. */
-  onNavigate: (id: string) => void
-  /** Dismiss the finder. */
-  onClose: () => void
-}
-
-const LISTBOX_ID = 'route-target-listbox'
-const optionId = (objectId: string): string => `route-target-option-${objectId}`
-
 /**
- * Find a route between two tables — without the AI navigator.
- *
- * The source is fixed to the table the finder was opened from; the user searches for a
- * destination, and the shortest chain of relationships between the two is drawn as a list
- * of clickable hops. Clicking a hop travels the map there, and the finder stays open so the
- * whole route can be walked one table at a time. It is a floating panel, not a modal, so
- * the map stays visible behind it as you go.
- *
- * The walk is the same breadth-first search the AI navigator's `find_path` tool runs, done
- * here in the browser over the already-loaded graph (see {@link findPath}) — so it needs no
- * model and no round-trip, and links the user drew count just like foreign keys.
+ * A combobox for choosing one endpoint of the route: type to search the schema (reusing the
+ * ⌘K ranking), then pick a table. The committed selection shows as the field's text; while
+ * the field is focused the text is the live query, and it reverts to the selection on blur.
+ * `exclude` drops one object from the results — the other endpoint, so a route can't have
+ * the same table at both ends.
  */
-export function RouteFinder({
-  source,
+function TableCombobox({
+  listboxId,
+  label,
+  value,
   objects,
-  graph,
-  activeId,
-  onNavigate,
-  onClose,
-}: RouteFinderProps) {
+  exclude,
+  onSelect,
+  autoFocus = false,
+}: {
+  listboxId: string
+  label: string
+  value: SchemaObject | null
+  objects: SchemaObject[]
+  exclude: string | null
+  onSelect: (object: SchemaObject) => void
+  autoFocus?: boolean
+}) {
   const { t } = useTranslation()
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(value?.name ?? '')
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
-  const [target, setTarget] = useState<SchemaObject | null>(null)
+  const focusedRef = useRef(false)
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Don't offer the source itself as a destination — a route to where you already are is not
-  // a route. Everything else is fair game.
-  const matches = useMemo(
-    () => findMatches(objects, query).filter((match) => match.object.id !== source.id),
-    [objects, query, source.id],
-  )
-
-  // The shortest path once a destination is chosen: the hop ids source → target inclusive,
-  // an empty array when the two are unconnected, or null before a destination is picked.
-  const hops = useMemo(
-    () => (target === null ? null : findPath(graph, source.id, target.id)),
-    [graph, source.id, target],
-  )
-
-  const objectById = useMemo(() => {
-    const map = new Map<string, SchemaObject>()
-    for (const object of objects) {
-      map.set(object.id, object)
-    }
-    return map
-  }, [objects])
-
-  // Focus the destination field on open, and close the whole finder on Escape.
+  // When the committed value changes from outside (the default source, say) and the field is
+  // not being edited, show that value's name.
   useEffect(() => {
-    inputRef.current?.focus()
-    function onKeyDown(event: KeyboardEvent): void {
-      if (event.key === 'Escape') {
-        onClose()
-      }
+    if (!focusedRef.current) {
+      setQuery(value?.name ?? '')
     }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+  }, [value])
+
+  useEffect(() => {
+    if (autoFocus) {
+      inputRef.current?.focus()
+    }
+  }, [autoFocus])
+
+  const matches = useMemo(
+    () => findMatches(objects, query).filter((match) => match.object.id !== exclude),
+    [objects, query, exclude],
+  )
+
+  const optionId = (objectId: string): string => `${listboxId}-option-${objectId}`
 
   function choose(object: SchemaObject): void {
-    setTarget(object)
+    onSelect(object)
     setQuery(object.name)
+    setActive(0)
     setOpen(false)
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>): void {
     if (event.key === 'Escape') {
-      // Let the field's own Escape close the results first; the finder closes on a second
-      // press (handled by the document listener once the list is shut).
+      // Escape closes the results first; only once they are shut does it bubble to the
+      // finder (which closes on it). So a first press tidies the field, a second dismisses.
       if (open) {
         event.stopPropagation()
         setOpen(false)
@@ -123,6 +96,154 @@ export function RouteFinder({
   const showResults = open && query.trim() !== '' && matches.length > 0
 
   return (
+    <div className="relative flex items-center gap-2">
+      <span className="w-9 shrink-0 text-xs text-muted-foreground">{label}</span>
+      <div className="flex h-8 flex-1 items-center gap-2 rounded-md border bg-background px-2.5 text-sm focus-within:ring-2 focus-within:ring-brand">
+        <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          placeholder={t('route.searchPlaceholder')}
+          role="combobox"
+          aria-label={label}
+          aria-autocomplete="list"
+          aria-controls={listboxId}
+          aria-expanded={showResults}
+          aria-activedescendant={
+            showResults ? optionId((matches[active] ?? matches[0]).object.id) : undefined
+          }
+          onChange={(event) => {
+            setQuery(event.target.value)
+            setActive(0)
+            setOpen(true)
+          }}
+          onFocus={() => {
+            focusedRef.current = true
+            setOpen(true)
+          }}
+          onBlur={() => {
+            blurTimer.current = setTimeout(() => {
+              focusedRef.current = false
+              setOpen(false)
+              // Drop an unconfirmed edit — the field shows the committed selection.
+              setQuery(value?.name ?? '')
+            }, 120)
+          }}
+          onKeyDown={handleKeyDown}
+          className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+
+      {showResults && (
+        <ul
+          id={listboxId}
+          role="listbox"
+          aria-label={label}
+          className="absolute inset-x-9 top-full z-10 mt-1 max-h-56 origin-top animate-[shirube-menu-in_140ms_ease-out] overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
+          onMouseDown={() => {
+            if (blurTimer.current) {
+              clearTimeout(blurTimer.current)
+            }
+          }}
+        >
+          {matches.map((match, index) => (
+            <li key={match.object.id} role="presentation">
+              <button
+                type="button"
+                role="option"
+                id={optionId(match.object.id)}
+                aria-selected={index === active}
+                onClick={() => choose(match.object)}
+                onMouseEnter={() => setActive(index)}
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm',
+                  index === active && 'bg-brand/10',
+                )}
+              >
+                <span className="min-w-0 truncate font-medium">{match.object.name}</span>
+                <KindBadge kind={match.object.kind} />
+                <span className="ml-auto shrink-0 truncate text-xs text-muted-foreground">
+                  {match.column
+                    ? t('search.inColumn', { column: match.column })
+                    : match.object.schema}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+interface RouteFinderProps {
+  /** The table the finder opens on — the map's current centre — used as the default source. */
+  initialSource: SchemaObject
+  /** Every object, for the endpoint searches and for labelling each hop. */
+  objects: SchemaObject[]
+  /** The whole schema, whose relationships the route is walked over. */
+  graph: SchemaGraph
+  /** The map's current centre, so the hop the user is standing on is marked. */
+  activeId: string | null
+  /** Travel the map to a hop; the finder stays open so the route can be walked. */
+  onNavigate: (id: string) => void
+  /** Dismiss the finder. */
+  onClose: () => void
+}
+
+/**
+ * Find a route between two tables — without the AI navigator.
+ *
+ * Both endpoints are chosen here: the source defaults to the table the finder was opened
+ * from, and either end can be searched and changed. The shortest chain of relationships
+ * between them is drawn as a list of clickable hops; clicking a hop travels the map there,
+ * and the finder stays open so the whole route can be walked one table at a time. It is a
+ * floating panel, not a modal, so the map stays visible behind it as you go.
+ *
+ * The walk is the same breadth-first search the AI navigator's `find_path` tool runs, done
+ * here in the browser over the already-loaded graph (see {@link findPath}) — so it needs no
+ * model and no round-trip, and links the user drew count just like foreign keys.
+ */
+export function RouteFinder({
+  initialSource,
+  objects,
+  graph,
+  activeId,
+  onNavigate,
+  onClose,
+}: RouteFinderProps) {
+  const { t } = useTranslation()
+  const [source, setSource] = useState<SchemaObject>(initialSource)
+  const [target, setTarget] = useState<SchemaObject | null>(null)
+
+  // The shortest path once a destination is chosen: the hop ids source → target inclusive,
+  // an empty array when the two are unconnected, or null before a destination is picked.
+  const hops = useMemo(
+    () => (target === null ? null : findPath(graph, source.id, target.id)),
+    [graph, source.id, target],
+  )
+
+  const objectById = useMemo(() => {
+    const map = new Map<string, SchemaObject>()
+    for (const object of objects) {
+      map.set(object.id, object)
+    }
+    return map
+  }, [objects])
+
+  // Escape closes the finder — unless a combobox intercepted it to shut its own results.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
     <div className="absolute left-1/2 top-4 z-40 w-[24rem] max-w-[calc(100%-1.5rem)] -translate-x-1/2">
       <div className="flex max-h-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-brand/30 bg-popover text-popover-foreground shadow-xl animate-[shirube-menu-in_140ms_ease-out] origin-top">
         {/* Header. */}
@@ -139,100 +260,34 @@ export function RouteFinder({
           </button>
         </div>
 
-        {/* From (fixed to the current centre) and To (searched). */}
+        {/* From and To — both searchable; the source starts at the current centre. */}
         <div className="space-y-2 border-b border-brand/20 px-3 py-2.5">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="w-9 shrink-0 text-muted-foreground">{t('route.from')}</span>
-            <span className="flex min-w-0 items-center gap-1.5 rounded bg-brand/15 px-1.5 py-0.5 text-brand">
-              <MapPin className="size-3 shrink-0" aria-hidden="true" />
-              <span className="min-w-0 truncate font-medium" title={source.name}>
-                {source.name}
-              </span>
-            </span>
-          </div>
-
-          <div className="relative flex items-center gap-2">
-            <span className="w-9 shrink-0 text-xs text-muted-foreground">{t('route.to')}</span>
-            <div className="flex h-8 flex-1 items-center gap-2 rounded-md border bg-background px-2.5 text-sm focus-within:ring-2 focus-within:ring-brand">
-              <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={query}
-                placeholder={t('route.toPlaceholder')}
-                role="combobox"
-                aria-label={t('route.to')}
-                aria-autocomplete="list"
-                aria-controls={LISTBOX_ID}
-                aria-expanded={showResults}
-                aria-activedescendant={
-                  showResults ? optionId((matches[active] ?? matches[0]).object.id) : undefined
-                }
-                onChange={(event) => {
-                  setQuery(event.target.value)
-                  setTarget(null)
-                  setActive(0)
-                  setOpen(true)
-                }}
-                onFocus={() => setOpen(true)}
-                onBlur={() => {
-                  blurTimer.current = setTimeout(() => setOpen(false), 120)
-                }}
-                onKeyDown={handleKeyDown}
-                className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
-              />
-            </div>
-
-            {showResults && (
-              <ul
-                id={LISTBOX_ID}
-                role="listbox"
-                aria-label={t('route.to')}
-                className="absolute inset-x-9 top-full z-10 mt-1 max-h-56 origin-top animate-[shirube-menu-in_140ms_ease-out] overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
-                onMouseDown={() => {
-                  if (blurTimer.current) {
-                    clearTimeout(blurTimer.current)
-                  }
-                }}
-              >
-                {matches.map((match, index) => (
-                  <li key={match.object.id} role="presentation">
-                    <button
-                      type="button"
-                      role="option"
-                      id={optionId(match.object.id)}
-                      aria-selected={index === active}
-                      onClick={() => choose(match.object)}
-                      onMouseEnter={() => setActive(index)}
-                      className={cn(
-                        'flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm',
-                        index === active && 'bg-brand/10',
-                      )}
-                    >
-                      <span className="min-w-0 truncate font-medium">{match.object.name}</span>
-                      <KindBadge kind={match.object.kind} />
-                      <span className="ml-auto shrink-0 truncate text-xs text-muted-foreground">
-                        {match.column
-                          ? t('search.inColumn', { column: match.column })
-                          : match.object.schema}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <TableCombobox
+            listboxId="route-from-listbox"
+            label={t('route.from')}
+            value={source}
+            objects={objects}
+            exclude={target?.id ?? null}
+            onSelect={setSource}
+          />
+          <TableCombobox
+            listboxId="route-to-listbox"
+            label={t('route.to')}
+            value={target}
+            objects={objects}
+            exclude={source.id}
+            onSelect={setTarget}
+            autoFocus
+          />
         </div>
 
         {/* The result: the hop list, or a hint / no-route message. */}
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2.5 text-sm">
           {target === null ? (
             <p className="text-xs text-muted-foreground">{t('route.hint')}</p>
-          ) : hops !== null && hops.length === 0 ? (
+          ) : hops === null || hops.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t('route.noRoute')}</p>
-          ) : hops !== null && hops.length === 1 ? (
-            <p className="text-xs text-muted-foreground">{t('route.sameTable')}</p>
-          ) : hops !== null ? (
+          ) : (
             <div>
               <p className="mb-2 text-xs text-muted-foreground">
                 {t('route.found', { count: hops.length - 1 })}
@@ -282,7 +337,7 @@ export function RouteFinder({
                 })}
               </ol>
             </div>
-          ) : null}
+          )}
         </div>
       </div>
     </div>
