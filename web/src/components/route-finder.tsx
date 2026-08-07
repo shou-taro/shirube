@@ -275,10 +275,13 @@ export function RouteFinder({
       }
     }
     document.addEventListener('keydown', onKeyDown)
-    document.addEventListener('mousedown', onPointerDown)
+    // Capture phase: the ER map (React Flow) stops mouse events from bubbling up for its own
+    // panning, so a bubble-phase listener never sees a click on the canvas. Capturing runs
+    // before those handlers, so a click anywhere outside the panel still dismisses it.
+    document.addEventListener('mousedown', onPointerDown, true)
     return () => {
       document.removeEventListener('keydown', onKeyDown)
-      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('mousedown', onPointerDown, true)
     }
   }, [onClose])
 
