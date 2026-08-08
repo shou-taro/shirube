@@ -56,6 +56,24 @@ const en = {
     noResults: 'No matching tables',
     inColumn: 'column: {{column}}',
   },
+  route: {
+    // The floating panel that traces how two tables connect, without the AI navigator.
+    title: 'Find a route',
+    find: 'Find a route from here',
+    findShort: 'Route',
+    close: 'Close',
+    from: 'From',
+    to: 'To',
+    searchPlaceholder: 'Search for a table…',
+    hint: 'Pick a table to route to.',
+    // How many hops the route takes ({{count}} = the number of steps between the tables).
+    found_one: 'One hop:',
+    found_other: '{{count}} hops:',
+    // Shown on a connector where the two tables join through a view rather than columns.
+    viaView: 'via a view',
+    noRoute: 'No route — these tables are not connected. Draw a relationship to link them.',
+    showOnMap: 'Show {{name}} on the map',
+  },
   tree: {
     open: 'Browse schema',
     close: 'Close',

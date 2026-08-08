@@ -78,10 +78,13 @@ export function SchemaTree({ objects, relationships, activeId, onSelect }: Schem
         setOpen(false)
       }
     }
-    document.addEventListener('mousedown', onPointerDown)
+    // Capture phase: the ER map (React Flow) stops mouse events from bubbling up for its own
+    // panning, so a bubble-phase listener never sees a click on the canvas. Capturing runs
+    // before those handlers, so a click on the map still closes the popover.
+    document.addEventListener('mousedown', onPointerDown, true)
     document.addEventListener('keydown', onKeyDown)
     return () => {
-      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('mousedown', onPointerDown, true)
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [open])
