@@ -388,6 +388,24 @@ describe('navigation and layout', () => {
     expect(toggle).toHaveAttribute('aria-pressed', 'true')
   })
 
+  it('opens the route finder from the detail card, started at the current table', async () => {
+    mockSchema.mockResolvedValue(GRAPH)
+    renderExplorer()
+    await screen.findByText('centre-orders')
+    // Centre a table so the detail card — and its footer's "find a route" action — appears.
+    fireEvent.click(screen.getByText('centre-orders'))
+
+    fireEvent.click(await screen.findByText('route.findShort'))
+
+    // The finder mounts, its source seeded from the current centre.
+    expect(screen.getByText('route.title')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('orders')).toBeInTheDocument()
+
+    // And it closes again from its own control.
+    fireEvent.click(screen.getByLabelText('route.close'))
+    expect(screen.queryByText('route.title')).not.toBeInTheDocument()
+  })
+
   it('treats a provider load failure as no provider', async () => {
     mockSchema.mockResolvedValue(GRAPH)
     mockProvider.mockRejectedValueOnce(new Error('unreachable'))
