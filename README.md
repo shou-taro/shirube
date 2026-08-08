@@ -89,8 +89,10 @@ Everything below works today, in the beta:
 - 🔗 **Relationship navigation.** Click a related table to glide the map over to it, and
   keep following the connections.
 - 🧭 **Trace a route between two tables.** Pick a destination and shirube draws the shortest
-  chain of relationships from where you are to it, as a list of clickable hops — click along
-  them to walk the whole route on the map, one table at a time.
+  path from where you are to it as a small diagram — a box for each table on the way, joined
+  by connectors that name the columns they meet on, so you see not just the sequence but how
+  each pair links. Click a box to travel there and walk the whole route on the map, one table
+  at a time.
 - ✏️ **Draw your own relationships.** When a database declares no foreign key — common in
   ORM-shaped, legacy or warehouse schemas — shirube can't tell that two tables are related,
   so no edge is drawn and you can't travel between them. Draw the missing link yourself,
