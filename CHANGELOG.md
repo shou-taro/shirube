@@ -8,6 +8,8 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.3.0b6] — 2026-08-08
+
 ### Added
 
 - **Trace a route between two tables.** Open "Find a route" from a table's detail card — it
@@ -412,7 +414,8 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.3.0b5...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.3.0b6...HEAD
+[0.3.0b6]: https://github.com/shou-taro/shirube/compare/v0.3.0b5...v0.3.0b6
 [0.3.0b5]: https://github.com/shou-taro/shirube/compare/v0.3.0b4...v0.3.0b5
 [0.3.0b4]: https://github.com/shou-taro/shirube/compare/v0.3.0b3...v0.3.0b4
 [0.3.0b3]: https://github.com/shou-taro/shirube/compare/v0.3.0b2...v0.3.0b3
