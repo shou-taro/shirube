@@ -1,4 +1,4 @@
-import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react'
+import { EdgeLabelRenderer, type EdgeProps } from '@xyflow/react'
 import { X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -55,6 +55,7 @@ function shortenTowards(from: Point, to: Point, distance: number): Point {
  * React Flow anchor the two ends; dagre's interior points shape the middle.
  */
 export function RoutedEdge({
+  id,
   sourceX,
   sourceY,
   targetX,
@@ -74,6 +75,65 @@ export function RoutedEdge({
   ]
   const path = roundedPath(points)
 
+  const leaving = data?.leaving === true
+  const enterDelay = (data?.enterDelay as number | undefined) ?? 0
+  // On travel the edge draws itself in while keeping its own line style — a foreign key stays
+  // solid, a view dependency dashed, a manual link dotted. Rather than sweeping the stroke's
+  // own dash (which would flatten the pattern), a wide mask wipes along the path and uncovers
+  // the edge beneath it end to end: `pathLength: 1` with `stroke-dasharray: 1` makes the mask
+  // one full-length dash, so animating its offset from 1 to 0 reveals the line from source to
+  // target. The mask stroke is wide enough to clear the arrowhead, and rests fully open under
+  // a reduced-motion preference (the draw is disabled there). An edge leaving the view instead
+  // fades out (`er-edge-leave`). The mask id is sanitised because an edge id carries dots and
+  // colons.
+  const maskId = `er-edge-mask-${id.replace(/[^\w-]/g, '_')}`
+  const xs = points.map((point) => point.x)
+  const ys = points.map((point) => point.y)
+  const pad = 40
+  // The reveal sweeps along the mask from its start. Normally that is the source end, which
+  // is the centre for an edge pointing away from it; when the centre is instead the edge's
+  // target (er-diagram.tsx flags this), reverse the mask geometry so the sweep still starts at
+  // the centre and the line grows outward rather than towards it. Only the invisible mask is
+  // reversed — the visible edge keeps its direction and arrowhead.
+  const maskPath = data?.drawFromTarget === true ? roundedPath([...points].reverse()) : path
+  const edgePath = leaving ? (
+    <path
+      className="react-flow__edge-path er-edge-leave"
+      d={path}
+      markerEnd={markerEnd}
+      style={style}
+    />
+  ) : (
+    <>
+      <mask
+        id={maskId}
+        maskUnits="userSpaceOnUse"
+        x={Math.min(...xs) - pad}
+        y={Math.min(...ys) - pad}
+        width={Math.max(...xs) - Math.min(...xs) + pad * 2}
+        height={Math.max(...ys) - Math.min(...ys) + pad * 2}
+      >
+        <path
+          className="er-edge-draw-in"
+          d={maskPath}
+          fill="none"
+          stroke="white"
+          strokeWidth={32}
+          strokeLinecap="round"
+          pathLength={1}
+          style={{ strokeDasharray: 1, animationDelay: `${enterDelay}ms` }}
+        />
+      </mask>
+      <path
+        className="react-flow__edge-path"
+        d={path}
+        markerEnd={markerEnd}
+        style={style}
+        mask={`url(#${maskId})`}
+      />
+    </>
+  )
+
   // A manual relationship can be removed straight from the map: hovering its (thin, dotted)
   // line reveals a delete control at its midpoint. Foreign keys and view dependencies carry
   // no id and so no control.
@@ -83,12 +143,12 @@ export function RoutedEdge({
   const mid = points[Math.floor(points.length / 2)] ?? points[0]
 
   if (!manual || onRemove === undefined || relationshipId === undefined) {
-    return <BaseEdge path={path} markerEnd={markerEnd} style={style} />
+    return edgePath
   }
 
   return (
     <>
-      <BaseEdge path={path} markerEnd={markerEnd} style={style} interactionWidth={0} />
+      {edgePath}
       {/* A wide, invisible hit area so the thin dotted line is easy to hover. */}
       <path
         d={path}

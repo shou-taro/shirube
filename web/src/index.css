@@ -145,26 +145,96 @@
   background-color: #fcd4ea;
 }
 
-/* Travelling to a new centre swaps the whole neighbourhood layout at once. Cross-fade
-   the nodes and edges (the viewport layer) so the change reads as a smooth transition
-   rather than a jump; the controls and minimap stay put.
+/* Travelling to a new centre swaps the whole neighbourhood layout at once, then reveals
+   it as a small piece of choreography rather than a cross-fade: the clicked table glides
+   to the middle, its relationships draw outward, and the newly-related tables settle in
+   behind them. Each stage is pure CSS keyed off the element mounting (or its position
+   changing), so no JavaScript drives the timeline — the delays below stagger the stages.
 
-   The two directions run at different speeds on purpose. The fade-OUT (entering the
-   travelling state) is quick, and its duration is paired with the fade-out wait in
-   er-diagram.tsx's travelTo (keep the two in step) so the layout swaps exactly once the
-   map has hidden. The fade-IN on arrival (the base transition, in effect when the
-   travelling class is removed) is slower, so the new neighbourhood eases in gently rather
-   than snapping to full opacity.
-
-   The travelling state dims almost to black (not to a still-legible ghost): a fade that
-   starts from near-nothing has the full perceptual range to travel, so the slow fade-in
-   actually reads as a gradual reveal rather than a barely-there brightening. */
-.react-flow__viewport {
-  transition: opacity 800ms ease;
+   Stage 1 — the centre glides. React Flow positions every node with `transform:
+   translate(...)`, so a transition on that transform turns a layout change into a slide.
+   The clicked table keeps its identity across the swap (it is the new centre), so its
+   transform animates from where it sat to the middle; as the viewport also pans to frame
+   the neighbourhood (fitView), the two compose into one smooth move from the click point
+   to the centre. Tables shared with the old neighbourhood glide too. Pair the duration
+   with the fitView duration in er-diagram.tsx (keep the two in step). */
+.react-flow__node {
+  transition: transform 460ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-.er-canvas--travelling .react-flow__viewport {
-  transition: opacity 300ms ease;
-  opacity: 0.04;
+
+/* Stage 3 — the newly-related tables settle in. A fresh neighbour node mounts on travel,
+   so this entrance plays once on mount (the persisting centre never remounts, so it glides
+   rather than popping). `both` holds the node hidden through the delay, so it appears only
+   after the centre has arrived and its edge has drawn. The scale lives on the card, inside
+   React Flow's translate wrapper, so it never disturbs the node's position. */
+@keyframes er-node-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(8px);
+  }
+}
+.er-card-enter {
+  /* Duration only; the per-node delay is set inline (er-diagram.tsx) so neighbours cascade
+     rather than all appearing at once. `both` holds the node hidden through that delay. */
+  animation: er-node-enter 440ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* The mirror of Stage 3: a table dropping out of the view on travel eases out (er-diagram.tsx
+   keeps it mounted for one beat, flagged `leaving`, to let this play). Quicker than the
+   entrance so the old neighbourhood clears as the new centre arrives; `forwards` holds it
+   gone until it unmounts, and pointer-events are dropped so a fading ghost is not clickable. */
+@keyframes er-node-leave {
+  to {
+    opacity: 0;
+    transform: scale(0.92) translateY(4px);
+  }
+}
+.er-card-leave {
+  animation: er-node-leave 260ms ease-in forwards;
+  pointer-events: none;
+}
+
+/* Stage 2 — a relationship draws from the centre outward. This class drives the reveal mask
+   in routed-edge.tsx, not the edge itself: a full-length dash (`pathLength: 1` +
+   `stroke-dasharray: 1`) whose offset animates from 1 to 0, wiping along the path to uncover
+   the edge beneath it end to end. Masking rather than sweeping the edge's own dash lets each
+   line keep its style as it grows — a foreign key solid, a view dependency dashed, a manual
+   link dotted. It starts before the neighbours so the arrows lead and the tables follow. */
+@keyframes er-edge-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+.er-edge-draw-in {
+  /* Duration only; the per-edge delay is set inline (er-diagram.tsx) so the arrows sweep out
+     from the centre in turn. Long enough that the draw reads as the line extending. */
+  animation: er-edge-draw 560ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* An edge leaving the view fades out alongside the tables it connected (a retract mask would
+   be needlessly showy for the departure), holding gone until it unmounts. */
+@keyframes er-edge-leave {
+  to {
+    opacity: 0;
+  }
+}
+.er-edge-leave {
+  animation: er-edge-leave 260ms ease-in forwards;
+  pointer-events: none;
+}
+
+/* Honour a reduced-motion preference: keep the map, drop the movement — the new
+   neighbourhood simply appears, and the old one is dropped without easing. */
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__node {
+    transition: none;
+  }
+  .er-card-enter,
+  .er-card-leave,
+  .er-edge-draw-in,
+  .er-edge-leave {
+    animation: none;
+  }
 }
 
 /* React Flow's controls default to a light button; in dark mode recolour them with the

@@ -150,9 +150,26 @@ function HiddenStub({
  */
 function TableNodeComponent({ data }: NodeProps<TableFlowNode>) {
   const { t } = useTranslation()
-  const { object, isCentre, hiddenReferenced = [], hiddenReferencing = [], onTravel } = data
+  const {
+    object,
+    isCentre,
+    hiddenReferenced = [],
+    hiddenReferencing = [],
+    onTravel,
+    enterDelay = 0,
+    leaving = false,
+  } = data
   return (
-    <div className="relative">
+    // `er-card-enter` plays once when a node mounts, so a newly-related table settles in on
+    // travel; the centre persists across the swap and so glides in instead of popping. The
+    // delay staggers the neighbours into a cascade (er-diagram.tsx). A table dropping out of
+    // the view is flagged `leaving` and eases out with `er-card-leave` instead. The
+    // animation's scale sits here, inside React Flow's translate wrapper, so it never
+    // disturbs the node's position (see index.css).
+    <div
+      className={cn('relative', leaving ? 'er-card-leave' : 'er-card-enter')}
+      style={leaving ? undefined : { animationDelay: `${enterDelay}ms` }}
+    >
       {/* Vertical stubs for off-map related tables: above for tables this references,
           below for tables that reference it. Kept clear of the horizontal edges, and each
           opens the full list of those tables to travel to. */}
