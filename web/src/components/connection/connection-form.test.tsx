@@ -295,6 +295,44 @@ describe('validation', () => {
     expect(field(/connection.fields.database/)).toBeRequired()
     expect(field(/connection.fields.username/)).toBeRequired()
   })
+
+  it('tags only the blank optional field, so what is required reads at a glance', () => {
+    render(
+      <ConnectionForm initial={null} editingId={null} onConnected={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    // Schemas is the one field that is blank yet skippable; the core credentials carry the
+    // native `required` attribute, and port and SSL mode are pre-filled with defaults — so none
+    // of them need the tag, and only Schemas is marked.
+    expect(screen.getAllByText('connection.optional')).toHaveLength(1)
+  })
+})
+
+describe('engine picker', () => {
+  it('offers both engines as a segmented toggle, PostgreSQL selected by default', () => {
+    render(
+      <ConnectionForm initial={null} editingId={null} onConnected={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    // Both engines are visible at once (not hidden behind a closed menu), and the default
+    // sits on PostgreSQL.
+    const postgres = screen.getByRole('radio', { name: /connection.kinds.postgresql/ })
+    const sqlite = screen.getByRole('radio', { name: /connection.kinds.sqlite/ })
+    expect(postgres).toBeChecked()
+    expect(sqlite).not.toBeChecked()
+  })
+
+  it('switches the selected engine on click', () => {
+    render(
+      <ConnectionForm initial={null} editingId={null} onConnected={vi.fn()} onCancel={vi.fn()} />,
+    )
+
+    fireEvent.click(screen.getByRole('radio', { name: /connection.kinds.sqlite/ }))
+
+    expect(screen.getByRole('radio', { name: /connection.kinds.sqlite/ })).toBeChecked()
+    // Switching engines reveals the SQLite field, confirming the form followed the toggle.
+    expect(screen.getByLabelText(/connection.fields.path/)).toBeInTheDocument()
+  })
 })
 
 describe('SQLite profiles', () => {
@@ -307,7 +345,7 @@ describe('SQLite profiles', () => {
   }
 
   function selectSqlite() {
-    fireEvent.change(field(/connection.fields.kind/), { target: { value: 'sqlite' } })
+    fireEvent.click(screen.getByRole('radio', { name: /connection.kinds.sqlite/ }))
   }
 
   it('swaps the server fields for a single file path', () => {

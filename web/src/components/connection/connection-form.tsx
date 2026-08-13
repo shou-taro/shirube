@@ -1,10 +1,11 @@
-import { Lock } from 'lucide-react'
-import type { FormEvent, ReactNode } from 'react'
-import { useState } from 'react'
+import { Database, FileText, Lock, Server, Tag, User, type LucideIcon } from 'lucide-react'
+import type { FormEvent, InputHTMLAttributes, ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 import {
   createProfile,
   pickSqliteFile,
@@ -85,13 +86,108 @@ function toTestParams(state: FormState): ConnectionTestParams {
   }
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+function Field({
+  label,
+  hint,
+  optional = false,
+  children,
+}: {
+  label: string
+  hint?: string
+  /** Tags the field as optional, so what is required reads at a glance rather than only on a
+   *  failed submit. Required fields carry the native `required` attribute and stay unmarked. */
+  optional?: boolean
+  children: ReactNode
+}) {
+  const { t } = useTranslation()
   return (
     <label className="flex flex-col gap-1 text-xs">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="flex items-center gap-1.5 text-muted-foreground">
+        {label}
+        {optional ? (
+          <span className="rounded-full border px-1.5 py-0.5 text-[10px] font-normal leading-none text-muted-foreground">
+            {t('connection.optional')}
+          </span>
+        ) : null}
+      </span>
       {children}
       {hint ? <span className="text-[11px] text-muted-foreground">{hint}</span> : null}
     </label>
+  )
+}
+
+/**
+ * A text input in the form's modern style: a taller, softly rounded field with an optional
+ * leading icon that names the field at a glance (a server for the host, a key for the
+ * password, and so on). Forwards every native input prop, so it drops in wherever a bare
+ * {@link Input} was used.
+ */
+function IconInput({
+  icon: Icon,
+  className,
+  wrapperClassName,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { icon?: LucideIcon; wrapperClassName?: string }) {
+  return (
+    <div className={cn('relative', wrapperClassName)}>
+      {Icon ? (
+        <Icon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      ) : null}
+      <Input className={cn('h-10 rounded-lg', Icon ? 'pl-9' : null, className)} {...props} />
+    </div>
+  )
+}
+
+/**
+ * The engine picker as an underlined tab row, so every supported engine is visible at a
+ * glance — in particular SQLite, the no-server path a newcomer can try at once — instead of
+ * hiding behind a closed menu. Built from native radios (one shared `name`) so keyboard
+ * arrows move between tabs and the group reads correctly to a screen reader; the radio
+ * itself is visually hidden and the styled label is the tab, its active state marked by a
+ * brand underline.
+ */
+function EngineToggle({
+  value,
+  onChange,
+  label,
+}: {
+  value: DatabaseKind
+  onChange: (kind: DatabaseKind) => void
+  label: string
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-col gap-1 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <div role="radiogroup" aria-label={label} className="flex gap-6 border-b border-input">
+        {KINDS.map((kind) => {
+          const selected = value === kind
+          return (
+            <label
+              key={kind}
+              className={cn(
+                '-mb-px cursor-pointer border-b-2 pb-2 text-sm transition-colors',
+                selected
+                  ? 'border-brand font-medium text-brand'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <input
+                type="radio"
+                name="engine"
+                value={kind}
+                checked={selected}
+                onChange={() => onChange(kind)}
+                className="peer sr-only"
+              />
+              <span className="rounded-sm px-0.5 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand">
+                {t(`connection.kinds.${kind}`)}
+              </span>
+            </label>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -118,6 +214,49 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
   const [browsing, setBrowsing] = useState(false)
 
   const isSqlite = form.kind === 'sqlite'
+
+  // Switching engine swaps one set of fields for another of a different height. Rather than let
+  // the form jump, animate the swapping region from its old height to its new one: everything
+  // below (the buttons) and the card itself follow, since their heights are auto. The wrapper is
+  // clipped and pinned to a pixel height only for the duration of the transition, then released
+  // back to `auto` so nothing stays stuck at a stale height. Reduced motion is honoured for free
+  // — the global net collapses the transition, so the height simply snaps.
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const bodyHeight = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    const target = el.scrollHeight
+    // First render: record the height without animating from nothing.
+    if (bodyHeight.current === null) {
+      bodyHeight.current = target
+      return
+    }
+    const from = bodyHeight.current
+    bodyHeight.current = target
+    if (from === target) return
+
+    el.style.overflow = 'hidden'
+    el.style.height = `${from}px`
+    void el.offsetHeight // Flush the start height so the transition has a frame to run from.
+    el.style.transition = 'height 320ms cubic-bezier(0.22, 0.61, 0.36, 1)'
+    el.style.height = `${target}px`
+
+    let timer: ReturnType<typeof setTimeout>
+    const settle = (event?: TransitionEvent): void => {
+      if (event && event.propertyName !== 'height') return
+      el.style.transition = ''
+      el.style.height = 'auto'
+      el.style.overflow = ''
+      el.removeEventListener('transitionend', settle)
+      clearTimeout(timer)
+    }
+    el.addEventListener('transitionend', settle)
+    // Fallback in case `transitionend` never arrives (an interrupted or paused transition), so
+    // the wrapper is never left pinned to a fixed height with its overflow clipped.
+    timer = setTimeout(settle, 400)
+    return () => settle()
+  }, [form.kind])
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((previous) => ({ ...previous, [key]: value }))
@@ -208,30 +347,27 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={t('connection.fields.name')}>
-          <Input value={form.name} onChange={(event) => set('name', event.target.value)} required />
-        </Field>
-        <Field label={t('connection.fields.kind')}>
-          <select
-            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            value={form.kind}
-            onChange={(event) => set('kind', event.target.value as DatabaseKind)}
-          >
-            {KINDS.map((kind) => (
-              <option key={kind} value={kind}>
-                {t(`connection.kinds.${kind}`)}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
+      <Field label={t('connection.fields.name')}>
+        <IconInput
+          icon={Tag}
+          value={form.name}
+          onChange={(event) => set('name', event.target.value)}
+          required
+        />
+      </Field>
+      <EngineToggle
+        label={t('connection.fields.kind')}
+        value={form.kind}
+        onChange={(kind) => set('kind', kind)}
+      />
 
-      {isSqlite ? (
+      <div ref={bodyRef} className="flex flex-col gap-3">
+        {isSqlite ? (
         <Field label={t('connection.fields.path')} hint={t('connection.pathHint')}>
           <div className="flex gap-2">
-            <Input
-              className="flex-1"
+            <IconInput
+              icon={FileText}
+              wrapperClassName="flex-1"
               value={form.path}
               onChange={(event) => set('path', event.target.value)}
               placeholder="/path/to/database.sqlite"
@@ -240,7 +376,7 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
             <Button
               type="button"
               variant="outline"
-              className="shrink-0"
+              className="h-10 shrink-0"
               onClick={() => void handleBrowse()}
               disabled={browsing}
             >
@@ -252,14 +388,15 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
         <>
           <div className="grid grid-cols-[1fr_88px] gap-3">
             <Field label={t('connection.fields.host')}>
-              <Input
+              <IconInput
+                icon={Server}
                 value={form.host}
                 onChange={(event) => set('host', event.target.value)}
                 required
               />
             </Field>
             <Field label={t('connection.fields.port')}>
-              <Input
+              <IconInput
                 value={form.port}
                 inputMode="numeric"
                 onChange={(event) => set('port', event.target.value)}
@@ -268,14 +405,16 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label={t('connection.fields.database')}>
-              <Input
+              <IconInput
+                icon={Database}
                 value={form.database}
                 onChange={(event) => set('database', event.target.value)}
                 required
               />
             </Field>
             <Field label={t('connection.fields.username')}>
-              <Input
+              <IconInput
+                icon={User}
                 value={form.username}
                 onChange={(event) => set('username', event.target.value)}
                 required
@@ -284,24 +423,24 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
           </div>
           <Field
             label={t('connection.fields.password')}
-            hint={editingId ? t('connection.passwordKeepHint') : undefined}
+            // A reminder the password is kept safe: how it is stored when creating, and that
+            // one is already stored (leave blank to keep it) when editing.
+            hint={
+              editingId ? t('connection.passwordKeepHint') : t('connection.passwordKeychainHint')
+            }
           >
-            {/* Lock glyph as a quiet reminder that the password goes to the OS keychain. */}
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="password"
-                className="pl-8"
-                value={form.password}
-                onChange={(event) => set('password', event.target.value)}
-                required={editingId === null}
-                // Editing keeps the stored password unless a new one is typed, but it is never
-                // fetched back — so show masked dots to signal one is stored (leave blank to
-                // keep it). Not shown when creating or duplicating: those have no stored
-                // password and must be given one. A fixed-length mask, not the real password.
-                placeholder={editingId ? '••••••••' : undefined}
-              />
-            </div>
+            <IconInput
+              icon={Lock}
+              type="password"
+              value={form.password}
+              onChange={(event) => set('password', event.target.value)}
+              required={editingId === null}
+              // Editing keeps the stored password unless a new one is typed, but it is never
+              // fetched back — so show masked dots to signal one is stored (leave blank to
+              // keep it). Not shown when creating or duplicating: those have no stored
+              // password and must be given one. A fixed-length mask, not the real password.
+              placeholder={editingId ? '••••••••' : undefined}
+            />
           </Field>
 
           {/* Connection options grouped apart from the core credentials. */}
@@ -309,8 +448,10 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
             <p className="mb-2 text-xs text-muted-foreground">{t('connection.optionsLabel')}</p>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t('connection.fields.sslmode')}>
+                {/* A lighter, underlined control (no box) — the dropdown reads as a quiet
+                    option rather than a heavy field, matching the engine tabs above. */}
                 <select
-                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="h-10 w-full border-0 border-b border-input bg-transparent px-1 text-sm focus-visible:border-brand focus-visible:outline-none"
                   value={form.sslmode}
                   onChange={(event) => set('sslmode', event.target.value as SslMode)}
                 >
@@ -321,22 +462,35 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
                   ))}
                 </select>
               </Field>
-              <Field label={t('connection.fields.schemas')} hint={t('connection.schemasHint')}>
-                <Input
+              <Field
+                label={t('connection.fields.schemas')}
+                hint={t('connection.schemasHint')}
+                optional
+              >
+                <IconInput
                   value={form.schemas}
                   onChange={(event) => set('schemas', event.target.value)}
-                  placeholder="public"
+                  // An example of the comma-separated format, not a default — the hint says an
+                  // empty field means every schema, so a lone "public" here would contradict it.
+                  placeholder="public, sales"
                 />
               </Field>
             </div>
           </div>
         </>
-      )}
+        )}
+      </div>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {testState === 'ok' ? (
-        <p className="text-sm text-green-600">{t('connection.testOk')}</p>
-      ) : null}
+      {/* A fixed slot for the connection status, so a Test result appearing or clearing does not
+          nudge the buttons below it. Holds an error or the success line; empty otherwise. The
+          live region announces the result to assistive tech. */}
+      <div className="min-h-5 text-sm" aria-live="polite">
+        {error ? (
+          <p className="text-destructive">{error}</p>
+        ) : testState === 'ok' ? (
+          <p className="text-green-600">{t('connection.testOk')}</p>
+        ) : null}
+      </div>
 
       {/* Secondary actions on the left; the primary CTA anchored bottom-right. Wraps on
           very narrow widths rather than overflowing the card. */}
