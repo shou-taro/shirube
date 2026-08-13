@@ -19,6 +19,7 @@ import { layoutGraph, type TableFlowNode, type TableNodeData } from './layout'
 import { hiddenNeighbours, pickCentre, selectNeighbourhood } from './neighbourhood'
 import { RoutedEdge } from './routed-edge'
 import { TableNode } from './table-node'
+import { withLeaving } from './transition'
 
 // Registered once at module scope: React Flow warns if these object identities change
 // between renders.
@@ -30,20 +31,40 @@ const edgeTypes = { routed: RoutedEdge }
 // while still leaving room for the vertical off-map stubs above and below the cards.
 const FIT_PADDING = 0.15
 
-// How long the travel fade-OUT takes — the wait before the layout is swapped. Must match
-// the fade-out duration in index.css (`.er-canvas--travelling .react-flow__viewport`) so
-// the swap lands exactly once the map has hidden. The fade-IN on arrival is deliberately
-// slower and lives entirely in CSS (the base `.react-flow__viewport` transition), so it is
-// not timed here.
-const TRAVEL_FADE_MS = 300
+// How long the camera takes to pan/zoom to the new neighbourhood on travel. Paired with the
+// node glide in index.css (`.react-flow__node` transform transition), so the clicked table's
+// slide to the centre and the camera framing it arrive together as one move — keep the two
+// in step.
+const TRAVEL_FIT_MS = 460
+
+// The arrival cascade after the centre lands: neighbours ripple out from the centre, nearest
+// first. Each relationship starts drawing at EDGE_ENTER_BASE + slot·STAGGER_STEP ms; the
+// table at its far end settles in NODE_ENTER_LEAD later, so the arrow visibly leads and the
+// table follows once it has nearly drawn. The slot is capped so a hub's dozen neighbours
+// don't stretch the cascade indefinitely. Durations for the draw and the pop live in
+// index.css (`.er-edge-draw-in` / `.er-card-enter`); keep the lead a touch under the edge
+// duration there so a table lands as its arrow completes.
+const EDGE_ENTER_BASE = 180
+const NODE_ENTER_LEAD = 300
+const STAGGER_STEP = 100
+const STAGGER_CAP = 7
+
+// How long the tables and edges leaving the view are kept mounted so they can ease out
+// before they are dropped. Pair with the exit animations in index.css (`.er-card-leave` /
+// `.er-edge-leave`) — a touch longer, so removal lands just after the animation ends.
+const EXIT_MS = 300
 
 /**
  * Refit the view when the focus changes — travelling to a new centre or toggling the
  * show-everything view — so the fresh set of nodes is framed. Lives inside <ReactFlow>
  * to reach its instance.
  */
-function FitOnChange({ signature }: { signature: string }) {
+function FitOnChange({ signature, fitIds }: { signature: string; fitIds: string[] }) {
   const { fitView } = useReactFlow()
+  // Read the ids fresh at fire time without making them an effect dependency, so the fit
+  // re-runs only when the focus changes (signature), not on every render.
+  const idsRef = useRef(fitIds)
+  idsRef.current = fitIds
   useEffect(() => {
     // Start the pan only once the freshly-swapped layout has painted, so the animation
     // runs on an unblocked main thread instead of stuttering against the node mount and
@@ -51,7 +72,16 @@ function FitOnChange({ signature }: { signature: string }) {
     // commit paint, the second starts the pan on a clear frame.
     let inner = 0
     const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => void fitView({ padding: FIT_PADDING, duration: 400 }))
+      inner = requestAnimationFrame(
+        () =>
+          void fitView({
+            padding: FIT_PADDING,
+            duration: TRAVEL_FIT_MS,
+            // Frame the arriving neighbourhood only; the tables leaving the view still linger
+            // (easing out at their old spots) and must not drag the camera off the new one.
+            nodes: idsRef.current.map((id) => ({ id })),
+          }),
+      )
     })
     return () => {
       cancelAnimationFrame(outer)
@@ -114,20 +144,14 @@ export function ErDiagram({
   const { t } = useTranslation()
   const [centreId, setCentreId] = useState<string | null>(() => pickCentre(graph))
   const [showAll, setShowAll] = useState(defaultShowAll)
-  const [travelling, setTravelling] = useState(false)
 
-  // Travel to a new centre with a cross-fade: fade the map out, swap the whole layout while
-  // it is faded (so the jump is hidden), then fade back in as the view refits — reading as a
-  // smooth transition rather than a snap. The wait matches the fade-out duration in index.css
-  // (keep the two in step) so the swap lands once the map has hidden; the slower fade-in on
-  // arrival is CSS-only and needs no timing here.
+  // Travel to a new centre by swapping the neighbourhood straight away and letting the
+  // arrival choreograph itself (see index.css): the clicked table keeps its identity across
+  // the swap, so it glides to the middle while the camera reframes (FitOnChange); its
+  // relationships then draw outward and the newly-related tables settle in behind them.
   const travelTo = useCallback((id: string) => {
-    setTravelling(true)
-    window.setTimeout(() => {
-      setCentreId(id)
-      setShowAll(false)
-      requestAnimationFrame(() => setTravelling(false))
-    }, TRAVEL_FADE_MS)
+    setCentreId(id)
+    setShowAll(false)
   }, [])
 
   // A fresh schema keeps the current centre when that table is still present — so reloading,
@@ -153,7 +177,7 @@ export function ErDiagram({
     onCentreChange?.(centreId)
   }, [centreId, onCentreChange])
 
-  const { nodes, edges } = useMemo(() => {
+  const target = useMemo(() => {
     // "Show everything" draws the whole schema plainly — no centre, nothing hidden.
     if (showAll) {
       return layoutGraph(graph)
@@ -164,11 +188,28 @@ export function ErDiagram({
     const subgraph = selectNeighbourhood(graph, centreId)
     const visibleIds = new Set(subgraph.objects.map((object) => object.id))
     const laid = layoutGraph(subgraph)
+
+    // Order the neighbours by distance from the centre so the arrival ripples outward, and
+    // give each a stagger slot. The centre has no slot — it glides in rather than popping.
+    const centre = laid.nodes.find((node) => node.id === centreId)
+    const cx = centre?.position.x ?? 0
+    const cy = centre?.position.y ?? 0
+    const slotOf = new Map<string, number>()
+    laid.nodes
+      .filter((node) => node.id !== centreId)
+      .map((node) => ({
+        id: node.id,
+        distance: Math.hypot(node.position.x - cx, node.position.y - cy),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .forEach((neighbour, index) => slotOf.set(neighbour.id, Math.min(index, STAGGER_CAP)))
+
     const nodes = laid.nodes.map((node) => {
       // Off-map neighbours are marked with vertical stubs (above/below), clear of the
       // horizontal foreign-key edges, split by reference direction. The stub lists them
       // and travels there on click, so a capped hub loses nothing.
       const { referenced, referencing } = hiddenNeighbours(graph, node.id, visibleIds)
+      const slot = slotOf.get(node.id) ?? 0
       return {
         ...node,
         data: {
@@ -177,24 +218,55 @@ export function ErDiagram({
           hiddenReferenced: referenced,
           hiddenReferencing: referencing,
           onTravel: travelTo,
+          enterDelay: node.id === centreId ? 0 : EDGE_ENTER_BASE + NODE_ENTER_LEAD + slot * STAGGER_STEP,
         },
       }
     })
-    return { nodes, edges: laid.edges }
+
+    // An edge draws in on the same slot as the neighbour it reaches, so the arrow leads the
+    // table that appears at its far end. It also draws from the centre outward whichever way
+    // the foreign key points: when the centre is the edge's target, routed-edge.tsx reverses
+    // the reveal so the line still grows from the centre rather than towards it.
+    const edges: Edge[] = laid.edges.map((edge) => {
+      const neighbour = edge.source === centreId ? edge.target : edge.source
+      const slot = slotOf.get(neighbour) ?? 0
+      return {
+        ...edge,
+        data: {
+          ...edge.data,
+          enterDelay: EDGE_ENTER_BASE + slot * STAGGER_STEP,
+          drawFromTarget: edge.target === centreId,
+        },
+      }
+    })
+    return { nodes, edges }
   }, [showAll, graph, centreId, travelTo])
+
+  // Keep the departing neighbourhood on screen for one exit beat so it eases out rather than
+  // vanishing the instant the layout swaps: render the target plus whatever is leaving it
+  // (flagged by withLeaving), then drop the flagged items once their animation has played.
+  const [rendered, setRendered] = useState(() => target)
+  useEffect(() => {
+    setRendered((previous) => ({
+      nodes: withLeaving(target.nodes, previous.nodes),
+      edges: withLeaving(target.edges, previous.edges),
+    }))
+    const timer = window.setTimeout(() => setRendered(target), EXIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [target])
 
   // Wire each manual edge's on-map delete control to the remove handler. Kept out of the
   // layout above so it stays a pure geometry step, independent of this callback.
   const edgesWithHandlers = useMemo(
     () =>
       onRemoveManual === undefined
-        ? edges
-        : edges.map((edge) =>
+        ? rendered.edges
+        : rendered.edges.map((edge) =>
             edge.data?.manual === true
               ? { ...edge, data: { ...edge.data, onRemove: onRemoveManual } }
               : edge,
           ),
-    [edges, onRemoveManual],
+    [rendered.edges, onRemoveManual],
   )
 
   // Clicking a neighbour travels the centre to it; clicking the centre does nothing.
@@ -207,19 +279,21 @@ export function ErDiagram({
 
   return (
     <ReactFlow
-      nodes={nodes}
+      nodes={rendered.nodes}
       edges={edgesWithHandlers}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       onNodeClick={handleNodeClick}
       nodesDraggable={false}
-      className={travelling ? 'er-canvas--travelling' : undefined}
       fitView
       fitViewOptions={{ padding: FIT_PADDING }}
       minZoom={0.1}
       proOptions={{ hideAttribution: true }}
     >
-      <FitOnChange signature={showAll ? 'all' : centreId ?? ''} />
+      <FitOnChange
+        signature={showAll ? 'all' : centreId ?? ''}
+        fitIds={target.nodes.map((node) => node.id)}
+      />
       <RefitAfterResize trigger={resizeKey} />
       {/* Show-everything escape hatch for small schemas, kept clear of the detail card
           (top-left) and the controls/minimap (right). */}

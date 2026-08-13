@@ -24,6 +24,12 @@ export interface TableNodeData {
   hiddenReferencing?: SchemaObject[]
   /** Travel the map to another object — used by the stub's list to hop to a hidden one. */
   onTravel?: (id: string) => void
+  /** Milliseconds to hold this node's entrance so neighbours cascade in on travel rather
+   *  than appearing at once; the centre carries none (it glides in, not pops). */
+  enterDelay?: number
+  /** Set while the node is leaving the view on travel, so it eases out before it unmounts
+   *  rather than vanishing the instant the layout swaps. */
+  leaving?: boolean
   [key: string]: unknown
 }
 
