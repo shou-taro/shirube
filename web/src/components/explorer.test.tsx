@@ -401,9 +401,9 @@ describe('navigation and layout', () => {
     expect(screen.getByText('route.title')).toBeInTheDocument()
     expect(screen.getByDisplayValue('orders')).toBeInTheDocument()
 
-    // And it closes again from its own control.
+    // And it closes again from its own control — easing out before it unmounts.
     fireEvent.click(screen.getByLabelText('route.close'))
-    expect(screen.queryByText('route.title')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('route.title')).not.toBeInTheDocument())
   })
 
   it('treats a provider load failure as no provider', async () => {
