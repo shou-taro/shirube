@@ -1,5 +1,5 @@
 import { ArrowDown, Route, Search, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { KindBadge } from '@/components/kind-badge'
@@ -7,6 +7,11 @@ import type { Relationship, SchemaGraph, SchemaObject } from '@/lib/api'
 import { findPath } from '@/lib/find-path'
 import { findMatches } from '@/lib/schema-search'
 import { cn } from '@/lib/utils'
+
+// How long the panel's exit animation runs; the panel is kept mounted this long after a
+// dismiss so `shirube-menu-out` can play before the parent unmounts it. Must match the
+// duration in the panel's className below (keep the two in step).
+const MENU_EXIT_MS = 120
 
 /** The joined columns as `a, b` — or `a → b` when the two sides use different names. */
 function describeJoin(aColumns: string[], bColumns: string[]): string {
@@ -244,6 +249,34 @@ export function RouteFinder({
   const [source, setSource] = useState<SchemaObject>(initialSource)
   const [target, setTarget] = useState<SchemaObject | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  // The panel eases out on dismiss. `closing` swaps the entrance animation for the exit one;
+  // the parent is only told to unmount (`onClose`) once that exit has played, so the panel
+  // fades out with `shirube-menu-out` rather than vanishing the instant it is dismissed.
+  const [closing, setClosing] = useState(false)
+  const closingRef = useRef(false)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Dismiss with the exit animation: swap to `shirube-menu-out`, then unmount via `onClose`
+  // once it has played. Idempotent — a second trigger during the animation (Escape after an
+  // outside click, say) is ignored so it does not stack timers.
+  const beginClose = useCallback(() => {
+    if (closingRef.current) {
+      return
+    }
+    closingRef.current = true
+    setClosing(true)
+    closeTimer.current = setTimeout(onClose, MENU_EXIT_MS)
+  }, [onClose])
+
+  // Clear a pending unmount timer if the panel is torn down first (a schema reload that drops
+  // the source, say), so it never fires against an unmounted parent.
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) {
+        clearTimeout(closeTimer.current)
+      }
+    }
+  }, [])
 
   // The shortest path once a destination is chosen: the hop ids source → target inclusive,
   // an empty array when the two are unconnected, or null before a destination is picked.
@@ -266,12 +299,12 @@ export function RouteFinder({
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key === 'Escape') {
-        onClose()
+        beginClose()
       }
     }
     function onPointerDown(event: MouseEvent): void {
       if (panelRef.current !== null && !panelRef.current.contains(event.target as Node)) {
-        onClose()
+        beginClose()
       }
     }
     document.addEventListener('keydown', onKeyDown)
@@ -283,13 +316,18 @@ export function RouteFinder({
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('mousedown', onPointerDown, true)
     }
-  }, [onClose])
+  }, [beginClose])
 
   return (
     <div className="absolute left-1/2 top-4 z-40 w-[30rem] max-w-[calc(100%-1.5rem)] -translate-x-1/2">
       <div
         ref={panelRef}
-        className="flex max-h-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-brand/30 bg-popover text-popover-foreground shadow-xl animate-[shirube-menu-in_140ms_ease-out] origin-top"
+        className={cn(
+          'flex max-h-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-brand/30 bg-popover text-popover-foreground shadow-xl origin-top',
+          closing
+            ? 'animate-[shirube-menu-out_120ms_ease-in_forwards]'
+            : 'animate-[shirube-menu-in_140ms_ease-out]',
+        )}
       >
         {/* Header. */}
         <div className="flex items-center gap-1.5 border-b border-brand/20 bg-brand/10 px-3 py-2 text-sm font-medium">
@@ -298,7 +336,7 @@ export function RouteFinder({
           <button
             type="button"
             aria-label={t('route.close')}
-            onClick={onClose}
+            onClick={beginClose}
             className="ml-auto flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-brand/15 hover:text-brand"
           >
             <X className="size-4" />

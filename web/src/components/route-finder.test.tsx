@@ -204,18 +204,26 @@ describe('RouteFinder', () => {
   })
 
   it('shuts the results on the first Escape, then closes the finder on the next', () => {
-    const { onClose } = renderFinder()
-    type(toField(), 'city')
-    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    vi.useFakeTimers()
+    try {
+      const { onClose } = renderFinder()
+      type(toField(), 'city')
+      expect(screen.getByRole('listbox')).toBeInTheDocument()
 
-    // First Escape: only the results close; the finder stays open.
-    fireEvent.keyDown(toField(), { key: 'Escape' })
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-    expect(onClose).not.toHaveBeenCalled()
+      // First Escape: only the results close; the finder stays open.
+      fireEvent.keyDown(toField(), { key: 'Escape' })
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+      expect(onClose).not.toHaveBeenCalled()
 
-    // Second Escape, with the results already shut, dismisses the finder.
-    fireEvent.keyDown(toField(), { key: 'Escape' })
-    expect(onClose).toHaveBeenCalledTimes(1)
+      // Second Escape, with the results already shut, dismisses the finder — but it eases out
+      // first, so onClose only lands once the exit animation has played.
+      fireEvent.keyDown(toField(), { key: 'Escape' })
+      expect(onClose).not.toHaveBeenCalled()
+      act(() => vi.advanceTimersByTime(120))
+      expect(onClose).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('ignores arrow keys when nothing matches', () => {
@@ -284,9 +292,17 @@ describe('RouteFinder', () => {
   })
 
   it('closes when a press lands outside the panel', () => {
-    const { onClose } = renderFinder()
-    fireEvent.mouseDown(document.body)
-    expect(onClose).toHaveBeenCalledTimes(1)
+    vi.useFakeTimers()
+    try {
+      const { onClose } = renderFinder()
+      fireEvent.mouseDown(document.body)
+      // The panel eases out first; onClose fires once the exit animation has played.
+      expect(onClose).not.toHaveBeenCalled()
+      act(() => vi.advanceTimersByTime(120))
+      expect(onClose).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('stays open when a press lands inside the panel', () => {
@@ -296,13 +312,34 @@ describe('RouteFinder', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('closes from the header button and on Escape', () => {
-    const { onClose } = renderFinder()
+  it('closes from the header button, easing out before it unmounts', () => {
+    vi.useFakeTimers()
+    try {
+      const { onClose } = renderFinder()
 
-    fireEvent.click(screen.getByLabelText('route.close'))
-    expect(onClose).toHaveBeenCalledTimes(1)
+      fireEvent.click(screen.getByLabelText('route.close'))
+      // The exit animation plays first, so the parent is told to unmount only afterwards.
+      expect(onClose).not.toHaveBeenCalled()
+      act(() => vi.advanceTimersByTime(120))
+      expect(onClose).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(onClose).toHaveBeenCalledTimes(2)
+  it('dismisses only once when triggered again mid-animation', () => {
+    vi.useFakeTimers()
+    try {
+      const { onClose } = renderFinder()
+
+      // A header click, then Escape before the exit has finished, must not stack closes: the
+      // dismiss is idempotent, so onClose still fires exactly once.
+      fireEvent.click(screen.getByLabelText('route.close'))
+      fireEvent.keyDown(document, { key: 'Escape' })
+      act(() => vi.advanceTimersByTime(120))
+      expect(onClose).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
