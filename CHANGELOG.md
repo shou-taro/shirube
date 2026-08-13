@@ -8,6 +8,17 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Changed
+
+- **A fresher new-connection form.** The engine picker is now a row of tabs rather than a
+  dropdown, so PostgreSQL and SQLite sit side by side — SQLite, the one you can try with no
+  server and the bundled sample, no longer hides behind a closed menu. The fields carry a
+  leading icon that names each at a glance, and the password now says up front that it is
+  kept in your OS keychain, never in a file. A field you can leave blank is now marked
+  optional, so what a connection requires reads at a glance rather than only on a failed save.
+  Switching engine now eases the form between its two layouts rather than jumping, and a
+  connection test's result no longer nudges the buttons as it appears.
+
 ## [0.3.0b7] — 2026-08-14
 
 ### Changed
