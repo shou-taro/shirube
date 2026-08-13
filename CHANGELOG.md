@@ -8,6 +8,20 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.3.0b7] — 2026-08-14
+
+### Changed
+
+- **The map moves as you travel it.** Clicking a table no longer cross-fades the whole
+  neighbourhood out and back in. Instead the table you picked glides to the centre, its
+  relationships draw outward from it — each keeping its own line, a foreign key solid, a view
+  dependency dashed, a link you drew dotted — and the newly-related tables settle in behind
+  their arrows, while the neighbourhood you are leaving eases out of the way rather than
+  vanishing. It all reduces to a plain change of view if you prefer reduced motion.
+- **The route finder eases shut.** The "Find a route" panel now animates closed — from its
+  close button, Escape, or a click outside — the way the schema browser does, rather than
+  blinking away.
+
 ## [0.3.0b6] — 2026-08-08
 
 ### Added
@@ -414,7 +428,8 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.3.0b6...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.3.0b7...HEAD
+[0.3.0b7]: https://github.com/shou-taro/shirube/compare/v0.3.0b6...v0.3.0b7
 [0.3.0b6]: https://github.com/shou-taro/shirube/compare/v0.3.0b5...v0.3.0b6
 [0.3.0b5]: https://github.com/shou-taro/shirube/compare/v0.3.0b4...v0.3.0b5
 [0.3.0b4]: https://github.com/shou-taro/shirube/compare/v0.3.0b3...v0.3.0b4

@@ -1690,7 +1690,7 @@ wheels = [
 
 [[package]]
 name = "shirube"
-version = "0.3.0b6"
+version = "0.3.0b7"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
