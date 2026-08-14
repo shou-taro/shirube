@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
+import { UnderlineSelect } from '@/components/ui/underline-select'
 import {
   AI_PRESET_ORDER,
   AI_PRESETS,
@@ -368,17 +369,16 @@ function AiProviderSection({
 
       <Field label={t('settings.aiProviderLabel')}>
         {/* A lighter, underlined control (no box), matching the connection form's dropdowns. */}
-        <select
+        <UnderlineSelect
           value={preset}
           onChange={(event) => selectPreset(event.target.value as ProviderPreset)}
-          className="h-10 w-full border-0 border-b border-input bg-transparent px-1 text-sm focus-visible:border-brand focus-visible:outline-none"
         >
           {AI_PRESET_ORDER.map((option) => (
             <option key={option} value={option}>
               {t(AI_PRESETS[option].labelKey)}
             </option>
           ))}
-        </select>
+        </UnderlineSelect>
       </Field>
 
       {/* The fields vary by provider, so ease their combined height as the provider changes. */}
