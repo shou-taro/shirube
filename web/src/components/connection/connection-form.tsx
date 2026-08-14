@@ -1,10 +1,11 @@
-import { Database, FileText, Lock, Server, Tag, User, type LucideIcon } from 'lucide-react'
-import type { FormEvent, InputHTMLAttributes, ReactNode } from 'react'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { Database, FileText, Lock, Server, Tag, User } from 'lucide-react'
+import type { FormEvent, ReactNode } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { IconInput } from '@/components/ui/icon-input'
+import { useAnimatedHeight } from '@/lib/use-animated-height'
 import { cn } from '@/lib/utils'
 import {
   createProfile,
@@ -117,28 +118,6 @@ function Field({
 }
 
 /**
- * A text input in the form's modern style: a taller, softly rounded field with an optional
- * leading icon that names the field at a glance (a server for the host, a key for the
- * password, and so on). Forwards every native input prop, so it drops in wherever a bare
- * {@link Input} was used.
- */
-function IconInput({
-  icon: Icon,
-  className,
-  wrapperClassName,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement> & { icon?: LucideIcon; wrapperClassName?: string }) {
-  return (
-    <div className={cn('relative', wrapperClassName)}>
-      {Icon ? (
-        <Icon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-      ) : null}
-      <Input className={cn('h-10 rounded-lg', Icon ? 'pl-9' : null, className)} {...props} />
-    </div>
-  )
-}
-
-/**
  * The engine picker as an underlined tab row, so every supported engine is visible at a
  * glance — in particular SQLite, the no-server path a newcomer can try at once — instead of
  * hiding behind a closed menu. Built from native radios (one shared `name`) so keyboard
@@ -216,47 +195,9 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
   const isSqlite = form.kind === 'sqlite'
 
   // Switching engine swaps one set of fields for another of a different height. Rather than let
-  // the form jump, animate the swapping region from its old height to its new one: everything
-  // below (the buttons) and the card itself follow, since their heights are auto. The wrapper is
-  // clipped and pinned to a pixel height only for the duration of the transition, then released
-  // back to `auto` so nothing stays stuck at a stale height. Reduced motion is honoured for free
-  // — the global net collapses the transition, so the height simply snaps.
-  const bodyRef = useRef<HTMLDivElement>(null)
-  const bodyHeight = useRef<number | null>(null)
-  useLayoutEffect(() => {
-    const el = bodyRef.current
-    if (!el) return
-    const target = el.scrollHeight
-    // First render: record the height without animating from nothing.
-    if (bodyHeight.current === null) {
-      bodyHeight.current = target
-      return
-    }
-    const from = bodyHeight.current
-    bodyHeight.current = target
-    if (from === target) return
-
-    el.style.overflow = 'hidden'
-    el.style.height = `${from}px`
-    void el.offsetHeight // Flush the start height so the transition has a frame to run from.
-    el.style.transition = 'height 320ms cubic-bezier(0.22, 0.61, 0.36, 1)'
-    el.style.height = `${target}px`
-
-    let timer: ReturnType<typeof setTimeout>
-    const settle = (event?: TransitionEvent): void => {
-      if (event && event.propertyName !== 'height') return
-      el.style.transition = ''
-      el.style.height = 'auto'
-      el.style.overflow = ''
-      el.removeEventListener('transitionend', settle)
-      clearTimeout(timer)
-    }
-    el.addEventListener('transitionend', settle)
-    // Fallback in case `transitionend` never arrives (an interrupted or paused transition), so
-    // the wrapper is never left pinned to a fixed height with its overflow clipped.
-    timer = setTimeout(settle, 400)
-    return () => settle()
-  }, [form.kind])
+  // the form jump, ease the swapping region from its old height to its new one; everything below
+  // (the buttons) and the card itself follow, since their heights are auto.
+  const bodyRef = useAnimatedHeight<HTMLDivElement>(form.kind)
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((previous) => ({ ...previous, [key]: value }))

@@ -294,6 +294,21 @@
   animation: shirube-dialog-in 160ms ease-out;
 }
 
+/* The mirror of the two entrances above, played while the settings dialog closes (it is kept
+   mounted for one beat to let these run): the backdrop fades out and the modal fades with a
+   slight scale down. `forwards` holds the end state until it unmounts. */
+@keyframes shirube-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes shirube-dialog-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
 /* Blanket safety net for a reduced-motion preference: collapse the CSS animations above
    and any Tailwind transitions to near-instant. The navigator's typewriter reveal already
    opts out in JS; this covers the CSS layer. A loading spinner is essential feedback, not
