@@ -8,6 +8,8 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.3.0b8] — 2026-08-14
+
 ### Changed
 
 - **A fresher new-connection form.** The engine picker is now a row of tabs rather than a
@@ -445,7 +447,8 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.3.0b7...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.3.0b8...HEAD
+[0.3.0b8]: https://github.com/shou-taro/shirube/compare/v0.3.0b7...v0.3.0b8
 [0.3.0b7]: https://github.com/shou-taro/shirube/compare/v0.3.0b6...v0.3.0b7
 [0.3.0b6]: https://github.com/shou-taro/shirube/compare/v0.3.0b5...v0.3.0b6
 [0.3.0b5]: https://github.com/shou-taro/shirube/compare/v0.3.0b4...v0.3.0b5
