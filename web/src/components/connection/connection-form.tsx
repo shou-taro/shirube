@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { IconInput } from '@/components/ui/icon-input'
+import { UnderlineSelect } from '@/components/ui/underline-select'
 import { useAnimatedHeight } from '@/lib/use-animated-height'
 import { cn } from '@/lib/utils'
 import {
@@ -391,8 +392,7 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
               <Field label={t('connection.fields.sslmode')}>
                 {/* A lighter, underlined control (no box) — the dropdown reads as a quiet
                     option rather than a heavy field, matching the engine tabs above. */}
-                <select
-                  className="h-10 w-full border-0 border-b border-input bg-transparent px-1 text-sm focus-visible:border-brand focus-visible:outline-none"
+                <UnderlineSelect
                   value={form.sslmode}
                   onChange={(event) => set('sslmode', event.target.value as SslMode)}
                 >
@@ -401,7 +401,7 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
                       {mode}
                     </option>
                   ))}
-                </select>
+                </UnderlineSelect>
               </Field>
               <Field
                 label={t('connection.fields.schemas')}
