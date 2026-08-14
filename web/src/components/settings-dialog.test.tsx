@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 // t returns the key; useSettings is stubbed so the dialog can be tested in isolation.
@@ -112,6 +112,28 @@ describe('SettingsDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'settings.close' }))
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it('stays mounted through its exit animation, then unmounts', () => {
+    mockHealth.mockResolvedValue({ status: 'ok', version: '9.9.9' })
+    mockFetchProvider.mockResolvedValue(null)
+    vi.useFakeTimers()
+    try {
+      const { rerender } = render(
+        <SettingsDialog open onClose={vi.fn()} approved={[]} onRevoke={vi.fn()} />,
+      )
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+      // Closing keeps the dialog mounted so its exit animation can run...
+      rerender(<SettingsDialog open={false} onClose={vi.fn()} approved={[]} onRevoke={vi.fn()} />)
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+      // ...then it leaves once the exit has played out.
+      act(() => vi.advanceTimersByTime(150))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('moves focus into the dialog when opened and restores it on close', () => {

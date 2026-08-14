@@ -1,9 +1,23 @@
-import { Check, Info, Monitor, Moon, Network, Palette, Sparkles, Sun, X } from 'lucide-react'
+import {
+  Check,
+  Cpu,
+  Globe,
+  Info,
+  Key,
+  Monitor,
+  Moon,
+  Network,
+  Palette,
+  Ruler,
+  Sparkles,
+  Sun,
+  X,
+} from 'lucide-react'
 import { type ComponentType, type ReactNode, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { IconInput } from '@/components/ui/icon-input'
 import {
   AI_PRESET_ORDER,
   AI_PRESETS,
@@ -24,7 +38,12 @@ import {
 } from '@/lib/api'
 import { labelForDestinationId } from '@/lib/destinations'
 import { useSettings } from '@/lib/settings'
+import { useAnimatedHeight } from '@/lib/use-animated-height'
 import { cn } from '@/lib/utils'
+
+// How long the dialog's exit animation runs before it unmounts. Keep in step with the
+// `shirube-*-out` class durations applied to the overlay below.
+const DIALOG_EXIT_MS = 150
 
 // Seed the context-window field: the saved window when re-showing the configured provider,
 // otherwise the preset's default. Blank for a preset that hides the field (Claude).
@@ -229,6 +248,10 @@ function AiProviderSection({
   }
 
   const spec = AI_PRESETS[preset]
+  // Different providers show a different set of fields (a base URL, a context window, a key),
+  // so switching one for another changes the section's height. Ease that change rather than
+  // letting the fields below the picker jump.
+  const fieldsRef = useAnimatedHeight<HTMLDivElement>(preset)
   const configured = provider != null
   // A stored key only counts as "kept on blank" for the provider it was saved against.
   const keyStored = provider != null && presetForConfig(provider) === preset && provider.has_api_key
@@ -344,10 +367,11 @@ function AiProviderSection({
       <p className="-mt-1 text-xs text-muted-foreground">{t('settings.aiHint')}</p>
 
       <Field label={t('settings.aiProviderLabel')}>
+        {/* A lighter, underlined control (no box), matching the connection form's dropdowns. */}
         <select
           value={preset}
           onChange={(event) => selectPreset(event.target.value as ProviderPreset)}
-          className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="h-10 w-full border-0 border-b border-input bg-transparent px-1 text-sm focus-visible:border-brand focus-visible:outline-none"
         >
           {AI_PRESET_ORDER.map((option) => (
             <option key={option} value={option}>
@@ -357,74 +381,81 @@ function AiProviderSection({
         </select>
       </Field>
 
-      {spec.showBaseUrl ? (
-        <Field label={t('settings.aiBaseUrl')} hint={t('settings.aiBaseUrlHint')}>
-          <Input
-            value={baseUrl}
-            onChange={(event) => {
-              setBaseUrl(event.target.value)
-              // A different endpoint offers different models — drop stale suggestions.
-              resetModelOptions()
-            }}
-            placeholder={spec.baseUrlDefault || 'https://…'}
-          />
-        </Field>
-      ) : null}
+      {/* The fields vary by provider, so ease their combined height as the provider changes. */}
+      <div ref={fieldsRef} className="flex flex-col gap-3">
+        {spec.showBaseUrl ? (
+          <Field label={t('settings.aiBaseUrl')} hint={t('settings.aiBaseUrlHint')}>
+            <IconInput
+              icon={Globe}
+              value={baseUrl}
+              onChange={(event) => {
+                setBaseUrl(event.target.value)
+                // A different endpoint offers different models — drop stale suggestions.
+                resetModelOptions()
+              }}
+              placeholder={spec.baseUrlDefault || 'https://…'}
+            />
+          </Field>
+        ) : null}
 
-      <Field
-        label={t('settings.aiModel')}
-        hint={
-          modelsState === 'loading'
-            ? t('settings.aiModelLoading')
-            : modelsState === 'error'
-              ? t('settings.aiModelListFailed')
-              : undefined
-        }
-      >
-        <Input
-          value={model}
-          onChange={(event) => setModel(event.target.value)}
-          onFocus={() => void fetchModels()}
-          placeholder={spec.modelPlaceholder}
-          list="ai-model-options"
-          autoComplete="off"
-        />
-        {/* Suggestions from the provider; the field stays free-text so any model still works. */}
-        <datalist id="ai-model-options">
-          {modelOptions.map((option) => (
-            <option key={option} value={option} />
-          ))}
-        </datalist>
-      </Field>
-
-      {spec.showContextWindow ? (
-        <Field label={t('settings.aiContextWindow')} hint={t('settings.aiContextWindowHint')}>
-          <Input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            value={contextWindow}
-            onChange={(event) => setContextWindow(event.target.value)}
-            placeholder={String(spec.contextWindowDefault)}
-          />
-        </Field>
-      ) : null}
-
-      {spec.key !== 'none' ? (
-        <Field label={t('settings.aiApiKey')} hint={keyHint}>
-          <Input
-            type="password"
-            value={apiKey}
-            onChange={(event) => {
-              setApiKey(event.target.value)
-              // A new key may unlock a different account's models — drop stale suggestions.
-              resetModelOptions()
-            }}
-            placeholder={keyPlaceholder}
+        <Field
+          label={t('settings.aiModel')}
+          hint={
+            modelsState === 'loading'
+              ? t('settings.aiModelLoading')
+              : modelsState === 'error'
+                ? t('settings.aiModelListFailed')
+                : undefined
+          }
+        >
+          <IconInput
+            icon={Cpu}
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+            onFocus={() => void fetchModels()}
+            placeholder={spec.modelPlaceholder}
+            list="ai-model-options"
             autoComplete="off"
           />
+          {/* Suggestions from the provider; the field stays free-text so any model still works. */}
+          <datalist id="ai-model-options">
+            {modelOptions.map((option) => (
+              <option key={option} value={option} />
+            ))}
+          </datalist>
         </Field>
-      ) : null}
+
+        {spec.showContextWindow ? (
+          <Field label={t('settings.aiContextWindow')} hint={t('settings.aiContextWindowHint')}>
+            <IconInput
+              icon={Ruler}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={contextWindow}
+              onChange={(event) => setContextWindow(event.target.value)}
+              placeholder={String(spec.contextWindowDefault)}
+            />
+          </Field>
+        ) : null}
+
+        {spec.key !== 'none' ? (
+          <Field label={t('settings.aiApiKey')} hint={keyHint}>
+            <IconInput
+              icon={Key}
+              type="password"
+              value={apiKey}
+              onChange={(event) => {
+                setApiKey(event.target.value)
+                // A new key may unlock a different account's models — drop stale suggestions.
+                resetModelOptions()
+              }}
+              placeholder={keyPlaceholder}
+              autoComplete="off"
+            />
+          </Field>
+        ) : null}
+      </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex items-center gap-2">
@@ -516,7 +547,33 @@ export function SettingsDialog({
   const { settings, update } = useSettings()
   const [version, setVersion] = useState<string | null>(null)
   const [category, setCategory] = useState<SettingsCategory>('appearance')
+  // The AI group is much taller than the others, so moving between groups changes the dialog's
+  // height. Ease that change rather than letting the dialog jump as the panel swaps.
+  const contentRef = useAnimatedHeight<HTMLDivElement>(category)
   const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Keep the dialog mounted for one beat after `open` goes false so it can play an exit
+  // animation before it leaves, rather than vanishing. `rendered` trails `open`; `closing`
+  // marks the beat in between, switching the overlay to its exit keyframes. Reopening mid-exit
+  // cancels the pending unmount. Keep DIALOG_EXIT_MS in step with the class durations below.
+  const [rendered, setRendered] = useState(open)
+  const [closing, setClosing] = useState(false)
+  useEffect(() => {
+    if (open) {
+      setRendered(true)
+      setClosing(false)
+      return
+    }
+    if (!rendered) {
+      return
+    }
+    setClosing(true)
+    const timer = setTimeout(() => {
+      setClosing(false)
+      setRendered(false)
+    }, DIALOG_EXIT_MS)
+    return () => clearTimeout(timer)
+  }, [open, rendered])
 
   // Manage focus while the modal is open: move focus in, keep Tab inside it, close on
   // Escape, and hand focus back to whatever opened it on close. Without this, focus stays
@@ -588,20 +645,30 @@ export function SettingsDialog({
       .catch(() => setVersion(null))
   }, [open])
 
-  if (!open) {
+  if (!rendered) {
     return null
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="animate-fade-in absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
+      <div
+        className={cn(
+          'absolute inset-0 bg-black/40',
+          closing ? 'animate-[shirube-fade-out_150ms_ease-in_forwards]' : 'animate-fade-in',
+        )}
+        onClick={onClose}
+        aria-hidden
+      />
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={t('settings.title')}
         tabIndex={-1}
-        className="animate-dialog-in relative z-10 flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border bg-card shadow-lg outline-none"
+        className={cn(
+          'relative z-10 flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border bg-card shadow-lg outline-none',
+          closing ? 'animate-[shirube-dialog-out_150ms_ease-in_forwards]' : 'animate-dialog-in',
+        )}
       >
         <div className="flex items-center justify-between border-b px-5 py-3">
           <h2 className="text-sm font-medium">{t('settings.title')}</h2>
@@ -644,8 +711,11 @@ export function SettingsDialog({
             })}
           </nav>
 
-          <div className="min-h-[20rem] min-w-0 flex-1 overflow-y-auto">
-            {category === 'appearance' ? (
+          <div className="min-w-0 flex-1 overflow-y-auto">
+            {/* The floor lives on the animated wrapper, not the scroll pane, so a whole height
+                change eases — a floor on the pane would clamp the shrink and skip part of it. */}
+            <div ref={contentRef} className="min-h-[20rem]">
+              {category === 'appearance' ? (
               <Section title={t('settings.appearance')}>
                 <Row label={t('settings.theme')}>
                   <Segmented
@@ -697,6 +767,7 @@ export function SettingsDialog({
                 </Row>
               </Section>
             ) : null}
+            </div>
           </div>
         </div>
       </div>

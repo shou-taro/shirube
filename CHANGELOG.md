@@ -18,6 +18,12 @@ may still change between releases).
   optional, so what a connection requires reads at a glance rather than only on a failed save.
   Switching engine now eases the form between its two layouts rather than jumping, and a
   connection test's result no longer nudges the buttons as it appears.
+- **The settings dialog's AI fields match that form.** The provider dropdown is now the same
+  underlined control, and the base URL, model, context window and API key fields carry the
+  same leading icons and rounded style — so the two places you enter connection details read
+  as one. Moving between settings groups — or choosing a different AI provider — now eases the
+  dialog's height between layouts rather than letting it jump, and the dialog eases shut
+  instead of vanishing.
 
 ## [0.3.0b7] — 2026-08-14
 
