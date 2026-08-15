@@ -135,6 +135,9 @@ const en = {
     map: 'ER map',
     chat: 'AI navigator',
     chatIntro: 'Ask about your tables, columns and how they connect.',
+    chatSetupTitle: 'Set up the AI navigator',
+    chatSetupBody:
+      'Connect Claude, ChatGPT or a local model to ask questions in plain language and see the answers on the map.',
     collapse: 'Collapse',
     expand: 'Expand',
     // Drag handles on the side panes' inner edges (also arrow-key operable).
