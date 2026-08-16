@@ -36,6 +36,18 @@ class ProfileNotFoundError(ShirubeError):
     detail = "Connection profile not found"
 
 
+class DuplicateProfileNameError(ShirubeError):
+    """Raised when a connection profile is saved under a name another profile already uses.
+
+    Names are how the user tells their saved connections apart, so two sharing one name are
+    refused rather than saved as an indistinguishable pair. Compared on the trimmed name, so
+    trailing spaces cannot slip a duplicate through.
+    """
+
+    status_code = 409
+    detail = "A connection with that name already exists"
+
+
 class ConnectionFailedError(ShirubeError):
     """Raised when a database connection cannot be established.
 

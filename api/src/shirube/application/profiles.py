@@ -4,7 +4,7 @@ import uuid
 from dataclasses import dataclass
 
 from shirube.domain.connection import ConnectionProfile, DatabaseTarget
-from shirube.domain.errors import ProfileNotFoundError
+from shirube.domain.errors import DuplicateProfileNameError, ProfileNotFoundError
 from shirube.ports.repositories import (
     ManualRelationshipRepository,
     ProfileRepository,
@@ -65,6 +65,26 @@ class ProfileService:
             raise ProfileNotFoundError
         return profile
 
+    def _assert_name_available(self, name: str, *, excluding: str | None = None) -> None:
+        """Refuse a name another profile already uses, comparing on the trimmed name.
+
+        Enforced here in the application layer rather than as a database constraint: existing
+        installs may already hold duplicate names, so a unique index would fail to apply on
+        upgrade. Checking here keeps those installs working while stopping new duplicates.
+
+        Args:
+            name: The name being saved.
+            excluding: A profile id to skip — the one being updated, so re-saving it under its
+                own name is not treated as a clash with itself.
+
+        Raises:
+            DuplicateProfileNameError: if another profile already has this name.
+        """
+        candidate = name.strip()
+        for profile in self._repository.list():
+            if profile.id != excluding and profile.name.strip() == candidate:
+                raise DuplicateProfileNameError
+
     def create(self, fields: ProfileFields, password: str | None) -> ConnectionProfile:
         """Create a profile and, for an engine that has one, store its password in the keychain.
 
@@ -77,8 +97,10 @@ class ProfileService:
             The created profile (without the password).
 
         Raises:
+            DuplicateProfileNameError: if another profile already uses this name.
             SecretStoreError: if a supplied password cannot be written to the keychain.
         """
+        self._assert_name_available(fields.name)
         profile = ConnectionProfile(
             id=str(uuid.uuid4()),
             name=fields.name,
@@ -113,10 +135,12 @@ class ProfileService:
 
         Raises:
             ProfileNotFoundError: if no profile has that id.
+            DuplicateProfileNameError: if another profile already uses this name.
             SecretStoreError: if the password cannot be written to (or removed from) the
                 keychain.
         """
         existing = self.get(profile_id)
+        self._assert_name_available(fields.name, excluding=profile_id)
         updated = ConnectionProfile(
             id=existing.id,
             name=fields.name,
