@@ -13,6 +13,8 @@ const ja = {
   connection: {
     savedConnections: '保存した接続',
     newConnection: '新しい接続',
+    editConnection: '接続を編集',
+    duplicateConnection: '接続を複製',
     new: '新規',
     loading: '接続を読み込み中…',
     disconnect: '接続を切り替え',

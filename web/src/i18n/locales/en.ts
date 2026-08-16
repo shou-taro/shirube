@@ -12,6 +12,8 @@ const en = {
   connection: {
     savedConnections: 'Saved connections',
     newConnection: 'New connection',
+    editConnection: 'Edit connection',
+    duplicateConnection: 'Duplicate connection',
     new: 'New',
     loading: 'Loading connections…',
     disconnect: 'Switch connection',
