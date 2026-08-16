@@ -100,6 +100,25 @@ def test_server_starting_up_advises_waiting() -> None:
     assert "try again" in message.lower()
 
 
+def test_connection_closed_by_server_advises_reconnecting() -> None:
+    """A working connection dropped from the server's side mid-session — an admin shutdown, a
+    crash, or the link going away — is a reconnect case, distinct from an unreachable host or a
+    server still starting up."""
+    admin = friendly_message(
+        psycopg.OperationalError("terminating connection due to administrator command"),
+        _PARAMS,
+    )
+    assert "closed by the server" in admin.lower()
+    assert "reconnect" in admin.lower()
+    assert "db.example.com" not in admin
+
+    dropped = friendly_message(
+        psycopg.OperationalError("server closed the connection unexpectedly"),
+        _PARAMS,
+    )
+    assert "closed by the server" in dropped.lower()
+
+
 def test_statement_timeout_is_translated() -> None:
     """A query cancelled by the statement timeout is distinct from a connection timeout.
 

@@ -14,6 +14,16 @@ may still change between releases).
   used to invite a question that could not yet be asked; it now shows a short prompt and a
   Configure button, so the way forward is clear.
 
+### Fixed
+
+- **A connection dropped by the server reads clearly.** When the database closes the
+  connection mid-session — it was shut down, it crashed, or the session was ended — shirube
+  now says the connection was closed and suggests reconnecting, rather than surfacing the raw
+  driver error.
+- **Two connections can no longer share a name.** Saving a connection under a name another one
+  already uses is refused with a clear message (compared ignoring surrounding spaces), so your
+  saved connections stay tellable apart.
+
 ## [0.3.0b8] — 2026-08-14
 
 ### Changed

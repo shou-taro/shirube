@@ -100,6 +100,45 @@ def test_update_without_password_keeps_it(client: TestClient, secrets: FakeSecre
     assert secrets.get_password(created["id"]) == "s3cret"
 
 
+def test_create_rejects_a_duplicate_name(client: TestClient) -> None:
+    """Two saved connections sharing a name are indistinguishable, so the second is refused."""
+    assert client.post("/api/profiles", json=_new_profile()).status_code == 201
+
+    # Same name, otherwise different — still a clash.
+    response = client.post("/api/profiles", json={**_new_profile(), "database": "other"})
+    assert response.status_code == 409
+    assert "already exists" in response.json()["detail"].lower()
+
+
+def test_create_rejects_a_name_differing_only_by_surrounding_space(client: TestClient) -> None:
+    """The check trims, so trailing spaces cannot slip a duplicate past it."""
+    assert client.post("/api/profiles", json=_new_profile()).status_code == 201
+
+    response = client.post("/api/profiles", json={**_new_profile(), "name": "  staging DB  "})
+    assert response.status_code == 409
+
+
+def test_update_rejects_renaming_onto_another_profiles_name(client: TestClient) -> None:
+    """Renaming one connection onto another's name would collide, so it is refused."""
+    first = client.post("/api/profiles", json=_new_profile()).json()
+    client.post("/api/profiles", json={**_new_profile(), "name": "second"})
+
+    clash = {**_new_profile(), "name": "second"}
+    clash.pop("password")
+    response = client.put(f"/api/profiles/{first['id']}", json=clash)
+    assert response.status_code == 409
+
+
+def test_update_keeping_a_profiles_own_name_is_allowed(client: TestClient) -> None:
+    """Re-saving a profile under its own name is not a clash with itself."""
+    created = client.post("/api/profiles", json=_new_profile()).json()
+
+    same = {**_new_profile(), "database": "changed"}
+    same.pop("password")
+    response = client.put(f"/api/profiles/{created['id']}", json=same)
+    assert response.status_code == 200
+
+
 def test_delete_removes_profile_and_password(client: TestClient, secrets: FakeSecretStore) -> None:
     created = client.post("/api/profiles", json=_new_profile()).json()
 

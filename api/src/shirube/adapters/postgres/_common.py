@@ -84,6 +84,20 @@ def friendly_message(exc: psycopg.Error, params: PostgresConnectionParams) -> st
             "The database server is not ready yet (it is starting up or recovering). "
             "Wait a moment and try again."
         )
+    if (
+        sqlstate in ("57P01", "57P02", "08006", "08003")
+        or "terminating connection" in text
+        or "server closed the connection" in text
+    ):
+        # The connection was closed from the server's side mid-session — the server was shut
+        # down (57P01) or crashed (57P02), the session was terminated, or the link dropped
+        # (08006/08003). The connect-time cases ("connection refused" and friends) are handled
+        # above; this is a working connection going away, so advise reconnecting rather than
+        # changing the host or credentials.
+        return (
+            "The database connection was closed by the server (it may have been shut down, "
+            "or the session was ended). Reconnect and try again."
+        )
     if sqlstate == "57014" or "statement timeout" in text:
         # Connected fine, but a query ran past shirube's statement timeout and was
         # cancelled — distinct from a *connection* timeout above. Common on a very large
