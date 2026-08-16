@@ -570,12 +570,10 @@ export function NavigatorPane({
           provider === null && !providerLoading ? (
             // No provider yet, so the composer is disabled and asking is not possible. Turn the
             // empty state into the setup CTA rather than an invitation to ask that leads nowhere.
-            <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-              <Sparkles className="size-5 text-brand" />
+            <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+              <Sparkles className="size-6 text-brand" />
               <div className="space-y-1">
-                <p className="text-[13px] font-medium text-foreground">
-                  {t('panes.chatSetupTitle')}
-                </p>
+                <p className="text-sm font-medium text-foreground">{t('panes.chatSetupTitle')}</p>
                 <p className="text-xs text-muted-foreground">{t('panes.chatSetupBody')}</p>
               </div>
               {/* A quiet text link, not a filled button: this is a passive empty state, and the
@@ -583,10 +581,10 @@ export function NavigatorPane({
               <button
                 type="button"
                 onClick={onOpenSettings}
-                className="mt-0.5 inline-flex items-center gap-1 text-[13px] font-medium text-brand hover:underline"
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline"
               >
                 {t('chat.configure')}
-                <ArrowRight className="size-3.5" />
+                <ArrowRight className="size-4" />
               </button>
             </div>
           ) : (
