@@ -7,6 +7,7 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => k
 const update = vi.fn()
 const settingsValue = {
   theme: 'system' as const,
+  language: 'en' as const,
   showViewDependencies: true,
   defaultView: 'neighbourhood' as const,
 }
@@ -76,6 +77,15 @@ describe('SettingsDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'settings.themeDark' }))
 
     expect(update).toHaveBeenCalledWith({ theme: 'dark' })
+  })
+
+  it('switches the interface language when another is picked', () => {
+    renderDialog()
+
+    // Each language names itself in its own script, so the control is labelled literally.
+    fireEvent.click(screen.getByRole('button', { name: '日本語' }))
+
+    expect(update).toHaveBeenCalledWith({ language: 'ja' })
   })
 
   it('toggles the view-dependencies switch', () => {

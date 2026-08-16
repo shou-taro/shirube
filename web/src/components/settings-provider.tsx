@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useState } from 'react'
 
+import i18n from '@/i18n'
 import { loadSettings, type Settings, SettingsContext } from '@/lib/settings'
 import { SETTINGS_KEY } from '@/lib/storage'
 
@@ -14,6 +15,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
   }, [settings])
+
+  // Switch the interface language, and mark it on the document for assistive tech and the
+  // browser's own text handling. i18next starts in this language (see i18n init); this keeps
+  // it in step with a later change.
+  useEffect(() => {
+    void i18n.changeLanguage(settings.language)
+    document.documentElement.lang = settings.language
+  }, [settings.language])
 
   useEffect(() => {
     const root = document.documentElement

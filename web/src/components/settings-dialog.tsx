@@ -728,6 +728,18 @@ export function SettingsDialog({
                     ]}
                   />
                 </Row>
+                <Row label={t('settings.language')}>
+                  {/* Each language names itself in its own script, so these labels are not
+                      translated — a reader recognises their own language whichever is active. */}
+                  <Segmented
+                    value={settings.language}
+                    onChange={(language) => update({ language })}
+                    options={[
+                      { value: 'en', label: 'English' },
+                      { value: 'ja', label: '日本語' },
+                    ]}
+                  />
+                </Row>
               </Section>
             ) : null}
 

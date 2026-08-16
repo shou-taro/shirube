@@ -221,6 +221,7 @@ const en = {
     themeLight: 'Light',
     themeDark: 'Dark',
     themeSystem: 'System',
+    language: 'Language',
     erMap: 'ER map',
     showViewDependencies: 'View dependencies',
     showViewDependenciesHint: 'Dashed edges from a view to the tables it reads',

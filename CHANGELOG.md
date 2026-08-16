@@ -8,6 +8,13 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Added
+
+- **A Japanese interface.** shirube's interface is now available in Japanese as well as
+  English. A first-time visitor sees it in their browser's language, and either can be
+  chosen at any time under Settings › Appearance › Language — the choice is remembered.
+  (A few messages that come from the backend are still English for now.)
+
 ## [0.3.0b9] — 2026-08-16
 
 ### Changed
