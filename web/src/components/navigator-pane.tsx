@@ -566,10 +566,26 @@ export function NavigatorPane({
       {/* Conversation, or the intro when empty. */}
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3">
         {turns.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-xs text-muted-foreground">
-            <Sparkles className="size-5 text-brand" />
-            {t('panes.chatIntro')}
-          </div>
+          provider === null && !providerLoading ? (
+            // No provider yet, so the composer is disabled and asking is not possible. Turn the
+            // empty state into the setup CTA rather than an invitation to ask that leads nowhere.
+            <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+              <Sparkles className="size-6 text-brand" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">{t('panes.chatSetupTitle')}</p>
+                <p className="text-xs text-muted-foreground">{t('panes.chatSetupBody')}</p>
+              </div>
+              <Button variant="brand" size="sm" onClick={onOpenSettings}>
+                <Settings2 className="size-3.5" />
+                {t('chat.configure')}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-xs text-muted-foreground">
+              <Sparkles className="size-5 text-brand" />
+              {t('panes.chatIntro')}
+            </div>
+          )
         ) : (
           turns.map((turn) =>
             turn.role === 'user' ? (

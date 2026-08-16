@@ -475,12 +475,17 @@ describe('NavigatorPane', () => {
     expect(screen.getByText('Partial')).toBeInTheDocument()
   })
 
-  it('disables the composer and offers to configure when no provider is set', () => {
+  it('disables the composer and turns the empty state into a setup call-to-action', () => {
     const { onOpenSettings } = renderPane(null)
 
     expect(screen.getByLabelText('chat.inputPlaceholder')).toBeDisabled()
+    // With no provider, asking is impossible, so the empty state prompts setup rather than
+    // inviting a question; the footer keeps its own note.
+    expect(screen.getByText('panes.chatSetupTitle')).toBeInTheDocument()
+    expect(screen.queryByText('panes.chatIntro')).not.toBeInTheDocument()
     expect(screen.getByText('chat.noProvider')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('chat.configure'))
+    // Both Configure controls (the CTA and the footer) open settings.
+    fireEvent.click(screen.getAllByText('chat.configure')[0])
     expect(onOpenSettings).toHaveBeenCalled()
   })
 
