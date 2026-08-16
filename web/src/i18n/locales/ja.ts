@@ -76,7 +76,7 @@ const ja = {
     // Shown on a connector where the two tables join through a view rather than columns.
     viaView: 'ビュー経由',
     noRoute: '経路がありません — これらのテーブルはつながっていません。リレーションを描いて結んでください。',
-    showOnMap: '地図で{{name}}を表示',
+    showOnMap: 'ER 図で{{name}}を表示',
   },
   tree: {
     open: 'スキーマ一覧',
@@ -160,7 +160,7 @@ const ja = {
     toolPath: '2 つのテーブルのつながりをたどりました',
     toolSchemas: 'スキーマ一覧を取得しました',
     // Tooltip on a table or view the answer named; clicking recentres the map on it.
-    showOnMap: '地図で{{name}}を表示',
+    showOnMap: 'ER 図で{{name}}を表示',
     retry: '再試行',
     you: 'あなた',
     clear: '会話を消去',
@@ -228,7 +228,7 @@ const ja = {
     defaultView: '初期表示',
     viewNeighbourhood: '周辺',
     viewAll: 'すべてのテーブル',
-    defaultViewHint: '新しい接続で地図をどう開くか',
+    defaultViewHint: '新しい接続で ER 図をどう開くか',
     ai: 'AI ナビゲーター',
     aiHint: 'ナビゲーターがスキーマを送る先です。設定するまで何も送信されません。',
     aiProviderLabel: 'プロバイダー',
