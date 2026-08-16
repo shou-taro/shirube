@@ -21,9 +21,10 @@ test('configures a provider, then reports that it could not be reached', async (
 
   const pane = page.getByRole('complementary')
 
-  // The pane starts with no provider and offers to configure one.
+  // The pane starts with no provider and offers to configure one — from the empty-state
+  // call-to-action and the footer both. Either opens settings; take the first (the CTA).
   await expect(pane.getByText('No AI provider configured')).toBeVisible()
-  await pane.getByRole('button', { name: 'Configure' }).click()
+  await pane.getByRole('button', { name: 'Configure' }).first().click()
 
   // The settings dialog opens straight on the AI navigator group.
   const dialog = page.getByRole('dialog')
