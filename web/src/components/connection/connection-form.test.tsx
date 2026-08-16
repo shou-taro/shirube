@@ -12,6 +12,8 @@ vi.mock('react-i18next', () => ({
       key === 'connection.testMissingFields' && opts?.fields
         ? `Enter the ${opts.fields} before testing.`
         : key,
+    // The form joins the missing-field names with Intl.ListFormat in the active language.
+    i18n: { language: 'en' },
   }),
 }))
 

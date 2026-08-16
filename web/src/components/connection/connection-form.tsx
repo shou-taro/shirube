@@ -186,7 +186,7 @@ interface ConnectionFormProps {
  * shown inline.
  */
 export function ConnectionForm({ initial, editingId, onConnected, onCancel }: ConnectionFormProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [form, setForm] = useState<FormState>(() => initialState(initial))
   const [error, setError] = useState<string | null>(null)
   const [testState, setTestState] = useState<'idle' | 'testing' | 'ok'>('idle')
@@ -242,9 +242,12 @@ export function ConnectionForm({ initial, editingId, onConnected, onCancel }: Co
     // catch it before it reaches the backend. Name only the fields that are actually blank.
     const missing = missingFields()
     if (missing.length > 0) {
-      const fields = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(
-        missing,
-      )
+      // Join the field names the way the active language does — English "a, b and c",
+      // Japanese "a、b、c" — rather than hard-coding one locale's conjunction.
+      const fields = new Intl.ListFormat(i18n.language, {
+        style: 'long',
+        type: 'conjunction',
+      }).format(missing)
       setError(t('connection.testMissingFields', { fields }))
       return
     }
