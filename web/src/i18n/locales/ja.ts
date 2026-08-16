@@ -8,7 +8,7 @@
 const ja = {
   app: {
     name: 'shirube',
-    tagline: 'データベースを地図として読む。',
+    tagline: 'データベースが、見えてくる。',
   },
   connection: {
     savedConnections: '保存した接続',
