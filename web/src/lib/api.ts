@@ -229,8 +229,31 @@ async function errorDetail(response: Response): Promise<string> {
   return `Request failed (${response.status})`
 }
 
+/** Shown when the local backend can't be reached at all — it is stopped or not yet started. */
+const BACKEND_UNREACHABLE = "Couldn't reach the shirube backend — is it still running?"
+
+/**
+ * `fetch`, but with a network-level failure turned into a message that names the likely cause.
+ *
+ * When the backend is stopped, crashed or never started, the browser rejects `fetch` with a
+ * bare `TypeError` ("Failed to fetch"). Left alone, that raw text surfaces on every error
+ * surface in the app. Translate it here — once — so every caller shows a message that points
+ * at the real problem. An abort (the user stopping generation) is a deliberate cancellation,
+ * not a failure, so it is passed through untouched for callers to recognise.
+ */
+async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init)
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === 'AbortError') {
+      throw cause
+    }
+    throw new Error(BACKEND_UNREACHABLE, { cause })
+  }
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, {
+  const response = await safeFetch(`/api${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...init,
   })
@@ -454,7 +477,7 @@ export async function* streamChat(
   messages: ChatMessage[],
   signal?: AbortSignal,
 ): AsyncGenerator<ChatStreamEvent> {
-  const response = await fetch(`/api/profiles/${profileId}/chat`, {
+  const response = await safeFetch(`/api/profiles/${profileId}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages }),

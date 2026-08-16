@@ -68,6 +68,39 @@ describe('a failed request', () => {
   })
 })
 
+describe('an unreachable backend', () => {
+  /** Replace `fetch` with one that rejects with `error`, as a network failure or abort does. */
+  function mockFetchReject(error: unknown) {
+    const spy = vi.fn(async () => {
+      throw error
+    })
+    globalThis.fetch = spy as unknown as typeof fetch
+    return spy
+  }
+
+  it('translates a network-level failure into a message naming the likely cause', async () => {
+    // A stopped or not-yet-started backend rejects `fetch` with a bare "Failed to fetch".
+    mockFetchReject(new TypeError('Failed to fetch'))
+
+    await expect(fetchHealth()).rejects.toThrow(/couldn't reach the shirube backend/i)
+  })
+
+  it('passes an abort through untouched, since it is a deliberate stop', async () => {
+    const abort = new DOMException('The user aborted a request.', 'AbortError')
+    mockFetchReject(abort)
+
+    const drain = async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      for await (const _ of streamChat('p1', [])) {
+        // The fetch rejects before any event, so the loop body never runs.
+      }
+    }
+    // The abort surfaces as itself, not the backend-unreachable message, so the caller can
+    // recognise a user-initiated stop.
+    await expect(drain()).rejects.toBe(abort)
+  })
+})
+
 describe('request shape', () => {
   it('percent-encodes the object id and posts the query for fetchRows', async () => {
     const spy = mockFetch(

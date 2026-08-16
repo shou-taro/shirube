@@ -23,6 +23,10 @@ may still change between releases).
 - **Two connections can no longer share a name.** Saving a connection under a name another one
   already uses is refused with a clear message (compared ignoring surrounding spaces), so your
   saved connections stay tellable apart.
+- **An unreachable backend says so plainly.** When shirube's own backend isn't running — it
+  was stopped, or hasn't started yet — actions used to fail with the browser's raw "Failed to
+  fetch". They now say "Couldn't reach the shirube backend — is it still running?" across the
+  app, while a stopped generation is still recognised as a deliberate stop.
 
 ## [0.3.0b8] — 2026-08-14
 
