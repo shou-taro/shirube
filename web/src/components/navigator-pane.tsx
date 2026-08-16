@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   ArrowUp,
   ChevronDown,
   Globe,
@@ -575,14 +576,22 @@ export function NavigatorPane({
                 <p className="text-sm font-medium text-foreground">{t('panes.chatSetupTitle')}</p>
                 <p className="text-xs text-muted-foreground">{t('panes.chatSetupBody')}</p>
               </div>
-              <Button variant="brand" size="sm" onClick={onOpenSettings}>
-                <Settings2 className="size-3.5" />
+              {/* A quiet text link, not a filled button: this is a passive empty state, and the
+                  footer already carries a Configure control — a loud CTA here would over-state it. */}
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline"
+              >
                 {t('chat.configure')}
-              </Button>
+                <ArrowRight className="size-4" />
+              </button>
             </div>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-xs text-muted-foreground">
-              <Sparkles className="size-5 text-brand" />
+            // Match the setup state's icon and text size, so the pane reads consistently
+            // whether or not a provider is configured.
+            <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
+              <Sparkles className="size-6 text-brand" />
               {t('panes.chatIntro')}
             </div>
           )

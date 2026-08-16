@@ -12,7 +12,7 @@ may still change between releases).
 
 - **The AI navigator points you to setup when no provider is configured.** Its empty state
   used to invite a question that could not yet be asked; it now shows a short prompt and a
-  Configure button, so the way forward is clear.
+  quiet Configure link, so the way forward is clear without a loud call-to-action in the pane.
 
 ### Fixed
 
