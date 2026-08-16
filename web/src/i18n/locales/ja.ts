@@ -115,7 +115,7 @@ const ja = {
     partitions: 'パーティション',
     badgeView: 'ビュー',
     badgeMatView: 'マテビュー',
-    badgePartitioned: 'パーティション化',
+    badgePartitioned: 'パーティションテーブル',
     showAll: 'すべてのテーブルを表示',
     focus: '周辺のみ表示',
     // Japanese has one plural form, so only `_other` is used.
