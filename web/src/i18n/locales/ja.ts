@@ -138,7 +138,7 @@ const ja = {
     chatIntro: 'テーブルや列、そのつながりについて質問できます。',
     chatSetupTitle: 'AI ナビゲーターを設定する',
     chatSetupBody:
-      'Claude・ChatGPT・ローカルモデルのいずれかをつなぐと、ふだんの言葉で質問して、その答えを地図の上で確認できます。',
+      'Claude・ChatGPT・ローカルモデルのいずれかをつなぐと、知りたいことをそのまま質問でき、答えは ER 図の上に表示されます。',
     collapse: '折りたたむ',
     expand: '広げる',
     // Drag handles on the side panes' inner edges (also arrow-key operable).
