@@ -79,7 +79,7 @@ const ja = {
     showOnMap: '地図で{{name}}を表示',
   },
   tree: {
-    open: 'スキーマを見る',
+    open: 'スキーマ一覧',
     close: '閉じる',
     expand: '列を表示',
     collapse: '列を隠す',
