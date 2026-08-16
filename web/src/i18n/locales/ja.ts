@@ -119,8 +119,8 @@ const ja = {
     showAll: 'すべてのテーブルを表示',
     focus: '周辺のみ表示',
     // Japanese has one plural form, so only `_other` is used.
-    hiddenReferenced_other: '地図の外にある他 {{count}} 件のテーブルを参照しています',
-    hiddenReferencing_other: '地図の外にある他 {{count}} 件のテーブルがこれを参照しています',
+    hiddenReferenced_other: 'ER 図の外にある他 {{count}} 件のオブジェクトを参照しています',
+    hiddenReferencing_other: 'ER 図の外にある他 {{count}} 件のオブジェクトがこれを参照しています',
     // The stub button that opens the list of off-map tables.
     hiddenMore: '他 {{count}} 件',
     empty: 'このデータベースにはテーブルもビューもありません。',
