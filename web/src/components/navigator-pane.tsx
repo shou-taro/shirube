@@ -588,8 +588,10 @@ export function NavigatorPane({
               </button>
             </div>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-xs text-muted-foreground">
-              <Sparkles className="size-5 text-brand" />
+            // Match the setup state's icon and text size, so the pane reads consistently
+            // whether or not a provider is configured.
+            <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
+              <Sparkles className="size-6 text-brand" />
               {t('panes.chatIntro')}
             </div>
           )
