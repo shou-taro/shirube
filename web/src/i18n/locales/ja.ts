@@ -65,7 +65,7 @@ const ja = {
     // The floating panel that traces how two tables connect, without the AI navigator.
     title: '経路を見つける',
     find: 'ここからの経路を見つける',
-    findShort: '経路',
+    findShort: '経路検索',
     close: '閉じる',
     from: '始点',
     to: '終点',
