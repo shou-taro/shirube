@@ -262,7 +262,7 @@ const en = {
     aiApproved: 'Approved destinations',
     aiApprovedHint: 'Endpoints you have agreed the navigator may send your schema to.',
     aiApprovedEmpty:
-      'None yet. You will be asked before the schema is first sent to a remote provider.',
+      "None yet. You'll see a confirmation before the navigator first sends to a remote provider.",
     aiRevoke: 'Revoke',
     about: 'About',
     version: 'Version',

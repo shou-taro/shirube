@@ -259,9 +259,9 @@ const ja = {
     aiSaved: '保存しました',
     aiApproved: '承認済みの送信先',
     aiApprovedHint: 'ナビゲーターがスキーマを送ってよいと承認したエンドポイント。',
-    aiApprovedEmpty: 'まだありません。リモートのプロバイダーに初めてスキーマを送る前に確認します。',
+    aiApprovedEmpty: 'まだありません。リモートのプロバイダーに初めて送信する前に確認画面が出ます。',
     aiRevoke: '取り消す',
-    about: 'このアプリについて',
+    about: 'アプリ情報',
     version: 'バージョン',
   },
   health: {
