@@ -232,7 +232,7 @@ const en = {
     viewAll: 'All tables',
     defaultViewHint: 'How the map opens on a new connection',
     ai: 'AI navigator',
-    aiHint: 'The AI the navigator talks to. Nothing is sent until you set one up.',
+    aiHint: 'The AI provider the navigator connects to. Nothing is sent until you set one up.',
     aiProviderLabel: 'Provider',
     aiPresetClaude: 'Claude',
     aiPresetOpenai: 'OpenAI',
