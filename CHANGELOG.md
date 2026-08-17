@@ -8,6 +8,8 @@ may still change between releases).
 
 ## [Unreleased]
 
+## [0.3.0b10] — 2026-08-18
+
 ### Added
 
 - **A Japanese interface.** shirube's interface is now available in Japanese as well as
@@ -476,7 +478,8 @@ is ultimately built around — is the next milestone and is **not** in this rele
   never leave the machine, and passwords live in the OS keychain.
 - **Metadata-only logging.** The log never records filter values, row data or passwords.
 
-[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.3.0b9...HEAD
+[Unreleased]: https://github.com/shou-taro/shirube/compare/v0.3.0b10...HEAD
+[0.3.0b10]: https://github.com/shou-taro/shirube/compare/v0.3.0b9...v0.3.0b10
 [0.3.0b9]: https://github.com/shou-taro/shirube/compare/v0.3.0b8...v0.3.0b9
 [0.3.0b8]: https://github.com/shou-taro/shirube/compare/v0.3.0b7...v0.3.0b8
 [0.3.0b7]: https://github.com/shou-taro/shirube/compare/v0.3.0b6...v0.3.0b7
