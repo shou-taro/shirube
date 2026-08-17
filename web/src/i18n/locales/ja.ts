@@ -230,7 +230,7 @@ const ja = {
     viewAll: 'すべてのテーブル',
     defaultViewHint: '新しい接続で ER 図をどう開くか',
     ai: 'AI ナビゲーター',
-    aiHint: 'ナビゲーターが接続する AI プロバイダーです。設定するまで何も送信されません。',
+    aiHint: 'ナビゲーターが接続する AI プロバイダーです。プロバイダーを設定するまで、外部に何も送信されません。',
     aiProviderLabel: 'プロバイダー',
     aiPresetClaude: 'Claude',
     aiPresetOpenai: 'OpenAI',
