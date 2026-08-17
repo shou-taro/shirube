@@ -76,7 +76,7 @@ const en = {
     // Shown on a connector where the two tables join through a view rather than columns.
     viaView: 'via a view',
     noRoute: 'No route — these tables are not connected. Draw a relationship to link them.',
-    showOnMap: 'Show {{name}} on the map',
+    showOnMap: 'Show {{name}} on the ER map',
   },
   tree: {
     open: 'Browse schema',
@@ -118,10 +118,10 @@ const en = {
     badgePartitioned: 'Partitioned',
     showAll: 'Show all tables',
     focus: 'Focus on neighbourhood',
-    hiddenReferenced_one: 'References {{count}} more object that is off the ER diagram',
-    hiddenReferenced_other: 'References {{count}} more objects that are off the ER diagram',
-    hiddenReferencing_one: '{{count}} more object references this, off the ER diagram',
-    hiddenReferencing_other: '{{count}} more objects reference this, off the ER diagram',
+    hiddenReferenced_one: 'References {{count}} more object that is off the ER map',
+    hiddenReferenced_other: 'References {{count}} more objects that are off the ER map',
+    hiddenReferencing_one: '{{count}} more object references this, off the ER map',
+    hiddenReferencing_other: '{{count}} more objects reference this, off the ER map',
     // The stub button that opens the list of off-map tables.
     hiddenMore: '{{count}} more',
     empty: 'No tables or views found in this database.',
@@ -139,7 +139,7 @@ const en = {
     chatIntro: 'Ask about your tables, columns and how they connect.',
     chatSetupTitle: 'Set up the AI navigator',
     chatSetupBody:
-      'Connect Claude, ChatGPT or a local model to ask questions in plain language and see the answers on the map.',
+      'Connect Claude, ChatGPT or a local model to ask questions in plain language and see the answers on the ER map.',
     collapse: 'Collapse',
     expand: 'Expand',
     // Drag handles on the side panes' inner edges (also arrow-key operable).
@@ -161,7 +161,7 @@ const en = {
     toolPath: 'Traced how two tables connect',
     toolSchemas: 'Listed the schemas',
     // Tooltip on a table or view the answer named; clicking recentres the map on it.
-    showOnMap: 'Show {{name}} on the map',
+    showOnMap: 'Show {{name}} on the ER map',
     retry: 'Try again',
     you: 'You',
     clear: 'Clear conversation',
@@ -230,7 +230,7 @@ const en = {
     defaultView: 'Default view',
     viewNeighbourhood: 'Neighbourhood',
     viewAll: 'All tables',
-    defaultViewHint: 'How the map opens on a new connection',
+    defaultViewHint: 'How the ER map opens on a new connection',
     ai: 'AI navigator',
     aiHint:
       'Choose the AI provider the navigator uses. Nothing is sent externally until you set up a provider.',
