@@ -173,7 +173,7 @@ const en = {
     usageDetail: '{{input}} sent · {{output}} received',
     // Destination indicator (always visible above the composer): which provider and model,
     // and whether the schema leaves this machine.
-    destinationRemote: 'Sends your schema to {{host}}',
+    destinationRemote: 'Sends to {{host}}',
     destinationLocal: 'Runs on this machine — nothing is sent out',
     noProvider: 'No AI provider configured',
     configure: 'Configure',

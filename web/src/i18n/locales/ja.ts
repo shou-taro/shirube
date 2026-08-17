@@ -172,7 +172,7 @@ const ja = {
     usageDetail: '送信 {{input}} · 受信 {{output}}',
     // Destination indicator (always visible above the composer): which provider and model,
     // and whether the schema leaves this machine.
-    destinationRemote: 'スキーマを {{host}} に送信します',
+    destinationRemote: '{{host}} に送信します',
     destinationLocal: 'この端末上で動作し、外部には何も送信しません',
     noProvider: 'AI プロバイダーが未設定です',
     configure: '設定する',
