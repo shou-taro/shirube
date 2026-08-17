@@ -57,7 +57,7 @@ const en = {
   },
   search: {
     placeholder: 'Search tables and columns…',
-    noResults: 'No matching tables',
+    noResults: 'No matches',
     inColumn: 'column: {{column}}',
   },
   route: {
@@ -173,7 +173,7 @@ const en = {
     usageDetail: '{{input}} sent · {{output}} received',
     // Destination indicator (always visible above the composer): which provider and model,
     // and whether the schema leaves this machine.
-    destinationRemote: 'Sends to {{host}}',
+    destinationRemote: 'Sends out to {{host}}',
     destinationLocal: 'Runs on this machine — nothing is sent out',
     noProvider: 'No AI provider configured',
     configure: 'Configure',
@@ -182,7 +182,7 @@ const en = {
     consentBody:
       'The navigator will send question-relevant schema metadata — table, view and column ' +
       'names, types and relationships — to {{label}}. It never sends row data or values. ' +
-      'This is remembered; you can revoke it in Settings.',
+      'Your choice is remembered; you can revoke it in Settings.',
     consentConfirm: 'Send and remember',
     consentCancel: 'Cancel',
   },
@@ -246,7 +246,7 @@ const en = {
     aiModelLoading: 'Finding available models…',
     aiModelListFailed: "Couldn't list this provider's models — type the name in.",
     aiBaseUrl: 'Base URL',
-    aiBaseUrlHint: 'The API endpoint the provider is reached at.',
+    aiBaseUrlHint: 'The API endpoint used to reach the provider.',
     aiContextWindow: 'Context window',
     aiContextWindowHint:
       "The model's context window, in tokens. Older conversation is trimmed to fit it.",
