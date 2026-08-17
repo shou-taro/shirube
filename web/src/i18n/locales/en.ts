@@ -64,7 +64,7 @@ const en = {
     // The floating panel that traces how two tables connect, without the AI navigator.
     title: 'Find a route',
     find: 'Find a route from here',
-    findShort: 'Route',
+    findShort: 'Find route',
     close: 'Close',
     from: 'From',
     to: 'To',
