@@ -75,6 +75,8 @@ describe('ConnectionScreen row actions', () => {
     fireEvent.click(await screen.findByText('row-edit'))
 
     expect(screen.getByText('form-for:shop')).toBeInTheDocument()
+    // The heading reflects the action, rather than always reading "New connection".
+    expect(screen.getByText('connection.editConnection')).toBeInTheDocument()
   })
 
   it('opens the form to duplicate a profile, with a copy name and no editing id', async () => {
@@ -84,6 +86,7 @@ describe('ConnectionScreen row actions', () => {
     fireEvent.click(await screen.findByText('row-duplicate'))
 
     expect(screen.getByText('form-for:shop connection.copySuffix')).toBeInTheDocument()
+    expect(screen.getByText('connection.duplicateConnection')).toBeInTheDocument()
   })
 
   it('deletes a profile and reloads the list', async () => {

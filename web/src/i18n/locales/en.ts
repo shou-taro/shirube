@@ -12,6 +12,8 @@ const en = {
   connection: {
     savedConnections: 'Saved connections',
     newConnection: 'New connection',
+    editConnection: 'Edit connection',
+    duplicateConnection: 'Duplicate connection',
     new: 'New',
     loading: 'Loading connections…',
     disconnect: 'Switch connection',
@@ -55,14 +57,14 @@ const en = {
   },
   search: {
     placeholder: 'Search tables and columns…',
-    noResults: 'No matching tables',
+    noResults: 'No matches',
     inColumn: 'column: {{column}}',
   },
   route: {
     // The floating panel that traces how two tables connect, without the AI navigator.
     title: 'Find a route',
     find: 'Find a route from here',
-    findShort: 'Route',
+    findShort: 'Find route',
     close: 'Close',
     from: 'From',
     to: 'To',
@@ -74,7 +76,7 @@ const en = {
     // Shown on a connector where the two tables join through a view rather than columns.
     viaView: 'via a view',
     noRoute: 'No route — these tables are not connected. Draw a relationship to link them.',
-    showOnMap: 'Show {{name}} on the map',
+    showOnMap: 'Show {{name}} on the ER map',
   },
   tree: {
     open: 'Browse schema',
@@ -116,10 +118,10 @@ const en = {
     badgePartitioned: 'Partitioned',
     showAll: 'Show all tables',
     focus: 'Focus on neighbourhood',
-    hiddenReferenced_one: 'References {{count}} more table that is off the map',
-    hiddenReferenced_other: 'References {{count}} more tables that are off the map',
-    hiddenReferencing_one: '{{count}} more table references this, off the map',
-    hiddenReferencing_other: '{{count}} more tables reference this, off the map',
+    hiddenReferenced_one: 'References {{count}} more object that is off the ER map',
+    hiddenReferenced_other: 'References {{count}} more objects that are off the ER map',
+    hiddenReferencing_one: '{{count}} more object references this, off the ER map',
+    hiddenReferencing_other: '{{count}} more objects reference this, off the ER map',
     // The stub button that opens the list of off-map tables.
     hiddenMore: '{{count}} more',
     empty: 'No tables or views found in this database.',
@@ -137,7 +139,7 @@ const en = {
     chatIntro: 'Ask about your tables, columns and how they connect.',
     chatSetupTitle: 'Set up the AI navigator',
     chatSetupBody:
-      'Connect Claude, ChatGPT or a local model to ask questions in plain language and see the answers on the map.',
+      'Connect Claude, ChatGPT or a local model to ask questions in plain language and see the answers on the ER map.',
     collapse: 'Collapse',
     expand: 'Expand',
     // Drag handles on the side panes' inner edges (also arrow-key operable).
@@ -159,7 +161,7 @@ const en = {
     toolPath: 'Traced how two tables connect',
     toolSchemas: 'Listed the schemas',
     // Tooltip on a table or view the answer named; clicking recentres the map on it.
-    showOnMap: 'Show {{name}} on the map',
+    showOnMap: 'Show {{name}} on the ER map',
     retry: 'Try again',
     you: 'You',
     clear: 'Clear conversation',
@@ -171,7 +173,7 @@ const en = {
     usageDetail: '{{input}} sent · {{output}} received',
     // Destination indicator (always visible above the composer): which provider and model,
     // and whether the schema leaves this machine.
-    destinationRemote: 'Sends your schema to {{host}}',
+    destinationRemote: 'Sends out to {{host}}',
     destinationLocal: 'Runs on this machine — nothing is sent out',
     noProvider: 'No AI provider configured',
     configure: 'Configure',
@@ -180,7 +182,7 @@ const en = {
     consentBody:
       'The navigator will send question-relevant schema metadata — table, view and column ' +
       'names, types and relationships — to {{label}}. It never sends row data or values. ' +
-      'This is remembered; you can revoke it in Settings.',
+      'Your choice is remembered; you can revoke it in Settings.',
     consentConfirm: 'Send and remember',
     consentCancel: 'Cancel',
   },
@@ -221,15 +223,17 @@ const en = {
     themeLight: 'Light',
     themeDark: 'Dark',
     themeSystem: 'System',
+    language: 'Language',
     erMap: 'ER map',
     showViewDependencies: 'View dependencies',
     showViewDependenciesHint: 'Dashed edges from a view to the tables it reads',
     defaultView: 'Default view',
     viewNeighbourhood: 'Neighbourhood',
     viewAll: 'All tables',
-    defaultViewHint: 'How the map opens on a new connection',
+    defaultViewHint: 'How the ER map opens on a new connection',
     ai: 'AI navigator',
-    aiHint: 'Where the navigator sends your schema. Nothing is sent until you set one up.',
+    aiHint:
+      'Choose the AI provider the navigator uses. Nothing is sent externally until you set up a provider.',
     aiProviderLabel: 'Provider',
     aiPresetClaude: 'Claude',
     aiPresetOpenai: 'OpenAI',
@@ -242,7 +246,7 @@ const en = {
     aiModelLoading: 'Finding available models…',
     aiModelListFailed: "Couldn't list this provider's models — type the name in.",
     aiBaseUrl: 'Base URL',
-    aiBaseUrlHint: 'The API endpoint the provider is reached at.',
+    aiBaseUrlHint: 'The API endpoint used to reach the provider.',
     aiContextWindow: 'Context window',
     aiContextWindowHint:
       "The model's context window, in tokens. Older conversation is trimmed to fit it.",
@@ -259,7 +263,7 @@ const en = {
     aiApproved: 'Approved destinations',
     aiApprovedHint: 'Endpoints you have agreed the navigator may send your schema to.',
     aiApprovedEmpty:
-      'None yet. You will be asked before the schema is first sent to a remote provider.',
+      "None yet. You'll see a confirmation before the navigator first sends to a remote provider.",
     aiRevoke: 'Revoke',
     about: 'About',
     version: 'Version',

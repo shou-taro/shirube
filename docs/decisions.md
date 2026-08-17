@@ -543,12 +543,14 @@ manual edges).**
   or passwords — metadata only, so the read-only / local-first posture holds in the log
   too.
 
-### UI language: English base with i18n
+### UI language: English and Japanese, with i18n
 
 **Built.**
 
-- Ships in English (widest reach), but every string goes through an i18n layer, so
-  another language (e.g. Japanese) is a dictionary away.
+- Every string routes through an i18n layer (react-i18next); nothing is hard-coded. The
+  interface ships in **English and Japanese**, chosen from the browser's language on a first
+  visit and switchable in Settings (the choice is remembered). English stays the canonical
+  base against which further languages are added — each is a dictionary away.
 
 ### Licence: AGPL-3.0
 
@@ -586,13 +588,15 @@ it to change once implemented.
   surface stays unchanged. The read-only and safety guarantees must hold as for the other
   engines.
 
-### Full interface localisation
+### Localised backend error messages
 
-- Ship a **fully localised UI** (Japanese first). The i18n layer is already in place (see
-  *UI language: English base with i18n* under Decided) and every string routes through it, so
-  this is translation and review work rather than plumbing: supply the dictionaries and add a
-  language switcher. English stays the canonical base. (The docs already carry a native
-  Japanese README; the *app* UI is still English-only for now.)
+- The interface itself is localised (see *UI language: English and Japanese, with i18n*
+  under Decided), but a handful of user-facing strings originate in the **backend** — the
+  connection-profile error details and the friendly PostgreSQL disconnect/connect messages —
+  and still reach the UI in English only. Localising them means either negotiating a language
+  on the API (an `Accept-Language` header) or returning stable error *codes* the frontend
+  translates through the same i18n layer; the latter fits the onion architecture better.
+  A separate, smaller piece, deferred.
 
 ### Deferred navigator enhancements
 

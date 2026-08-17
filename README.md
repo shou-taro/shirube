@@ -207,9 +207,9 @@ between them there. `./scripts/dev-db.sh list` shows what's available.
 shirube's development runs in two phases.
 
 - **Now — Explore & navigate (beta).** Everything described above — the ER-map explorer
-  and the AI navigator — on PostgreSQL and SQLite.
-- **Later — broadening reach.** More databases beyond these (MySQL next), and a fully
-  localised interface.
+  and the AI navigator — on PostgreSQL and SQLite, in **English and Japanese**.
+- **Later — broadening reach.** More databases beyond these (MySQL next), and more interface
+  languages over time.
 
 ## 🤝 Contributing
 

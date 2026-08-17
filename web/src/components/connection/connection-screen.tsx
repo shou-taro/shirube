@@ -80,7 +80,18 @@ export function ConnectionScreen({ onConnected }: ConnectionScreenProps) {
             <p className="text-sm text-muted-foreground">{t('connection.loading')}</p>
           ) : view.mode === 'form' ? (
             <>
-              <h1 className="mb-5 text-base font-medium">{t('connection.newConnection')}</h1>
+              {/* The same form serves three actions — reflect which one in its heading:
+                  an editingId means editing an existing profile; a prefilled template with
+                  no id means duplicating; neither means a fresh connection. */}
+              <h1 className="mb-5 text-base font-medium">
+                {t(
+                  view.editingId !== null
+                    ? 'connection.editConnection'
+                    : view.initial !== null
+                      ? 'connection.duplicateConnection'
+                      : 'connection.newConnection',
+                )}
+              </h1>
               <ConnectionForm
                 initial={view.initial}
                 editingId={view.editingId}
