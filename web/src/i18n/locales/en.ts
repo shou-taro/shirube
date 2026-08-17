@@ -233,7 +233,7 @@ const en = {
     defaultViewHint: 'How the map opens on a new connection',
     ai: 'AI navigator',
     aiHint:
-      'The AI provider the navigator connects to. Nothing is sent externally until you set up a provider.',
+      'Choose the AI provider the navigator uses. Nothing is sent externally until you set up a provider.',
     aiProviderLabel: 'Provider',
     aiPresetClaude: 'Claude',
     aiPresetOpenai: 'OpenAI',
