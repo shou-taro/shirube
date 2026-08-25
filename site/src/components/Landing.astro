@@ -196,13 +196,8 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
           <span class="demo-frame-title">shirube · Sample database (Chinook)</span>
         </div>
         <div class="demo-frame-stage">
-          <!-- A three-pane skeleton so the frame reads as an app the instant it paints,
-               swapped for the live iframe on load. -->
-          <div class="demo-skeleton" id="demo-loading" aria-hidden="true">
-            <div class="sk-col sk-left"></div>
-            <div class="sk-col sk-main"></div>
-            <div class="sk-col sk-right"></div>
-          </div>
+          <!-- The demo serves a fixed sample fixture, so it needs no loading state of its
+               own; the page's boot splash (see Layout) covers the initial load. -->
           <iframe
             id="demo-frame"
             class="demo-frame"
@@ -402,21 +397,17 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
     })
   })()
 
-  // The embedded demo iframe: load it with the page's current theme, hide the loading
-  // note once it paints, and push theme changes in as the visitor toggles light/dark.
+  // The embedded demo iframe: load it with the page's current theme and push theme changes
+  // in as the visitor toggles light/dark. The demo serves a fixed fixture, so it needs no
+  // loading state — the page boot splash (see Layout) covers the initial load.
   ;(() => {
     const frame = document.getElementById('demo-frame')
-    const loading = document.getElementById('demo-loading')
     if (!(frame instanceof HTMLIFrameElement)) return
     const theme = () => (document.documentElement.classList.contains('dark') ? 'dark' : 'light')
     // On phones the embedded app is too cramped, so we show a still instead (see CSS) and
     // never load the heavy iframe.
-    if (!window.matchMedia('(min-width: 768px)').matches) {
-      loading?.remove()
-      return
-    }
+    if (!window.matchMedia('(min-width: 768px)').matches) return
     frame.src = `${frame.dataset.base}&theme=${theme()}`
-    frame.addEventListener('load', () => loading?.remove())
     // The demo announces itself when mounted; answer with the current theme.
     window.addEventListener('message', (e) => {
       if (e.data?.type === 'shirube-demo-ready') {
@@ -639,60 +630,6 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
     object-fit: cover;
     object-position: center top;
   }
-  /* Three-pane skeleton shown until the iframe loads. */
-  .demo-skeleton {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    gap: 1px;
-    background: var(--hairline);
-    pointer-events: none;
-  }
-  .sk-col {
-    background: var(--card);
-    position: relative;
-    overflow: hidden;
-  }
-  .sk-left {
-    width: 26%;
-  }
-  .sk-main {
-    flex: 1;
-    background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 22px,
-        color-mix(in oklch, var(--muted) 60%, transparent) 22px,
-        color-mix(in oklch, var(--muted) 60%, transparent) 23px
-      ),
-      var(--card);
-  }
-  .sk-right {
-    width: 24%;
-  }
-  .sk-col::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      color-mix(in oklch, var(--muted) 55%, transparent),
-      transparent
-    );
-    transform: translateX(-100%);
-    animation: sk-shimmer 1.6s ease-in-out infinite;
-  }
-  @keyframes sk-shimmer {
-    100% {
-      transform: translateX(100%);
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .sk-col::after {
-      animation: none;
-    }
-  }
   .demo-open {
     display: inline-block;
     margin-top: 1rem;
@@ -709,8 +646,7 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
     .demo-frame-stage {
       height: 300px;
     }
-    .demo-frame,
-    .demo-skeleton {
+    .demo-frame {
       display: none;
     }
     .demo-poster {
