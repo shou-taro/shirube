@@ -1,0 +1,67 @@
+/*
+ * Demo-only style overrides. Kept entirely in the demo build so the app itself is never
+ * touched (no demo flags in production code).
+ *
+ * Neutralise the top-bar settings gear: changing app settings (theme, ER-map options, the
+ * AI provider) belongs in the installed app, not the sample. Targeted by the gear's Lucide
+ * icon class, which is language-independent, so it stays disabled whatever the locale.
+ */
+button:has(> svg.lucide-settings) {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* DemoNavigator: a bubble rising in, the "thinking" dots, and the streaming caret — the
+   plausible chat feel over the prepared answers. */
+@keyframes demo-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.demo-rise {
+  animation: demo-rise 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes demo-dot {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+.demo-dot {
+  animation: demo-dot 1.2s ease-in-out infinite;
+}
+.demo-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.demo-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes demo-caret {
+  50% {
+    opacity: 0;
+  }
+}
+.demo-caret {
+  animation: demo-caret 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-rise,
+  .demo-dot,
+  .demo-caret {
+    animation: none;
+  }
+}

@@ -1,0 +1,7 @@
+---
+import Landing from '@/components/Landing.astro'
+import { strings } from '@/i18n'
+import { rel } from '@/lib/paths'
+---
+
+<Landing t={strings.en} lang="en" switchHref={rel('ja/')} />
