@@ -98,7 +98,7 @@ export const strings: Record<Lang, Strings> = {
       badge: 'Beta',
       badgeOss: 'Open source',
       title: 'Read your database as a map.',
-      lede: 'A plain list of tables hides the one thing you need — how they connect. shirube opens your schema as a map you can explore, and ask in plain language.',
+      lede: 'A plain list of tables hides the one thing you need — how they connect. shirube opens your schema as a map you can explore — and lets you ask about it in plain language.',
       ctaPrimary: 'Try it now',
       ctaSecondary: 'Read the documentation',
       installNote: 'Runs on your machine. No sign-up, nothing leaves your computer.',
@@ -125,7 +125,7 @@ export const strings: Record<Lang, Strings> = {
     explore: {
       eyebrow: 'The explorer',
       title: 'Follow the connections, one hop at a time.',
-      desc: 'shirube opens on the most-connected table and shows just its immediate neighbours, not every table at once. Click a related table to move the map there and keep following the connections — so even a schema you’ve never seen is easy to find your way around.',
+      desc: 'shirube opens on the most-connected table and shows just its immediate neighbours, not every table at once. Click a related table to move the map there and keep following the connections — so even a schema you’ve never seen is easy to get around.',
     },
     route: {
       eyebrow: 'Trace a route',
@@ -135,7 +135,7 @@ export const strings: Record<Lang, Strings> = {
     draw: {
       eyebrow: 'Draw your own links',
       title: 'No foreign key? Draw the relationship yourself.',
-      desc: 'Common in ORM-shaped, legacy or warehouse schemas: two tables are related but the database never declares it, so no edge is drawn. Connect them column to column and shirube adds a dotted edge you can travel — tagged in the detail card, saved per connection, and never written to your database.',
+      desc: 'Common in ORM-shaped, legacy or warehouse schemas: two tables are related but the database never declares it, so no edge is drawn. Connect them column to column and shirube adds a dotted edge you can follow — tagged in the detail card, saved per connection, and never written to your database.',
     },
     more: {
       eyebrow: 'More features',
@@ -160,7 +160,7 @@ export const strings: Record<Lang, Strings> = {
         {
           icon: 'preview',
           title: 'Data preview',
-          d: 'Read a table’s actual rows in a drawer, with click-to-sort columns, simple filters and paging.',
+          d: 'Read a table’s actual rows right there, with click-to-sort columns, simple filters and paging.',
         },
         {
           icon: 'link',
