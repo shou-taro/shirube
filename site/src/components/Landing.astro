@@ -193,7 +193,7 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
       <div class="demo-frame-wrap reveal">
         <div class="demo-frame-bar" aria-hidden="true">
           <span class="wdot r"></span><span class="wdot y"></span><span class="wdot g"></span>
-          <span class="demo-frame-title">shirube · Sample database (Chinook)</span>
+          <span class="demo-frame-title">Sample database (Chinook)</span>
         </div>
         <div class="demo-frame-stage">
           <!-- The demo serves a fixed sample fixture, so it needs no loading state of its
@@ -205,9 +205,6 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
             loading="eager"
             data-base={demoSrc}
           ></iframe>
-          <!-- Mobile fallback: the full three-pane app is too cramped to embed on a phone,
-               so small screens get a still and the "open in a new tab" link below. -->
-          <img class="demo-poster" src={rel('app-home.png')} alt="shirube" loading="lazy" />
         </div>
       </div>
       <a class="demo-open" href={demoSrc} target="_blank" rel="noopener">{t.demo.openTab} ↗</a>
@@ -403,11 +400,23 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
   ;(() => {
     const frame = document.getElementById('demo-frame')
     if (!(frame instanceof HTMLIFrameElement)) return
+    const stage = frame.parentElement
     const theme = () => (document.documentElement.classList.contains('dark') ? 'dark' : 'light')
-    // On phones the embedded app is too cramped, so we show a still instead (see CSS) and
-    // never load the heavy iframe.
-    if (!window.matchMedia('(min-width: 768px)').matches) return
+
+    // The demo renders at a fixed desktop width (see CSS) and is scaled to fit the container
+    // at every width, so it keeps the desktop layout and aspect ratio and shrinks smoothly as
+    // the window narrows. The stage's aspect-ratio handles the height; we set only the scale.
+    const LOGICAL_W = 1040
+    const fit = () => {
+      if (!stage) return
+      const s = Math.min(1, stage.clientWidth / LOGICAL_W)
+      frame.style.transform = `scale(${s})`
+    }
+
     frame.src = `${frame.dataset.base}&theme=${theme()}`
+    fit()
+    window.addEventListener('resize', fit)
+    frame.addEventListener('load', fit)
     // The demo announces itself when mounted; answer with the current theme.
     window.addEventListener('message', (e) => {
       if (e.data?.type === 'shirube-demo-ready') {
@@ -610,25 +619,29 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
     font-size: 0.8rem;
     color: var(--muted-foreground);
     font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    /* Truncate rather than wrap to a second line on narrow frames. */
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
+  /* The demo always renders at a fixed desktop size and is scaled to fit — so it keeps the
+     desktop layout and aspect ratio at every width, shrinking continuously as the window
+     narrows rather than reflowing. The stage locks that aspect ratio; JS sets the scale from
+     the container width (see the script). */
   .demo-frame-stage {
     position: relative;
     width: 100%;
-    height: min(72vh, 640px);
+    aspect-ratio: 1040 / 640;
+    overflow: hidden;
     background: var(--background);
   }
   .demo-frame {
-    width: 100%;
-    height: 100%;
+    width: 1040px;
+    height: 640px;
     border: 0;
     display: block;
-  }
-  .demo-poster {
-    display: none;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center top;
+    transform-origin: top left;
   }
   .demo-open {
     display: inline-block;
@@ -641,16 +654,11 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
   .demo-open:hover {
     text-decoration: underline;
   }
-  /* Phones: swap the cramped live app for a still + the open-in-a-new-tab link. */
+  /* On phones the scaled-down app is too small to touch usefully, so it's a live preview
+     only — the "open the demo" link below is for real interaction. */
   @media (max-width: 767px) {
-    .demo-frame-stage {
-      height: 300px;
-    }
     .demo-frame {
-      display: none;
-    }
-    .demo-poster {
-      display: block;
+      pointer-events: none;
     }
   }
 
@@ -1036,7 +1044,6 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
   }
 
   @media (max-width: 860px) {
-    .bento,
     .safe-grid {
       grid-template-columns: 1fr;
     }
@@ -1049,9 +1056,17 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
       order: 0;
     }
   }
-  @media (min-width: 861px) and (max-width: 1024px) {
+  /* Progressive columns: three on wide screens, two on tablets, one full-width column on
+     phones — where full-width cards read cleaner (comfortable line lengths, more room) than a
+     cramped two-up grid. */
+  @media (max-width: 1024px) {
     .bento {
       grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 640px) {
+    .bento {
+      grid-template-columns: 1fr;
     }
   }
 </style>

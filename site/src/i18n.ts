@@ -113,14 +113,14 @@ export const strings: Record<Lang, Strings> = {
     ai: {
       eyebrow: 'AI navigator',
       title: 'Ask in plain language. The answer’s on the map.',
-      desc: 'Ask a question in plain words, and the navigator answers right on the ER map — lighting up the tables involved. Every table name in its reply is a link: click one and the map jumps to it. Use your own Claude or OpenAI key, or a local model; it never writes SQL.',
+      desc: 'The tables involved light up, and every table name in the reply is a link you can jump to. Use your own Claude or OpenAI key, or a local model; it never writes SQL.',
       examples: [
         'How is a customer linked to the tracks they bought?',
         'Where does a customer’s email come from?',
         'Which tables make up an invoice?',
       ],
       examplesLabel: 'Example questions',
-      note: 'Optional, and entirely local: the request goes straight from your machine to the model you chose — never through a shirube server.',
+      note: 'Optional, and private: your question goes straight to the model you chose, never through a shirube server.',
     },
     explore: {
       eyebrow: 'The explorer',
@@ -243,14 +243,14 @@ export const strings: Record<Lang, Strings> = {
     ai: {
       eyebrow: 'AI ナビゲーター',
       title: 'ふだんの言葉で聞けば、答えは地図の上に。',
-      desc: 'ふつうの言葉で質問すると、ナビゲーターが ER 図の上でそのまま答え、関わるテーブルを光らせます。答えの中のテーブル名はすべてリンク。押せばマップがそこへ移動します。自分の Claude / OpenAI の鍵、またはローカルモデルを使えます。SQL は書きません。',
+      desc: '関わるテーブルが光り、答えに出るテーブル名はすべてリンク。押せばマップのそこへ移動します。自分の Claude / OpenAI の鍵か、ローカルモデルを使えて、SQL は書きません。',
       examples: [
         '顧客と、その人が買った曲はどう繋がってる？',
         '顧客のメールアドレスはどこにある？',
         '請求（invoice）はどのテーブルでできてる？',
       ],
       examplesLabel: '質問の例',
-      note: '任意で、完全にローカル。リクエストはあなたのマシンから選んだモデルへ直接届き、shirube のサーバーは一切経由しません。',
+      note: '任意で、プライベート。質問は選んだモデルへ直接送られ、shirube のサーバーは経由しません。',
     },
     explore: {
       eyebrow: 'エクスプローラー',
