@@ -64,9 +64,9 @@ const SCRIPTS: Record<'en' | 'ja', Script[]> = {
   ],
   ja: [
     {
-      q: '顧客が買った曲は、どのテーブルを辿ればわかる？',
+      q: '顧客が買った曲は、どのテーブルを見れば分かる？',
       a: [
-        t('キーを辿るだけです：'),
+        t('この順につながっています：'),
         link('main.Customer', 'Customer'),
         t(' → '),
         link('main.Invoice', 'Invoice'),
@@ -74,25 +74,25 @@ const SCRIPTS: Record<'en' | 'ja', Script[]> = {
         link('main.InvoiceLine', 'InvoiceLine'),
         t(' → '),
         link('main.Track', 'Track'),
-        t('。請求は顧客に、明細は請求に、そして各明細が1曲を指します。'),
+        t('。顧客の購入は Invoice に記録され、その明細（InvoiceLine）の1行ごとに、買った曲（Track）が入っています。'),
       ],
     },
     {
       q: 'アルバムとアーティストは、どう繋がってる？',
       a: [
         link('main.Album', 'Album'),
-        t('.ArtistId が '),
+        t(' の ArtistId が、そのアルバムを出した '),
         link('main.Artist', 'Artist'),
-        t(' を指します。1人のアーティストが複数のアルバムを持ちます。'),
+        t(' を参照します。1人の Artist が複数の Album を持つ関係です。'),
       ],
     },
     {
-      q: '曲のジャンルは、どこから来てる？',
+      q: '曲のジャンルは、どのテーブルにある？',
       a: [
         link('main.Track', 'Track'),
-        t('.GenreId が '),
+        t(' の GenreId が、その曲のジャンルを表す '),
         link('main.Genre', 'Genre'),
-        t(' を参照します。各曲のジャンルはそこにあります。'),
+        t(' を参照します。ジャンル名は Genre 側にあります。'),
       ],
     },
   ],
@@ -109,9 +109,9 @@ const COPY = {
   ja: {
     badge: 'ナビゲーター',
     reset: 'リセット',
-    intro: '用意した質問とサンプル回答です。回答のテーブル名を押すと、マップ上のその場所へ移動します。',
-    tryLabel: 'こう聞ける',
-    hint: 'ヒント：回答内のテーブル名を押すと、そこへ移動します。',
+    intro: '質問の例を選ぶと、回答例が表示されます。回答に出たテーブル名を押すと、ER 図でそのテーブルへ移動します。',
+    tryLabel: '質問の例',
+    hint: '回答に出たテーブル名を押すと、ER 図でそのテーブルへ移動します。',
   },
 }
 
@@ -274,23 +274,25 @@ export function DemoNavigator({ onNavigate }: { onNavigate: (objectId: string) =
       </div>
 
       <div className="space-y-2 border-t p-3">
-        <p className="px-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          {copy.tryLabel}
-        </p>
         {remaining.length === 0 && turns.length > 0 ? (
           <p className="px-0.5 text-xs text-muted-foreground">{copy.hint}</p>
         ) : (
-          remaining.map((i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => ask(i)}
-              className="flex w-full items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2 text-left text-sm text-foreground transition-colors hover:border-brand/45 hover:bg-brand/5"
-            >
-              <span>{scripts[i].q}</span>
-              <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
-            </button>
-          ))
+          <>
+            <p className="px-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {copy.tryLabel}
+            </p>
+            {remaining.map((i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => ask(i)}
+                className="flex w-full items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2 text-left text-sm text-foreground transition-colors hover:border-brand/45 hover:bg-brand/5"
+              >
+                <span>{scripts[i].q}</span>
+                <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+              </button>
+            ))}
+          </>
         )}
       </div>
     </div>
