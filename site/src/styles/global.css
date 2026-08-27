@@ -1,0 +1,147 @@
+/*
+ * Site design tokens — a lilac-accented palette that matches the shirube app
+ * (see web/src/index.css). Light on bare :root; dark under .dark, toggled on <html>
+ * by the no-flash script in the layout head, seeded from the OS preference.
+ */
+
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.995 0.002 300);
+  --foreground: oklch(0.17 0.02 300);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.17 0.02 300);
+  --muted: oklch(0.97 0.006 300);
+  --muted-foreground: oklch(0.52 0.02 300);
+  --border: oklch(0.9 0.01 300);
+  --hairline: oklch(0.92 0.008 300);
+
+  --brand: #7c5cff;
+  --brand-2: #a78bfa;
+  --brand-soft: #b7a2f8;
+  --brand-foreground: #ffffff;
+  --brand-ink: #2b2154;
+
+  /* A soft lilac wash used behind the hero. */
+  --wash-1: #efeafe;
+  --wash-2: #f6f3ff;
+
+  --shadow-sm: 0 1px 2px oklch(0.2 0.03 300 / 0.06), 0 1px 3px oklch(0.2 0.03 300 / 0.08);
+  --shadow-md: 0 4px 12px oklch(0.2 0.03 300 / 0.08), 0 12px 32px oklch(0.2 0.03 300 / 0.1);
+  --shadow-lg: 0 8px 24px oklch(0.2 0.03 300 / 0.12), 0 24px 64px oklch(0.2 0.03 300 / 0.16);
+}
+
+.dark {
+  --background: oklch(0.16 0.014 300);
+  --foreground: oklch(0.97 0.006 300);
+  --card: oklch(0.215 0.017 300);
+  --card-foreground: oklch(0.97 0.006 300);
+  --muted: oklch(0.26 0.02 300);
+  --muted-foreground: oklch(0.72 0.02 300);
+  --border: oklch(0.92 0.03 300 / 14%);
+  --hairline: oklch(0.92 0.03 300 / 10%);
+
+  --brand: #a78bfa;
+  --brand-2: #bcabfb;
+  --brand-soft: #b7a2f8;
+  --brand-foreground: #1b1530;
+  --brand-ink: #ece7ff;
+
+  --wash-1: oklch(0.22 0.03 300);
+  --wash-2: oklch(0.19 0.022 300);
+
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3), 0 1px 3px oklch(0 0 0 / 0.35);
+  --shadow-md: 0 6px 18px oklch(0 0 0 / 0.4), 0 16px 40px oklch(0 0 0 / 0.45);
+  --shadow-lg: 0 10px 30px oklch(0 0 0 / 0.5), 0 30px 70px oklch(0 0 0 / 0.55);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family:
+    'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Kaku Gothic ProN',
+    'Hiragino Sans', 'Noto Sans JP', Meiryo, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:lang(ja) body,
+body:lang(ja) {
+  line-height: 1.8;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--brand) 30%, transparent);
+}
+
+/* Shared layout helpers ------------------------------------------------------ */
+
+.container {
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 4vw, 2.5rem);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--brand);
+  text-transform: none;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

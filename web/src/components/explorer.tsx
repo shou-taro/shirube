@@ -11,7 +11,7 @@ import {
   Table2,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { DataDrawer } from '@/components/data-drawer'
@@ -38,7 +38,7 @@ import {
 } from '@/lib/api'
 import { revokeDestination, loadApprovedDestinations, approveDestination } from '@/lib/destinations'
 import { DETAIL_PANE, NAVIGATOR_PANE } from '@/lib/panes'
-import { buildObjectResolver } from '@/lib/schema-refs'
+import { buildObjectResolver, type ObjectResolver } from '@/lib/schema-refs'
 import { useSettings } from '@/lib/settings'
 import { useMediaQuery } from '@/lib/use-media-query'
 import { cn, fileName } from '@/lib/utils'
@@ -49,11 +49,26 @@ type SchemaState =
   | { status: 'ready'; graph: SchemaGraph }
   | { status: 'error'; message: string }
 
+/** The map-navigation context handed to a custom navigator, so its links can drive the map. */
+export interface NavigatorSlotContext {
+  /** Recognise a schema object named in text, so it can be turned into a map link. */
+  resolveRef: ObjectResolver
+  /** Recentre the ER map on an object — the same travel search and the tree trigger. */
+  onNavigate: (objectId: string) => void
+  /** The navigator pane's current width in pixels. */
+  width: number
+}
+
 interface ExplorerProps {
   /** The connected profile. */
   profile: Profile
   /** Return to the connection screen. */
   onDisconnect: () => void
+  /** Optional override for the right-hand pane. Given the map's navigation context, returns
+   *  the node to render in the navigator's place; defaults to the AI {@link NavigatorPane}.
+   *  A generic composition seam — the landing-page demo uses it to inject a canned navigator
+   *  whose answer links drive the real map. */
+  renderNavigator?: (context: NavigatorSlotContext) => ReactNode
 }
 
 /**
@@ -61,7 +76,7 @@ interface ExplorerProps {
  * navigator (right) — beneath a top bar. The centre draws the introspected schema; the
  * side panes are filled in by later feature work (table detail, the AI).
  */
-export function Explorer({ profile, onDisconnect }: ExplorerProps) {
+export function Explorer({ profile, onDisconnect, renderNavigator }: ExplorerProps) {
   const { t } = useTranslation()
   const { settings, update } = useSettings()
   // Below this width the side panes overlay the map instead of splitting its width, so the
@@ -541,20 +556,28 @@ export function Explorer({ profile, onDisconnect }: ExplorerProps) {
               label={t('panes.resizeNavigator')}
             />
           )}
-          <NavigatorPane
-            // Keyed by profile so switching connections remounts the pane on that
-            // profile's own conversation rather than carrying one across.
-            key={profile.id}
-            profileId={profile.id}
-            provider={provider ?? null}
-            providerLoading={provider === undefined}
-            approved={approved}
-            onApprove={approve}
-            onOpenSettings={() => setSettingsOpen('ai')}
-            width={settings.navigatorWidth}
-            resolveRef={resolveRef}
-            onNavigate={setCentreOverride}
-          />
+          {renderNavigator ? (
+            renderNavigator({
+              resolveRef,
+              onNavigate: setCentreOverride,
+              width: settings.navigatorWidth,
+            })
+          ) : (
+            <NavigatorPane
+              // Keyed by profile so switching connections remounts the pane on that
+              // profile's own conversation rather than carrying one across.
+              key={profile.id}
+              profileId={profile.id}
+              provider={provider ?? null}
+              providerLoading={provider === undefined}
+              approved={approved}
+              onApprove={approve}
+              onOpenSettings={() => setSettingsOpen('ai')}
+              width={settings.navigatorWidth}
+              resolveRef={resolveRef}
+              onNavigate={setCentreOverride}
+            />
+          )}
         </div>
       </div>
 

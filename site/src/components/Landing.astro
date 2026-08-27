@@ -1,0 +1,1073 @@
+---
+import Layout from '@/layouts/Layout.astro'
+import type { Strings } from '@/i18n'
+import { rel } from '@/lib/paths'
+
+interface Props {
+  t: Strings
+  lang: 'en' | 'ja'
+  switchHref: string
+}
+
+const { t, lang, switchHref } = Astro.props
+
+// Feather-style line icons, keyed by the name each feature/safety item carries.
+const icons: Record<string, string> = {
+  map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/>',
+  route:
+    '<circle cx="6" cy="19" r="2.4"/><circle cx="18" cy="5" r="2.4"/><path d="M8.4 18.5C13 17 11 8 15.6 6.2"/>',
+  table:
+    '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 14h18M9 4v16"/>',
+  // Two nodes joined by a dashed connector — you draw the relationship yourself (a chain-link
+  // glyph would read as a hyperlink, not "connect two columns"). Dashed = the user-added edge.
+  link: '<circle cx="6" cy="7" r="2.6"/><circle cx="18" cy="17" r="2.6"/><path d="M8 8.8 16 15.2" stroke-dasharray="2 2.4"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  preview:
+    '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18"/><path d="M8 13h8M8 16h5"/>',
+  lock: '<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+  home: '<path d="M4 11 12 4l8 7"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/>',
+  shield: '<path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>',
+  tree: '<rect x="3" y="3" width="7" height="5" rx="1"/><rect x="14" y="9.5" width="7" height="5" rx="1"/><rect x="14" y="16" width="7" height="5" rx="1"/><path d="M6.5 8v9.5M6.5 12h7.5M6.5 18.5H14"/>',
+  save: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  theme:
+    '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+}
+
+// Feature-row illustrations: faithful vector recreations of shirube's own UI — the ER map,
+// the route diagram — not screenshots (so they scale, theme, and never go stale) and not
+// abstractions (they read as the real thing). Colours are inline var() so injected SVG
+// themes with the page. class="viz-svg" sizes to 100%.
+const MONO = "font-family='ui-monospace, SF Mono, Menlo, monospace'"
+const CARD_W = 178
+const HEAD_H = 30
+const ROW_H = 24
+
+interface ErCol {
+  name: string
+  type: string
+  pk?: boolean
+}
+
+/** A table card matching the app's node exactly: a lilac `bg-brand/15` header (icon + name),
+ *  then column rows with a brand key on primary keys, the column name, and its type
+ *  right-aligned. Uses the app's own palette via the --er-* tokens (see the .viz CSS). */
+function erCard(x: number, y: number, name: string, cols: ErCol[], lit = false): string {
+  const h = HEAD_H + cols.length * ROW_H + 6
+  const rows = cols
+    .map((c, i) => {
+      const cy = HEAD_H + i * ROW_H + ROW_H / 2
+      const key = c.pk
+        ? `<g transform="translate(15 ${cy - 0.5})" fill="none" stroke="var(--er-brand)" stroke-width="1.4">
+             <circle cx="-2" cy="0" r="2.6"/><path d="M0.4 0 H5 M3.6 0 V2.4" stroke-linecap="round"/></g>`
+        : ''
+      return `${key}
+        <text x="26" y="${cy + 3.5}" ${MONO} font-size="11" fill="var(--er-fg)">${c.name}</text>
+        <text x="${CARD_W - 14}" y="${cy + 3.5}" ${MONO} font-size="9.5" text-anchor="end" fill="var(--er-muted)">${c.type}</text>`
+    })
+    .join('')
+  return `<g transform="translate(${x} ${y})" filter="url(#viz-shadow)">
+    <rect width="${CARD_W}" height="${h}" rx="10" fill="var(--er-card)" stroke="${lit ? 'var(--er-brand)' : 'var(--er-border)'}" stroke-width="${lit ? 2 : 1}"/>
+    <path d="M0 10 A10 10 0 0 1 10 0 H${CARD_W - 10} A10 10 0 0 1 ${CARD_W} 10 V${HEAD_H} H0 Z" fill="var(--er-brand)" fill-opacity="0.15"/>
+    <line x1="0" y1="${HEAD_H}" x2="${CARD_W}" y2="${HEAD_H}" stroke="var(--er-brand)" stroke-opacity="0.25" stroke-width="1"/>
+    <rect x="14" y="10" width="11" height="11" rx="2.5" fill="none" stroke="var(--er-brand)" stroke-width="1.4"/>
+    <path d="M14 14.5 H25 M19.5 10 V21" stroke="var(--er-brand)" stroke-width="1.1" opacity="0.7"/>
+    <text x="34" y="20" ${MONO} font-size="12" font-weight="700" fill="var(--er-fg)">${name}</text>
+    ${rows}
+  </g>`
+}
+
+// Track centred among its neighbours — the same slice the app opens on for Chinook.
+const vizExplore = `<svg viewBox="0 0 720 470" class="viz-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The ER map: Track centred among its related tables">
+  <defs>
+    <filter id="viz-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="oklch(0.4 0.01 300)" flood-opacity="0.12"/>
+    </filter>
+    <marker id="er-arrow" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L8 4 L1 7 Z" fill="#9a92b4"/>
+    </marker>
+  </defs>
+  <!-- Every relationship is the same as in the app: a #9a92b4 line, 1.5 wide, with an
+       arrowhead pointing at the referenced table. -->
+  <g fill="none" stroke="#9a92b4" stroke-width="1.5" marker-end="url(#er-arrow)">
+    <path d="M436 244 C 486 244, 470 96, 506 96"/>
+    <path d="M436 250 C 480 250, 480 250, 506 250"/>
+    <path d="M436 256 C 486 256, 486 372, 506 372"/>
+    <path d="M198 344 C 236 344, 226 250, 252 250"/>
+  </g>
+  ${erCard(512, 40, 'Album', [{ name: 'AlbumId', type: 'INTEGER', pk: true }, { name: 'Title', type: 'NVARCHAR(160)' }, { name: 'ArtistId', type: 'INTEGER' }])}
+  ${erCard(512, 208, 'Genre', [{ name: 'GenreId', type: 'INTEGER', pk: true }, { name: 'Name', type: 'NVARCHAR(120)' }])}
+  ${erCard(512, 330, 'MediaType', [{ name: 'MediaTypeId', type: 'INTEGER', pk: true }, { name: 'Name', type: 'NVARCHAR(120)' }])}
+  ${erCard(20, 290, 'InvoiceLine', [{ name: 'InvoiceLineId', type: 'INTEGER', pk: true }, { name: 'InvoiceId', type: 'INTEGER' }, { name: 'TrackId', type: 'INTEGER' }])}
+  ${erCard(258, 172, 'Track', [{ name: 'TrackId', type: 'INTEGER', pk: true }, { name: 'Name', type: 'NVARCHAR(200)' }, { name: 'AlbumId', type: 'INTEGER' }, { name: 'GenreId', type: 'INTEGER' }, { name: 'UnitPrice', type: 'NUMERIC(10,2)' }], true)}
+</svg>`
+
+const SANS = "font-family='Inter, system-ui, sans-serif'"
+
+// Route finder: one hop box per table on the path, with the join column named between them —
+// the source is active (brand), like the app's panel.
+const routeBox = (y: number, name: string, active = false): string =>
+  `<rect x="40" y="${y}" width="360" height="40" rx="9" fill="var(--er-card)" stroke="${active ? 'var(--er-brand)' : 'var(--er-border)'}" stroke-width="${active ? 1.8 : 1}"/>
+   <text x="58" y="${y + 25}" ${MONO} font-size="13.5" fill="${active ? 'var(--er-brand)' : 'var(--er-fg)'}"${active ? ' font-weight="700"' : ''}>${name}</text>`
+const joinArrow = (y: number, col: string): string =>
+  `<text x="58" y="${y}" ${MONO} font-size="11" fill="var(--er-muted)">↓ ${col}</text>`
+
+const vizRoute = `<svg viewBox="0 0 440 420" class="viz-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The route finder: the shortest path from Track to Customer">
+  <defs><filter id="viz-shadow-r" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="oklch(0.4 0.01 300)" flood-opacity="0.14"/></filter></defs>
+  <rect x="20" y="18" width="400" height="384" rx="14" fill="var(--er-card)" stroke="var(--er-border)" filter="url(#viz-shadow-r)"/>
+  <g stroke="var(--er-brand)" stroke-width="1.7" fill="none" stroke-linecap="round"><circle cx="45" cy="47" r="3.2"/><circle cx="62" cy="38" r="3.2"/><path d="M48 46 C 55 46, 55 39, 59 39"/></g>
+  <text x="78" y="51" ${SANS} font-size="14" font-weight="600" fill="var(--er-fg)">Find a route</text>
+  <line x1="20" y1="66" x2="420" y2="66" stroke="var(--er-border)"/>
+  <text x="40" y="94" ${SANS} font-size="12" fill="var(--er-muted)">3 hops:</text>
+  ${routeBox(106, 'Track', true)}
+  ${joinArrow(164, 'TrackId')}
+  ${routeBox(176, 'InvoiceLine')}
+  ${joinArrow(234, 'InvoiceId')}
+  ${routeBox(246, 'Invoice')}
+  ${joinArrow(304, 'CustomerId')}
+  ${routeBox(316, 'Customer')}
+</svg>`
+
+// AI navigator: the chat pane answering — a full, real-length reply like the app's, with a
+// join-path code block and the table names as brand links. Recreated (not a screenshot) so
+// it scales, themes, and fills the row to the copy's height.
+const aiName = "font-family='ui-monospace, SF Mono, Menlo, monospace' fill='var(--er-brand)' font-weight='600'"
+const vizAi = `<svg viewBox="0 0 440 501" class="viz-svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The AI navigator answering how a customer links to the tracks they bought">
+  <defs><filter id="viz-shadow-a" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="oklch(0.4 0.01 300)" flood-opacity="0.14"/></filter></defs>
+  <rect x="20" y="13" width="400" height="475" rx="14" fill="var(--er-card)" stroke="var(--er-border)" filter="url(#viz-shadow-a)"/>
+  <g transform="translate(37 27)" fill="var(--er-brand)"><path d="M6 0 C 6.7 4.2, 7.8 5.3, 12 6 C 7.8 6.7, 6.7 7.8, 6 12 C 5.3 7.8, 4.2 6.7, 0 6 C 4.2 5.3, 5.3 4.2, 6 0 Z"/></g>
+  <text x="56" y="39" ${SANS} font-size="13" font-weight="600" fill="var(--er-fg)">Navigator</text>
+  <line x1="20" y1="54" x2="420" y2="54" stroke="var(--er-border)"/>
+  <rect x="214" y="66" width="186" height="54" rx="13" fill="var(--er-brand)" fill-opacity="0.14"/>
+  <text x="384" y="86" ${SANS} font-size="12.5" text-anchor="end" fill="var(--er-fg)">How is a customer linked</text>
+  <text x="384" y="105" ${SANS} font-size="12.5" text-anchor="end" fill="var(--er-fg)">to the tracks they bought?</text>
+  <text x="40" y="146" ${SANS} font-size="11" fill="var(--er-muted)">✓ Checked the schema</text>
+  <text x="40" y="172" ${SANS} font-size="12.5" fill="var(--er-fg)">A customer links to the tracks they bought</text>
+  <text x="40" y="191" ${SANS} font-size="12.5" fill="var(--er-fg)">through invoices — there’s no direct key:</text>
+  <rect x="40" y="204" width="360" height="76" rx="9" fill="var(--er-canvas)" stroke="var(--er-border)"/>
+  <text x="56" y="226" ${MONO} font-size="10.5" fill="var(--er-muted)">Invoice.CustomerId → Customer.CustomerId</text>
+  <text x="56" y="247" ${MONO} font-size="10.5" fill="var(--er-muted)">InvoiceLine.InvoiceId → Invoice.InvoiceId</text>
+  <text x="56" y="268" ${MONO} font-size="10.5" fill="var(--er-muted)">InvoiceLine.TrackId → Track.TrackId</text>
+  <text x="40" y="304" ${SANS} font-size="12.5" fill="var(--er-fg)">Each customer has many invoices, and every</text>
+  <text x="40" y="323" ${SANS} font-size="12.5" fill="var(--er-fg)">line names one track. So the join runs:</text>
+  <text x="40" y="349" font-size="12"><tspan ${aiName}>Customer</tspan><tspan fill="var(--er-muted)"> → </tspan><tspan ${aiName}>Invoice</tspan><tspan fill="var(--er-muted)"> → </tspan><tspan ${aiName}>InvoiceLine</tspan><tspan fill="var(--er-muted)"> → </tspan><tspan ${aiName}>Track</tspan></text>
+  <text x="40" y="376" ${SANS} font-size="12.5" fill="var(--er-fg)">Need the spend too? <tspan ${aiName} font-size="11.5">InvoiceLine</tspan> also</text>
+  <text x="40" y="395" ${SANS} font-size="12.5" fill="var(--er-fg)">carries the price and quantity per track.</text>
+  <text x="40" y="421" ${SANS} font-size="10.5" fill="var(--er-muted)">3,204 tokens</text>
+  <rect x="40" y="432" width="360" height="36" rx="12" fill="var(--er-card)" stroke="var(--er-border)"/>
+  <text x="56" y="454" ${SANS} font-size="12" fill="var(--er-muted)">Ask the navigator…</text>
+  <circle cx="382" cy="450" r="12" fill="var(--er-brand)"/>
+  <path d="M382 456 V444 M377.5 448.5 L382 444 L386.5 448.5" stroke="var(--er-card)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`
+
+// Docs links are hidden until the docs site exists; re-enable `docsHref` when it lands.
+// const docsHref = rel('docs/')
+const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
+---
+
+<Layout t={t} lang={lang} switchHref={switchHref}>
+  <!-- Hero — headline, then the real app you can touch right away --------------->
+  <section class="hero" id="demo">
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="container hero-inner">
+      <span class="hero-badges">
+        <span class="hero-badge">
+          <span
+            class="badge-ico"
+            set:html={`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 6-6 6 6 6"/><path d="m16 6 6 6-6 6"/></svg>`}
+          />
+          {t.hero.badgeOss}
+        </span>
+        <span class="hero-badge hero-badge-status">
+          <span class="badge-dot"></span>{t.hero.badge}
+        </span>
+      </span>
+      <h1 class="hero-title">{t.hero.title}</h1>
+      <p class="hero-lede">{t.hero.lede}</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#get-started">{t.hero.ctaPrimary}</a>
+        {/* Docs CTA hidden until the docs site exists; re-add when it lands. */}
+      </div>
+    </div>
+
+    <div class="container hero-demo">
+      <p class="hero-demo-caption">{t.demo.note}</p>
+      <div class="demo-frame-wrap reveal">
+        <div class="demo-frame-bar" aria-hidden="true">
+          <span class="wdot r"></span><span class="wdot y"></span><span class="wdot g"></span>
+          <span class="demo-frame-title">Sample database (Chinook)</span>
+        </div>
+        <div class="demo-frame-stage">
+          <!-- The demo serves a fixed sample fixture, so it needs no loading state of its
+               own; the page's boot splash (see Layout) covers the initial load. -->
+          <iframe
+            id="demo-frame"
+            class="demo-frame"
+            title="shirube interactive demo"
+            loading="eager"
+            data-base={demoSrc}
+          ></iframe>
+        </div>
+      </div>
+      <a class="demo-open" href={demoSrc} target="_blank" rel="noopener">{t.demo.openTab} ↗</a>
+    </div>
+  </section>
+
+  <!-- Row: explorer — the #1 draw, the map you can follow ---------------------->
+  <section class="section">
+    <div class="container feature-row">
+      <div class="row-copy reveal">
+        <span class="eyebrow">{t.explore.eyebrow}</span>
+        <h2 class="row-title">{t.explore.title}</h2>
+        <p class="row-desc">{t.explore.desc}</p>
+      </div>
+      <div class="row-visual reveal">
+        <div class="viz" set:html={vizExplore} />
+      </div>
+    </div>
+  </section>
+
+  <!-- Row: AI navigator (reversed) — the answer, right on the map -------------->
+  <section class="section">
+    <div class="container feature-row reverse">
+      <div class="row-copy reveal">
+        <span class="eyebrow">{t.ai.eyebrow}</span>
+        <h2 class="row-title">{t.ai.title}</h2>
+        <p class="row-desc">{t.ai.desc}</p>
+        <p class="ai-examples-label">{t.ai.examplesLabel}</p>
+        <ul class="ai-chips">
+          {t.ai.examples.map((q) => <li class="ai-chip">{lang === 'ja' ? `「${q}」` : `“${q}”`}</li>)}
+        </ul>
+        <p class="row-note">{t.ai.note}</p>
+      </div>
+      <div class="row-visual reveal">
+        <div class="viz" set:html={vizAi} />
+      </div>
+    </div>
+  </section>
+
+  <!-- Row: trace a route ------------------------------------------------------->
+  <section class="section">
+    <div class="container feature-row">
+      <div class="row-copy reveal">
+        <span class="eyebrow">{t.route.eyebrow}</span>
+        <h2 class="row-title">{t.route.title}</h2>
+        <p class="row-desc">{t.route.desc}</p>
+      </div>
+      <div class="row-visual reveal">
+        <div class="viz" set:html={vizRoute} />
+      </div>
+    </div>
+  </section>
+
+  <!-- Bento: the remaining essentials ------------------------------------------>
+  <section class="section">
+    <div class="container">
+      <span class="eyebrow">{t.more.eyebrow}</span>
+      <h2 class="section-title">{t.more.title}</h2>
+      <p class="section-lede">{t.more.lede}</p>
+      <div class="bento">
+        {
+          t.more.items.map((item, i) => (
+            <div class={`bento-card reveal b${i}`} style={`transition-delay:${(i % 3) * 70}ms`}>
+              <div
+                class="feature-icon"
+                set:html={`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${icons[item.icon]}</svg>`}
+              />
+              <div>
+                <h3>{item.title}</h3>
+                <p>{item.d}</p>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Safe by design ----------------------------------------------------------->
+  <section class="section safe">
+    <div class="container">
+      <span class="eyebrow">{t.safe.eyebrow}</span>
+      <h2 class="section-title">{t.safe.title}</h2>
+      <p class="section-lede">{t.safe.lede}</p>
+      <div class="safe-grid">
+        {
+          t.safe.items.map((item, i) => (
+            <div class="safe-card reveal" style={`transition-delay:${i * 80}ms`}>
+              <div
+                class="safe-icon"
+                set:html={`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${icons[item.icon]}</svg>`}
+              />
+              <h3>{item.title}</h3>
+              <p>{item.d}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Get started -------------------------------------------------------------->
+  <section class="section start" id="get-started">
+    <div class="container">
+      <span class="eyebrow">{t.start.eyebrow}</span>
+      <h2 class="section-title">{t.start.title}</h2>
+      <p class="section-lede">{t.start.lede}</p>
+      <p class="cmd-lead">{t.start.pick}</p>
+      <div class="cmd-tabs">
+        <div class="cmd-tablist" role="tablist" aria-label="Install command">
+          <button
+            class="cmd-tab is-active"
+            role="tab"
+            aria-selected="true"
+            data-cmd="pipx run shirube"
+            type="button"
+          >
+            pipx
+          </button>
+          <button class="cmd-tab" role="tab" aria-selected="false" data-cmd="uvx shirube" type="button">
+            uvx
+          </button>
+        </div>
+        <div class="cmd-panel">
+          <code class="cmd-code">pipx run shirube</code>
+          <button class="cmd-copy" data-cmd="pipx run shirube" type="button" aria-label="Copy">⧉</button>
+        </div>
+      </div>
+      <p class="start-hint">{t.start.tryHint}</p>
+    </div>
+  </section>
+</Layout>
+
+<script is:inline>
+  // Reveal-on-scroll.
+  ;(() => {
+    const els = document.querySelectorAll('.reveal')
+    if (!('IntersectionObserver' in window)) {
+      els.forEach((el) => el.classList.add('in'))
+      return
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('in')
+            io.unobserve(e.target)
+          }
+        })
+      },
+      { threshold: 0.12 },
+    )
+    els.forEach((el) => io.observe(el))
+  })()
+
+  // Install-command tabs: switch the shown command (and what the copy button copies).
+  ;(() => {
+    document.querySelectorAll('.cmd-tabs').forEach((tabs) => {
+      const code = tabs.querySelector('.cmd-code')
+      const copy = tabs.querySelector('.cmd-copy')
+      tabs.querySelectorAll('.cmd-tab').forEach((tab) => {
+        tab.addEventListener('click', () => {
+          tabs.querySelectorAll('.cmd-tab').forEach((t) => {
+            const on = t === tab
+            t.classList.toggle('is-active', on)
+            t.setAttribute('aria-selected', on ? 'true' : 'false')
+          })
+          const cmd = tab.getAttribute('data-cmd') || ''
+          if (code) code.textContent = cmd
+          copy?.setAttribute('data-cmd', cmd)
+        })
+      })
+    })
+  })()
+
+  // Copy-to-clipboard on the install commands.
+  ;(() => {
+    document.querySelectorAll('.cmd-copy').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(btn.getAttribute('data-cmd') || '')
+          const prev = btn.textContent
+          btn.textContent = '✓'
+          setTimeout(() => (btn.textContent = prev), 1200)
+        } catch {}
+      })
+    })
+  })()
+
+  // The embedded demo iframe: load it with the page's current theme and push theme changes
+  // in as the visitor toggles light/dark. The demo serves a fixed fixture, so it needs no
+  // loading state — the page boot splash (see Layout) covers the initial load.
+  ;(() => {
+    const frame = document.getElementById('demo-frame')
+    if (!(frame instanceof HTMLIFrameElement)) return
+    const stage = frame.parentElement
+    const theme = () => (document.documentElement.classList.contains('dark') ? 'dark' : 'light')
+
+    // The demo renders at a fixed desktop width (see CSS) and is scaled to fit the container
+    // at every width, so it keeps the desktop layout and aspect ratio and shrinks smoothly as
+    // the window narrows. The stage's aspect-ratio handles the height; we set only the scale.
+    const LOGICAL_W = 1040
+    const fit = () => {
+      if (!stage) return
+      const s = Math.min(1, stage.clientWidth / LOGICAL_W)
+      frame.style.transform = `scale(${s})`
+    }
+
+    frame.src = `${frame.dataset.base}&theme=${theme()}`
+    fit()
+    window.addEventListener('resize', fit)
+    frame.addEventListener('load', fit)
+    // The demo announces itself when mounted; answer with the current theme.
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'shirube-demo-ready') {
+        frame.contentWindow?.postMessage({ type: 'shirube-demo-theme', theme: theme() }, '*')
+      }
+    })
+    // Mirror later light/dark toggles into the iframe.
+    new MutationObserver(() => {
+      frame.contentWindow?.postMessage({ type: 'shirube-demo-theme', theme: theme() }, '*')
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+  })()
+</script>
+
+<style>
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 0.7rem 1.3rem;
+    border-radius: 999px;
+    transition: transform 0.1s ease, filter 0.15s ease, background 0.15s ease;
+  }
+  .btn:active {
+    transform: translateY(1px);
+  }
+  .btn-primary {
+    background: var(--brand);
+    color: var(--brand-foreground);
+    box-shadow: var(--shadow-md);
+  }
+  .btn-primary:hover {
+    filter: brightness(1.06);
+  }
+  .btn-ghost {
+    color: var(--foreground);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover {
+    background: var(--muted);
+  }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    padding-top: clamp(3rem, 8vw, 5.5rem);
+    padding-bottom: 2.5rem;
+    overflow: hidden;
+  }
+  .hero-glow {
+    position: absolute;
+    inset: -30% 0 auto 0;
+    height: 620px;
+    background:
+      radial-gradient(50% 60% at 50% 0%, color-mix(in oklch, var(--brand) 26%, transparent), transparent 70%);
+    filter: blur(10px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .hero-inner {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    max-width: 760px;
+  }
+  .hero-badges {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--muted-foreground);
+    background: var(--card);
+  }
+  .badge-ico {
+    display: inline-flex;
+    color: var(--muted-foreground);
+  }
+  /* sRGB, not oklch — oklch tints of the violet brand skew pink on light backgrounds. */
+  .hero-badge-status {
+    color: var(--brand);
+    border-color: color-mix(in srgb, var(--brand) 30%, transparent);
+    background: color-mix(in srgb, var(--brand) 10%, var(--card));
+  }
+  .badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--brand);
+    /* A soft expanding ring — a live "status" pulse. */
+    animation: badge-pulse 2.4s ease-out infinite;
+  }
+  @keyframes badge-pulse {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 55%, transparent);
+    }
+    70%,
+    100% {
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--brand) 0%, transparent);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .badge-dot {
+      animation: none;
+    }
+  }
+  .hero-title {
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    font-weight: 800;
+    margin: 1.1rem 0 0;
+    background: linear-gradient(180deg, var(--foreground), color-mix(in oklch, var(--foreground) 62%, var(--brand)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero-lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+    color: var(--muted-foreground);
+    margin: 1.2rem auto 0;
+    max-width: 640px;
+  }
+  .hero-cta {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1.8rem;
+  }
+  .hero-note {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--muted-foreground);
+  }
+  /* Live demo in the hero */
+  .hero-demo {
+    position: relative;
+    z-index: 1;
+    margin-top: clamp(1.75rem, 4vw, 2.75rem);
+  }
+  .hero-demo-caption {
+    margin: 0 auto 1rem;
+    max-width: 70ch;
+    text-align: center;
+    font-size: 0.95rem;
+    color: var(--muted-foreground);
+  }
+  .hero-demo-lead {
+    color: var(--foreground);
+    font-weight: 700;
+  }
+  .hero-demo-note {
+    display: block;
+    margin-top: 0.25rem;
+  }
+  .demo-frame-wrap {
+    margin-top: 0;
+    border: 1px solid var(--hairline);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    background: var(--card);
+  }
+  .demo-frame-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.6rem 0.9rem;
+    background: var(--muted);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .wdot {
+    width: 11px;
+    height: 11px;
+    border-radius: 999px;
+    background: var(--border);
+  }
+  .wdot.r {
+    background: #ff5f57;
+  }
+  .wdot.y {
+    background: #febc2e;
+  }
+  .wdot.g {
+    background: #28c840;
+  }
+  .demo-frame-title {
+    margin-left: 0.6rem;
+    font-size: 0.8rem;
+    color: var(--muted-foreground);
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    /* Truncate rather than wrap to a second line on narrow frames. */
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  /* The demo always renders at a fixed desktop size and is scaled to fit — so it keeps the
+     desktop layout and aspect ratio at every width, shrinking continuously as the window
+     narrows rather than reflowing. The stage locks that aspect ratio; JS sets the scale from
+     the container width (see the script). */
+  .demo-frame-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1040 / 640;
+    overflow: hidden;
+    background: var(--background);
+  }
+  .demo-frame {
+    width: 1040px;
+    height: 640px;
+    border: 0;
+    display: block;
+    transform-origin: top left;
+  }
+  .demo-open {
+    display: inline-block;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--brand);
+    text-decoration: none;
+  }
+  .demo-open:hover {
+    text-decoration: underline;
+  }
+  /* On phones the scaled-down app is too small to touch usefully, so it's a live preview
+     only — the "open the demo" link below is for real interaction. */
+  @media (max-width: 767px) {
+    .demo-frame {
+      pointer-events: none;
+    }
+  }
+
+  /* Sections */
+  .section {
+    padding-top: clamp(3.5rem, 9vw, 6rem);
+  }
+  .section-title {
+    font-size: clamp(1.7rem, 3.6vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+    margin: 0.6rem 0 0;
+    max-width: 22ch;
+  }
+  .section-lede {
+    color: var(--muted-foreground);
+    font-size: 1.05rem;
+    margin: 0.9rem 0 0;
+    /* No narrow measure cap here — it forced this one-sentence lede onto two lines. Let it use
+       the container width (one line on desktop); balance keeps it tidy when it does wrap. */
+    text-wrap: balance;
+  }
+
+  /* Alternating feature rows */
+  .feature-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: clamp(2rem, 5vw, 4.5rem);
+  }
+  .feature-row.reverse .row-copy {
+    order: 2;
+  }
+  .row-title {
+    font-size: clamp(1.6rem, 3.2vw, 2.3rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+    margin: 0.55rem 0 0;
+  }
+  .row-desc {
+    margin: 1rem 0 0;
+    color: var(--muted-foreground);
+    font-size: 1.02rem;
+  }
+  /* A plain "Example questions" label above the chips — these are illustrative examples,
+     not a call to try (you try in the hero demo). The first is highlighted as the one
+     answered in the visual alongside. */
+  .ai-examples-label {
+    margin: 1.5rem 0 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted-foreground);
+  }
+  /* One quotation panel for all three, not per-sentence boxes — the questions are a single
+     set of examples, and splitting them into separate boxes fragments the eye and re-creates
+     the clickable-button look we removed (you try questions in the hero demo, not here). A
+     frosted tint, a hairline, and a crisp brand edge on the left read as a modern quote block.
+     A faint oversized quotation glyph anchors it without adding literal clutter. */
+  .ai-chips {
+    position: relative;
+    list-style: none;
+    margin: 0;
+    padding: 1rem 1.2rem 1rem 1.35rem;
+    border: 1px solid var(--hairline);
+    border-left: 3px solid var(--brand);
+    border-radius: 4px 14px 14px 4px;
+    background: color-mix(in oklch, var(--foreground) 3.5%, transparent);
+    backdrop-filter: blur(3px);
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    overflow: hidden;
+  }
+  .ai-chips::before {
+    content: '\201C';
+    position: absolute;
+    top: -0.35rem;
+    right: 0.4rem;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 5rem;
+    line-height: 1;
+    color: var(--brand);
+    opacity: 0.1;
+    pointer-events: none;
+  }
+  .ai-chip {
+    position: relative;
+    color: var(--muted-foreground);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  /* The first example is the one answered in the visual alongside — give it full weight. */
+  .ai-chip:first-child {
+    color: var(--foreground);
+    font-weight: 500;
+  }
+  .row-note {
+    margin: 1.2rem 0 0;
+    font-size: 0.85rem;
+    color: var(--muted-foreground);
+  }
+
+  /* Row visuals */
+  .shot-frame {
+    border: 1px solid var(--hairline);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    background: var(--card);
+  }
+  .shot-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.8rem;
+    background: var(--muted);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .shot-frame img {
+    width: 100%;
+    display: block;
+  }
+  /* The ER illustration uses shirube's OWN palette (copied from web/src/index.css), not the
+     site's, so its colours match the real app exactly — including the lilac bg-brand/15
+     header. Defined here and consumed by the injected SVG through var(--er-*). */
+  .viz {
+    --er-brand: #a78bfa;
+    --er-card: oklch(1 0 0);
+    --er-fg: oklch(0.145 0 0);
+    --er-muted: oklch(0.556 0 0);
+    --er-border: oklch(0.922 0 0);
+    --er-canvas: oklch(0.985 0 0);
+    border: 1px solid var(--hairline);
+    border-radius: 16px;
+    padding: 0.75rem;
+    background-color: var(--er-canvas);
+    background-image: radial-gradient(
+      color-mix(in oklch, var(--er-muted) 22%, transparent) 1px,
+      transparent 1.4px
+    );
+    background-size: 20px 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  :global(.dark) .viz {
+    --er-brand: #bcabfb;
+    --er-card: oklch(0.215 0.017 300);
+    --er-fg: oklch(0.97 0.006 300);
+    --er-muted: oklch(0.73 0.02 300);
+    --er-border: oklch(0.92 0.03 300 / 30%);
+    --er-canvas: oklch(0.17 0.014 300);
+  }
+  /* The viz SVGs are injected with set:html, so their inner elements never receive Astro's
+     scope attribute — these selectors must be :global to reach them. */
+  :global(.viz-svg) {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  :global(.viz-card) {
+    filter: drop-shadow(0 3px 8px oklch(0.2 0.03 300 / 0.18));
+  }
+  :global(.viz-box) {
+    fill: var(--card);
+    stroke: color-mix(in oklch, var(--brand) 20%, var(--border));
+    stroke-width: 1.2;
+  }
+  :global(.viz-head) {
+    fill: color-mix(in oklch, var(--brand) 20%, var(--card));
+  }
+  :global(.viz-card.lit .viz-box) {
+    stroke: var(--brand);
+    stroke-width: 1.8;
+  }
+  :global(.viz-card.lit .viz-head) {
+    fill: color-mix(in oklch, var(--brand) 34%, var(--card));
+  }
+  :global(.viz-name) {
+    fill: var(--foreground);
+    font-size: 11px;
+    font-weight: 700;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  :global(.viz-row) {
+    fill: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
+  }
+  :global(.viz-edge) {
+    stroke: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+    stroke-width: 1.5;
+  }
+  :global(.viz-edge.lit) {
+    stroke: var(--brand);
+    stroke-width: 2.4;
+  }
+  :global(.viz-edge.dashed) {
+    stroke: var(--brand);
+    stroke-width: 2.4;
+    stroke-dasharray: 6 5;
+  }
+  :global(.viz-anchor) {
+    fill: var(--brand);
+  }
+  :global(.viz-label rect) {
+    fill: var(--brand);
+  }
+  :global(.viz-label text) {
+    fill: var(--brand-foreground);
+    font-size: 10px;
+    font-weight: 600;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  :global(.viz-cursor) {
+    fill: var(--foreground);
+    stroke: var(--card);
+    stroke-width: 1;
+  }
+
+  /* Bento */
+  /* No tinted chip behind the icon — the brand-coloured line icon stands on its own, which
+     reads lighter and more modern across a dense grid of secondary features. */
+  .feature-icon {
+    display: grid;
+    place-items: center;
+    /* Left-aligned above the title; align-self stops the column flex from stretching the box
+       full width and centring the icon. */
+    align-self: flex-start;
+    color: var(--brand);
+    flex-shrink: 0;
+  }
+  .feature-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  .bento {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 2.2rem;
+  }
+  .bento-card {
+    /* Icon stacked above the title (like the Safe cards) — the more modern, spacious layout
+       for feature cards; the eye reads icon → heading → text top to bottom. */
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    background: var(--card);
+    border: 1px solid var(--hairline);
+    border-radius: 16px;
+    padding: 1.3rem;
+    box-shadow: var(--shadow-sm);
+    transition:
+      transform 0.15s ease,
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .bento-card:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in oklch, var(--brand) 35%, var(--border));
+    box-shadow: var(--shadow-md);
+  }
+  .bento-card h3 {
+    margin: 0.15rem 0 0.35rem;
+    font-size: 1.02rem;
+    letter-spacing: -0.01em;
+  }
+  .bento-card p {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.9rem;
+  }
+
+  /* Safe */
+  .safe-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.1rem;
+    margin-top: 2.2rem;
+  }
+  .safe-card {
+    padding: 1.5rem;
+    border-radius: 16px;
+    border: 1px solid var(--hairline);
+    background: var(--card);
+  }
+  /* No tinted chip here either — see .feature-icon. */
+  .safe-icon {
+    display: grid;
+    width: max-content;
+    color: var(--brand);
+    margin-bottom: 0.8rem;
+  }
+  .safe-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+  .safe-card h3 {
+    margin: 0 0 0.45rem;
+    font-size: 1.1rem;
+  }
+  .safe-card p {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.92rem;
+  }
+
+  /* Get started */
+  /* A tabbed install block: pick your runner (pipx / uvx), one command shown at a time —
+     the modern docs-style code card, not two boxes side by side. */
+  .cmd-lead {
+    margin: 1.8rem 0 0.7rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+  .cmd-tabs {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .cmd-tablist {
+    display: flex;
+    padding: 0 0.5rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .cmd-tab {
+    padding: 0.55rem 0.85rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    background: transparent;
+    color: var(--muted-foreground);
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+  .cmd-tab:hover {
+    color: var(--foreground);
+  }
+  .cmd-tab.is-active {
+    color: var(--foreground);
+    border-bottom-color: var(--brand);
+  }
+  .cmd-panel {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.8rem 0.85rem 0.8rem 1.1rem;
+  }
+  .cmd-code {
+    flex: 1;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 0.98rem;
+    color: var(--foreground);
+  }
+  .cmd-code::before {
+    content: '$ ';
+    color: var(--brand);
+  }
+  .cmd-copy {
+    display: inline-grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--muted);
+    color: var(--muted-foreground);
+    font-size: 0.9rem;
+  }
+  .cmd-copy:hover {
+    color: var(--brand);
+    border-color: color-mix(in oklch, var(--brand) 40%, var(--border));
+  }
+  .start-hint {
+    margin-top: 1.2rem;
+    color: var(--muted-foreground);
+  }
+
+  @media (max-width: 860px) {
+    .safe-grid {
+      grid-template-columns: 1fr;
+    }
+    .feature-row {
+      grid-template-columns: 1fr;
+      gap: 1.75rem;
+    }
+    /* Keep copy above the visual on every row when stacked. */
+    .feature-row.reverse .row-copy {
+      order: 0;
+    }
+  }
+  /* Progressive columns: three on wide screens, two on tablets, one full-width column on
+     phones — where full-width cards read cleaner (comfortable line lengths, more room) than a
+     cramped two-up grid. */
+  @media (max-width: 1024px) {
+    .bento {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 640px) {
+    .bento {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

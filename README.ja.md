@@ -23,6 +23,10 @@
   <a href="README.md">English</a> | <strong>日本語</strong>
 </p>
 
+<p align="center">
+  🌐 <strong><a href="https://shou-taro.github.io/shirube/ja/">ライブサイト & デモ</a></strong> — サンプルDBで動く本物のアプリを、ブラウザでそのまま試せます。
+</p>
+
 > 🚧 **現在はベータ版です。** ER 図での探索も AI ナビゲーターもすでに使えます。ただし正式リリース（1.0）の前なので、仕様や画面はまだ変わることがあります。今後の予定は [ロードマップ](#-ロードマップ) をご覧ください。
 
 <p align="center"><em>質問すれば、答えは ER 図の上に。</em></p>
