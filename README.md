@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="https://shou-taro.github.io/shirube/"><img src="docs/images/demo-badge-en.svg" alt="Try the live demo" width="260" /></a>
+  <a href="https://shou-taro.github.io/shirube/"><img src="https://img.shields.io/badge/demo-try_in_browser-8b7ff0" alt="Try the demo in your browser" /></a>
 </p>
 
 > 🚧 **Status: Beta.** Both the explorer and the AI navigator work today. shirube is

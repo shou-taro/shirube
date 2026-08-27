@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="https://shou-taro.github.io/shirube/ja/"><img src="docs/images/demo-badge-ja.svg" alt="ブラウザでデモを試す" width="300" /></a>
+  <a href="https://shou-taro.github.io/shirube/ja/"><img src="https://img.shields.io/badge/%E3%83%87%E3%83%A2-%E3%83%96%E3%83%A9%E3%82%A6%E3%82%B6%E3%81%A7%E8%A9%A6%E3%81%99-8b7ff0" alt="デモをブラウザで試す" /></a>
 </p>
 
 > 🚧 **現在はベータ版です。** ER 図での探索も AI ナビゲーターもすでに使えます。ただし正式リリース（1.0）の前なので、仕様や画面はまだ変わることがあります。今後の予定は [ロードマップ](#-ロードマップ) をご覧ください。
