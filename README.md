@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  🌐 <strong><a href="https://shou-taro.github.io/shirube/">Live site &amp; interactive demo</a></strong> — try the real app on a sample database, right in your browser.
+  <strong><a href="https://shou-taro.github.io/shirube/">Live site</a></strong> — try the interactive demo right in your browser.
 </p>
 
 > 🚧 **Status: Beta.** Both the explorer and the AI navigator work today. shirube is

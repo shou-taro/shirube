@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  🌐 <strong><a href="https://shou-taro.github.io/shirube/ja/">ライブサイト & デモ</a></strong> — サンプルDBで動く本物のアプリを、ブラウザでそのまま試せます。
+  <strong><a href="https://shou-taro.github.io/shirube/ja/">ライブサイト</a></strong> — ブラウザ上でデモアプリを試せます。
 </p>
 
 > 🚧 **現在はベータ版です。** ER 図での探索も AI ナビゲーターもすでに使えます。ただし正式リリース（1.0）の前なので、仕様や画面はまだ変わることがあります。今後の予定は [ロードマップ](#-ロードマップ) をご覧ください。
