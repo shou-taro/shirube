@@ -159,7 +159,8 @@ const vizAi = `<svg viewBox="0 0 440 501" class="viz-svg" xmlns="http://www.w3.o
   <path d="M382 456 V444 M377.5 448.5 L382 444 L386.5 448.5" stroke="var(--er-card)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`
 
-const docsHref = rel('docs/')
+// Docs links are hidden until the docs site exists; re-enable `docsHref` when it lands.
+// const docsHref = rel('docs/')
 const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
 ---
 
@@ -184,7 +185,7 @@ const demoSrc = `${rel('demo/demo.html')}?lang=${lang}`
       <p class="hero-lede">{t.hero.lede}</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#get-started">{t.hero.ctaPrimary}</a>
-        <a class="btn btn-ghost" href={docsHref}>{t.hero.ctaSecondary} →</a>
+        {/* Docs CTA hidden until the docs site exists; re-add when it lands. */}
       </div>
     </div>
 

@@ -23,6 +23,10 @@
   <strong>English</strong> | <a href="README.ja.md">日本語</a>
 </p>
 
+<p align="center">
+  🌐 <strong><a href="https://shou-taro.github.io/shirube/">Live site &amp; interactive demo</a></strong> — try the real app on a sample database, right in your browser.
+</p>
+
 > 🚧 **Status: Beta.** Both the explorer and the AI navigator work today. shirube is
 > pre-1.0, so things may still change — see the [roadmap](#-roadmap).
 

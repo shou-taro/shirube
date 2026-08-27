@@ -13,7 +13,8 @@ interface Props {
 const { t, lang, switchHref } = Astro.props
 
 const homeHref = lang === 'en' ? rel('') : rel('ja/')
-const docsHref = rel('docs/')
+// Docs links are hidden until the docs site exists; re-enable `docsHref` when it lands.
+// const docsHref = rel('docs/')
 const githubHref = 'https://github.com/shou-taro/shirube'
 const pypiHref = 'https://pypi.org/project/shirube/'
 
@@ -179,9 +180,7 @@ const linkIcon = {
           <span>shirube</span>
         </a>
         <nav class="nav-links">
-          <a class="nav-ico" href={docsHref}>
-            <span class="ni" set:html={linkIcon.docs} />{t.nav.docs}
-          </a>
+          {/* Documentation link hidden until the docs site exists; GitHub covers "learn more" for now. */}
           <a class="nav-ico" href={githubHref} target="_blank" rel="noopener">
             <span class="ni" set:html={linkIcon.github} />{t.nav.github}
           </a>
@@ -225,9 +224,7 @@ const linkIcon = {
           <p>{t.footer.tagline}</p>
         </div>
         <nav class="footer-links">
-          <a href={docsHref}>
-            <span class="fi" set:html={linkIcon.docs} />{t.footer.docs}
-          </a>
+          {/* Documentation link hidden until the docs site exists; GitHub covers "learn more" for now. */}
           <a href={githubHref} target="_blank" rel="noopener">
             <span class="fi" set:html={linkIcon.github} />{t.footer.github}
           </a>
