@@ -20,6 +20,9 @@
     "@types/react-dom": "^19.2.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "sharp"]
+    "onlyBuiltDependencies": ["esbuild", "sharp"],
+    "overrides": {
+      "esbuild": "^0.28.1"
+    }
   }
 }
