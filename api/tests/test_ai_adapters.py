@@ -22,6 +22,7 @@ from shirube.adapters.ai.anthropic_provider import (
 from shirube.adapters.ai.factory import build_provider, check_provider, list_provider_models
 from shirube.adapters.ai.openai_provider import (
     OpenAiCompatibleProvider,
+    is_openai_platform,
     parse_openai_stream,
     to_openai_messages,
     to_openai_tools,
@@ -313,3 +314,82 @@ def test_list_provider_models_openai_compatible_lists_via_its_adapter(
     monkeypatch.setattr(OpenAiCompatibleProvider, "list_models", lambda self: ["llama3.1"])
     config = AiProviderConfig(AiProviderKind.OPENAI_COMPATIBLE, "", "http://localhost:11434/v1")
     assert list_provider_models(config, None) == ["llama3.1"]
+
+
+# --- reasoning models: output cap and truncation ---------------------------------------
+
+
+def test_openai_stream_reports_a_length_cut_off_as_max_tokens() -> None:
+    # A reasoning model can spend the whole cap on hidden reasoning and stop with no text.
+    events = list(parse_openai_stream([_delta_chunk(finish_reason="length")]))
+    assert events == [TurnComplete("max_tokens", TokenUsage())]
+
+
+def test_anthropic_reports_a_max_tokens_stop() -> None:
+    final = SimpleNamespace(content=[], stop_reason="max_tokens", usage=None)
+    assert list(events_from_final_message(final)) == [TurnComplete("max_tokens", TokenUsage())]
+
+
+@pytest.mark.parametrize(
+    ("base_url", "expected"),
+    [
+        ("https://api.openai.com/v1", True),
+        ("https://API.OpenAI.com/v1/", True),
+        ("http://localhost:11434/v1", False),
+        ("https://api.openai.com.example.net/v1", False),
+        ("https://gateway.example.com/api.openai.com/v1", False),
+        (None, False),
+    ],
+)
+def test_is_openai_platform_matches_only_the_platform_host(
+    base_url: str | None, expected: bool
+) -> None:
+    assert is_openai_platform(base_url) is expected
+
+
+def _captured_create(provider: OpenAiCompatibleProvider) -> dict[str, object]:
+    """Swap the SDK call for a recorder and run one turn, returning the request kwargs."""
+    sent: dict[str, object] = {}
+
+    def create(**kwargs: object) -> list[object]:
+        sent.update(kwargs)
+        return []
+
+    provider._client = SimpleNamespace(  # type: ignore[assignment]
+        chat=SimpleNamespace(completions=SimpleNamespace(create=create))
+    )
+    list(provider.stream_turn(_REQUEST))
+    return sent
+
+
+def test_openai_platform_sends_the_cap_as_max_completion_tokens() -> None:
+    provider = OpenAiCompatibleProvider(
+        "gpt-5", base_url="https://api.openai.com/v1", api_key="k", max_tokens=512
+    )
+    sent = _captured_create(provider)
+    assert sent["max_completion_tokens"] == 512 and "max_tokens" not in sent
+
+
+def test_other_endpoints_send_the_cap_as_max_tokens() -> None:
+    provider = OpenAiCompatibleProvider(
+        "llama3.1", base_url="http://localhost:11434/v1", max_tokens=512
+    )
+    sent = _captured_create(provider)
+    assert sent["max_tokens"] == 512 and "max_completion_tokens" not in sent
+
+
+def test_factory_leaves_the_openai_platform_uncapped() -> None:
+    # A reasoning model spends hidden reasoning from the cap, so none is sent to the platform.
+    config = AiProviderConfig(
+        AiProviderKind.OPENAI_COMPATIBLE, "gpt-5", "https://api.openai.com/v1", 128000
+    )
+    sent = _captured_create(build_provider(config, "k"))  # type: ignore[arg-type]
+    assert "max_tokens" not in sent and "max_completion_tokens" not in sent
+
+
+def test_factory_caps_a_local_runner_to_its_output_reserve() -> None:
+    config = AiProviderConfig(
+        AiProviderKind.OPENAI_COMPATIBLE, "llama3.1", "http://localhost:11434/v1", 4096
+    )
+    sent = _captured_create(build_provider(config, None))  # type: ignore[arg-type]
+    assert sent["max_tokens"] == 1024

@@ -34,7 +34,7 @@ from shirube.domain.chat import (
     TurnMessage,
     TurnRequest,
 )
-from shirube.domain.errors import ProviderCheckError
+from shirube.domain.errors import ProviderCheckError, ProviderRequestError
 
 _REQUEST = TurnRequest(
     system="You are the navigator.",
@@ -186,13 +186,34 @@ _OPENAI_MODELS = {
     "object": "list",
     "data": [{"id": "llama3.1", "object": "model", "created": 0, "owned_by": "local"}],
 }
+# What the OpenAI platform answers when a reasoning model is sent the legacy output cap.
+_UNSUPPORTED_MAX_TOKENS = {
+    "error": {
+        "message": "Unsupported parameter: 'max_tokens' is not supported with this model. "
+        "Use 'max_completion_tokens' instead.",
+        "type": "invalid_request_error",
+        "param": "max_tokens",
+        "code": "unsupported_parameter",
+    }
+}
+_MODEL_NOT_FOUND = {
+    "error": {
+        "message": "The model `gpt-nope` does not exist or you do not have access to it.",
+        "type": "invalid_request_error",
+        "param": None,
+        "code": "model_not_found",
+    }
+}
 _UNAUTHORIZED = {
     "type": "error",
     "error": {"type": "authentication_error", "message": "invalid api key"},
 }
 
 # Paths below the server root: the Anthropic SDK appends ``/v1/...`` to its base URL, the
-# OpenAI one is given ``/openai/v1`` as its base. ``/rejected`` answers everything with 401.
+# OpenAI one is given ``/openai/v1`` as its base. ``/rejected`` answers everything with 401;
+# ``/strict`` behaves like a reasoning model, refusing ``max_tokens``; ``/missing`` answers a
+# completion with 404 model-not-found. Every completion body is also kept under
+# ``<path>#<n>`` (counting from 1) so a retried request can be inspected.
 _GET_ROUTES: dict[str, dict[str, Any]] = {
     "/v1/models": _ANTHROPIC_MODELS,
     "/openai/v1/models": _OPENAI_MODELS,
@@ -225,9 +246,18 @@ class _FakeProvider(BaseHTTPRequestHandler):
             self._reply(404, b"{}")
 
     def do_POST(self) -> None:  # noqa: N802 — http.server's naming
-        body = self.rfile.read(int(self.headers["content-length"]))
-        self.requests[self.path] = json.loads(body)
-        if self.path in _STREAM_ROUTES:
+        body = json.loads(self.rfile.read(int(self.headers["content-length"])))
+        self.requests[self.path] = body
+        count = sum(1 for key in self.requests if key.startswith(f"{self.path}#")) + 1
+        self.requests[f"{self.path}#{count}"] = body
+        if self.path == "/strict/v1/chat/completions":
+            if "max_tokens" in body:
+                self._reply(400, json.dumps(_UNSUPPORTED_MAX_TOKENS).encode())
+            else:
+                self._reply(200, _OPENAI_STREAM, "text/event-stream")
+        elif self.path == "/missing/v1/chat/completions":
+            self._reply(404, json.dumps(_MODEL_NOT_FOUND).encode())
+        elif self.path in _STREAM_ROUTES:
             self._reply(200, _STREAM_ROUTES[self.path], "text/event-stream")
         else:
             self._reply(404, b"{}")
@@ -314,3 +344,33 @@ def test_openai_rejected_key_becomes_a_check_error(server: tuple[str, dict[str, 
 
     with pytest.raises(ProviderCheckError, match="rejected the API key"):
         provider.list_models()
+
+
+def test_openai_switches_the_cap_name_when_the_endpoint_refuses_max_tokens(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    # A gateway in front of a reasoning model rejects ``max_tokens`` with a 400, as the OpenAI
+    # platform does; the adapter retries once with ``max_completion_tokens`` and keeps it.
+    base_url, received = server
+    provider = OpenAiCompatibleProvider("gpt-5", base_url=f"{base_url}/strict/v1", max_tokens=512)
+    path = "/strict/v1/chat/completions"
+
+    assert list(provider.stream_turn(_REQUEST)) == _EXPECTED_EVENTS
+    assert received[f"{path}#1"]["max_tokens"] == 512
+    assert received[f"{path}#2"]["max_completion_tokens"] == 512
+    assert "max_tokens" not in received[f"{path}#2"]
+
+    # The next turn goes straight to the accepted name: one request, no second rejection.
+    assert list(provider.stream_turn(_REQUEST)) == _EXPECTED_EVENTS
+    assert f"{path}#4" not in received
+    assert received[f"{path}#3"]["max_completion_tokens"] == 512
+
+
+def test_openai_request_error_carries_the_providers_reason(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    base_url, _ = server
+    provider = OpenAiCompatibleProvider("gpt-nope", base_url=f"{base_url}/missing/v1")
+
+    with pytest.raises(ProviderRequestError, match="does not exist"):
+        list(provider.stream_turn(_REQUEST))

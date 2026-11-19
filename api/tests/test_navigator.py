@@ -28,7 +28,7 @@ from shirube.domain.chat import (
     TurnRequest,
 )
 from shirube.domain.connection import DatabaseKind
-from shirube.domain.errors import ConnectionFailedError
+from shirube.domain.errors import ConnectionFailedError, ProviderRequestError
 from shirube.domain.schema import (
     Column,
     ObjectKind,
@@ -397,6 +397,47 @@ def test_provider_failure_yields_a_navigator_error() -> None:
 
     assert len(events) == 1
     assert isinstance(events[0], NavigatorError)
+
+
+class ExplainedFailureProvider:
+    """Rejects the turn with the provider's own reason, as the adapters do for an API error."""
+
+    def stream_turn(self, request: TurnRequest) -> Iterator[ProviderEvent]:
+        raise ProviderRequestError("The AI provider returned an error: model `gpt-nope` not found")
+        yield  # pragma: no cover  (makes this a generator function)
+
+
+def test_provider_error_reason_is_shown_to_the_user() -> None:
+    provider = ExplainedFailureProvider()
+    navigator = NavigatorService(FakeSchemaService(), provider)  # type: ignore[arg-type]
+
+    events = list(navigator.ask("p1", [ChatMessage(ChatRole.USER, "hi")]))
+
+    assert events == [
+        NavigatorError("The AI provider returned an error: model `gpt-nope` not found")
+    ]
+
+
+def test_an_answer_cut_off_at_the_output_cap_is_reported() -> None:
+    provider = FakeProvider([[TextDelta("The store ta"), TurnComplete("max_tokens")]])
+    navigator = _navigator(provider)
+
+    events = _ask(navigator)
+
+    assert NavigatorTextDelta("The store ta") in events
+    assert isinstance(events[-1], NavigatorError)
+    assert "output token limit" in events[-1].message
+
+
+def test_a_tool_call_cut_off_at_the_output_cap_is_not_run() -> None:
+    # Truncated arguments can't be trusted, so the call is dropped rather than dispatched.
+    provider = FakeProvider([[ToolUse("t1", "search_objects", {}), TurnComplete("max_tokens")]])
+    navigator = _navigator(provider)
+
+    events = _ask(navigator)
+
+    assert len(provider.requests) == 1
+    assert isinstance(events[-1], NavigatorError)
 
 
 # --- context-window budgeting --------------------------------------------------------

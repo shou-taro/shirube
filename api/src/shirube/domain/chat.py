@@ -155,7 +155,9 @@ class TurnComplete:
 
     Attributes:
         stop_reason: Why the turn ended — ``tool_use`` means the model wants its tool calls
-            run and the loop should continue; anything else (e.g. ``end_turn``) ends it.
+            run and the loop should continue; ``max_tokens`` means the model hit its output
+            cap before finishing, so the answer (or a tool call) is cut short; anything else
+            (e.g. ``end_turn``) ends the turn normally.
         usage: Token usage for the turn, if the provider reported it.
     """
 

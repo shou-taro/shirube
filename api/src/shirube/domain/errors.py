@@ -164,3 +164,25 @@ class ProviderCheckError(ShirubeError):
 
     status_code = 400
     detail = "The AI provider could not be reached."
+
+
+class ProviderRequestError(ShirubeError):
+    """Raised when the AI provider rejects or fails a navigator turn.
+
+    Carries the provider's own explanation (for example an unsupported parameter, an unknown
+    model or an exhausted quota), so the navigator can show the user why their question
+    failed instead of a generic "the request failed".
+    """
+
+    status_code = 502
+    detail = "The AI provider could not answer the request."
+
+
+def provider_error_reason(exc: Exception) -> str:
+    """The provider's own explanation from an API error body, or the error's text."""
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        error = body.get("error")
+        if isinstance(error, dict) and isinstance(error.get("message"), str):
+            return str(error["message"])
+    return str(exc)

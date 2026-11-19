@@ -309,6 +309,7 @@ class NavigatorService:
 
             text_parts: list[str] = []
             calls: list[ToolCall] = []
+            stop_reason = "end_turn"
             try:
                 for event in self._provider.stream_turn(
                     TurnRequest(
@@ -325,10 +326,24 @@ class NavigatorService:
                         yield NavigatorToolCall(event.name)
                     elif isinstance(event, TurnComplete):
                         usage = _add_usage(usage, event.usage)
+                        stop_reason = event.stop_reason
+            except ShirubeError as exc:
+                # The provider answered, but with an error it explained — show its reason.
+                yield NavigatorError(exc.detail)
+                return
             except Exception:
                 # A provider or network failure (unreachable endpoint, auth error, timeout)
                 # ends the turn cleanly rather than crashing the stream mid-answer.
                 yield NavigatorError("The AI provider could not be reached, or the request failed.")
+                return
+
+            if stop_reason == "max_tokens":
+                # Cut off mid-answer — or mid tool call, whose arguments can't be trusted — so
+                # say so rather than passing a truncated reply off as complete.
+                yield NavigatorError(
+                    "The model reached its output token limit before finishing its answer. "
+                    "Set a larger context window for the model, or ask a narrower question."
+                )
                 return
 
             messages.append(
