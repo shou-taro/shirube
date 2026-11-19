@@ -1,0 +1,316 @@
+"""Contract tests: the AI adapters driven through the real ``anthropic``/``openai`` SDKs.
+
+``test_ai_adapters`` exercises the translation with fake SDK objects, and the live Ollama
+test is skipped unless an endpoint is configured — so neither catches an SDK release that
+changes how a request is sent or a stream is parsed (the streaming helpers, request
+options, exception types). These tests serve hand-written, wire-format responses from a
+local HTTP server and let the real SDK do the rest.
+
+What they do **not** prove is compatibility with the real APIs: the canned responses are
+fixed, so a change on the provider's side would go unnoticed here. They guard the
+adapter-to-SDK seam, chiefly across SDK upgrades.
+"""
+
+from __future__ import annotations
+
+import json
+import threading
+from collections.abc import Iterator
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any
+
+import pytest
+
+from shirube.adapters.ai.anthropic_provider import AnthropicProvider
+from shirube.adapters.ai.openai_provider import OpenAiCompatibleProvider
+from shirube.domain.chat import (
+    ChatRole,
+    TextDelta,
+    TokenUsage,
+    ToolCall,
+    ToolDefinition,
+    ToolUse,
+    TurnComplete,
+    TurnMessage,
+    TurnRequest,
+)
+from shirube.domain.errors import ProviderCheckError
+
+_REQUEST = TurnRequest(
+    system="You are the navigator.",
+    messages=(
+        TurnMessage(ChatRole.USER, "Where does store live?"),
+        TurnMessage(
+            ChatRole.ASSISTANT,
+            "Let me look.",
+            tool_calls=(ToolCall("c1", "search_objects", {"query": "store"}),),
+        ),
+        TurnMessage(ChatRole.TOOL, '{"results": []}', tool_call_id="c1"),
+    ),
+    tools=(
+        ToolDefinition(
+            "search_objects",
+            "Find objects.",
+            {"type": "object", "properties": {"query": {"type": "string"}}},
+        ),
+    ),
+)
+
+# One turn that streams text, then a tool call whose arguments arrive in fragments.
+_EXPECTED_EVENTS = [
+    TextDelta("Let me "),
+    TextDelta("check."),
+    ToolUse("call_1", "search_objects", {"query": "store"}),
+    TurnComplete("tool_use", TokenUsage(input_tokens=42, output_tokens=17)),
+]
+
+
+def _sse(events: list[tuple[str | None, Any]]) -> bytes:
+    out = []
+    for name, data in events:
+        if name:
+            out.append(f"event: {name}\n")
+        payload = data if isinstance(data, str) else json.dumps(data)
+        out.append(f"data: {payload}\n\n")
+    return "".join(out).encode()
+
+
+def _anthropic_block(event: str, index: int, **fields: Any) -> tuple[str, dict[str, Any]]:
+    return event, {"type": event, "index": index, **fields}
+
+
+_ANTHROPIC_STREAM = _sse(
+    [
+        (
+            "message_start",
+            {
+                "type": "message_start",
+                "message": {
+                    "id": "msg_1",
+                    "type": "message",
+                    "role": "assistant",
+                    "model": "claude-test",
+                    "content": [],
+                    "stop_reason": None,
+                    "stop_sequence": None,
+                    "usage": {"input_tokens": 42, "output_tokens": 1},
+                },
+            },
+        ),
+        _anthropic_block("content_block_start", 0, content_block={"type": "text", "text": ""}),
+        _anthropic_block("content_block_delta", 0, delta={"type": "text_delta", "text": "Let me "}),
+        _anthropic_block("content_block_delta", 0, delta={"type": "text_delta", "text": "check."}),
+        _anthropic_block("content_block_stop", 0),
+        _anthropic_block(
+            "content_block_start",
+            1,
+            content_block={
+                "type": "tool_use",
+                "id": "call_1",
+                "name": "search_objects",
+                "input": {},
+            },
+        ),
+        _anthropic_block(
+            "content_block_delta",
+            1,
+            delta={"type": "input_json_delta", "partial_json": '{"query": '},
+        ),
+        _anthropic_block(
+            "content_block_delta",
+            1,
+            delta={"type": "input_json_delta", "partial_json": '"store"}'},
+        ),
+        _anthropic_block("content_block_stop", 1),
+        (
+            "message_delta",
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": "tool_use", "stop_sequence": None},
+                "usage": {"output_tokens": 17},
+            },
+        ),
+        ("message_stop", {"type": "message_stop"}),
+    ]
+)
+
+
+def _openai_chunk(
+    delta: dict[str, Any] | None = None,
+    finish_reason: str | None = None,
+    usage: dict[str, int] | None = None,
+) -> tuple[None, dict[str, Any]]:
+    choices = (
+        [] if delta is None else [{"index": 0, "delta": delta, "finish_reason": finish_reason}]
+    )
+    chunk = {
+        "id": "chatcmpl-1",
+        "object": "chat.completion.chunk",
+        "created": 0,
+        "model": "llama3.1",
+        "choices": choices,
+        "usage": usage,
+    }
+    return None, chunk
+
+
+def _openai_tool_delta(**function: str) -> dict[str, Any]:
+    call: dict[str, Any] = {"index": 0, "function": function}
+    if "name" in function:
+        call.update(id="call_1", type="function")
+    return {"tool_calls": [call]}
+
+
+_OPENAI_STREAM = _sse(
+    [
+        _openai_chunk({"role": "assistant", "content": "Let me "}),
+        _openai_chunk({"content": "check."}),
+        _openai_chunk(_openai_tool_delta(name="search_objects", arguments='{"query')),
+        _openai_chunk(_openai_tool_delta(arguments='": "store"}')),
+        _openai_chunk({}, finish_reason="tool_calls"),
+        _openai_chunk(usage={"prompt_tokens": 42, "completion_tokens": 17, "total_tokens": 59}),
+        (None, "[DONE]"),
+    ]
+)
+
+_ANTHROPIC_MODELS = {
+    "data": [
+        {"id": m, "type": "model", "display_name": m, "created_at": "2026-01-01T00:00:00Z"}
+        for m in ("claude-a", "claude-b")
+    ],
+    "has_more": False,
+    "first_id": "claude-a",
+    "last_id": "claude-b",
+}
+_OPENAI_MODELS = {
+    "object": "list",
+    "data": [{"id": "llama3.1", "object": "model", "created": 0, "owned_by": "local"}],
+}
+_UNAUTHORIZED = {
+    "type": "error",
+    "error": {"type": "authentication_error", "message": "invalid api key"},
+}
+
+# Paths below the server root: the Anthropic SDK appends ``/v1/...`` to its base URL, the
+# OpenAI one is given ``/openai/v1`` as its base. ``/rejected`` answers everything with 401.
+_GET_ROUTES: dict[str, dict[str, Any]] = {
+    "/v1/models": _ANTHROPIC_MODELS,
+    "/openai/v1/models": _OPENAI_MODELS,
+}
+_STREAM_ROUTES = {
+    "/v1/messages": _ANTHROPIC_STREAM,
+    "/openai/v1/chat/completions": _OPENAI_STREAM,
+}
+
+
+class _FakeProvider(BaseHTTPRequestHandler):
+    requests: dict[str, dict[str, Any]]
+
+    def log_message(self, format: str, *args: Any) -> None:
+        pass
+
+    def _reply(self, status: int, body: bytes, content_type: str = "application/json") -> None:
+        self.send_response(status)
+        self.send_header("content-type", content_type)
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self) -> None:  # noqa: N802 — http.server's naming
+        if self.path.startswith("/rejected"):
+            self._reply(401, json.dumps(_UNAUTHORIZED).encode())
+        elif self.path in _GET_ROUTES:
+            self._reply(200, json.dumps(_GET_ROUTES[self.path]).encode())
+        else:
+            self._reply(404, b"{}")
+
+    def do_POST(self) -> None:  # noqa: N802 — http.server's naming
+        body = self.rfile.read(int(self.headers["content-length"]))
+        self.requests[self.path] = json.loads(body)
+        if self.path in _STREAM_ROUTES:
+            self._reply(200, _STREAM_ROUTES[self.path], "text/event-stream")
+        else:
+            self._reply(404, b"{}")
+
+
+@pytest.fixture
+def server() -> Iterator[tuple[str, dict[str, dict[str, Any]]]]:
+    """A local fake provider: yields its base URL and the request bodies it received."""
+    received: dict[str, dict[str, Any]] = {}
+    handler = type("Handler", (_FakeProvider,), {"requests": received})
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{httpd.server_port}", received
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+# --- Anthropic -----------------------------------------------------------------------
+
+
+def test_anthropic_streams_a_turn_through_the_sdk(server: tuple[str, dict[str, Any]]) -> None:
+    base_url, received = server
+    provider = AnthropicProvider("claude-test", api_key="k", base_url=base_url)
+
+    assert list(provider.stream_turn(_REQUEST)) == _EXPECTED_EVENTS
+
+    sent = received["/v1/messages"]
+    assert sent["stream"] is True
+    assert sent["model"] == "claude-test"
+    assert sent["system"] == "You are the navigator."
+    assert [tool["name"] for tool in sent["tools"]] == ["search_objects"]
+    assert [m["role"] for m in sent["messages"]] == ["user", "assistant", "user"]
+
+
+def test_anthropic_lists_models_through_the_sdk(server: tuple[str, dict[str, Any]]) -> None:
+    base_url, _ = server
+    provider = AnthropicProvider("claude-test", api_key="k", base_url=base_url)
+
+    assert provider.list_models() == ["claude-a", "claude-b"]
+
+
+def test_anthropic_rejected_key_becomes_a_check_error(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    base_url, _ = server
+    provider = AnthropicProvider("claude-test", api_key="bad", base_url=f"{base_url}/rejected")
+
+    with pytest.raises(ProviderCheckError, match="rejected the API key"):
+        provider.list_models()
+
+
+# --- OpenAI-compatible ---------------------------------------------------------------
+
+
+def test_openai_streams_a_turn_through_the_sdk(server: tuple[str, dict[str, Any]]) -> None:
+    base_url, received = server
+    provider = OpenAiCompatibleProvider(
+        "llama3.1", base_url=f"{base_url}/openai/v1", max_tokens=512
+    )
+
+    assert list(provider.stream_turn(_REQUEST)) == _EXPECTED_EVENTS
+
+    sent = received["/openai/v1/chat/completions"]
+    assert sent["stream"] is True
+    assert sent["stream_options"] == {"include_usage": True}
+    assert sent["max_tokens"] == 512
+    assert [tool["function"]["name"] for tool in sent["tools"]] == ["search_objects"]
+    assert [m["role"] for m in sent["messages"]] == ["system", "user", "assistant", "tool"]
+
+
+def test_openai_lists_models_through_the_sdk(server: tuple[str, dict[str, Any]]) -> None:
+    base_url, _ = server
+    provider = OpenAiCompatibleProvider("llama3.1", base_url=f"{base_url}/openai/v1")
+
+    assert provider.list_models() == ["llama3.1"]
+
+
+def test_openai_rejected_key_becomes_a_check_error(server: tuple[str, dict[str, Any]]) -> None:
+    base_url, _ = server
+    provider = OpenAiCompatibleProvider("llama3.1", base_url=f"{base_url}/rejected/v1")
+
+    with pytest.raises(ProviderCheckError, match="rejected the API key"):
+        provider.list_models()
