@@ -204,6 +204,10 @@ _MODEL_NOT_FOUND = {
         "code": "model_not_found",
     }
 }
+_ANTHROPIC_INVALID = {
+    "type": "error",
+    "error": {"type": "invalid_request_error", "message": "model: claude-nope not found"},
+}
 _UNAUTHORIZED = {
     "type": "error",
     "error": {"type": "authentication_error", "message": "invalid api key"},
@@ -212,8 +216,9 @@ _UNAUTHORIZED = {
 # Paths below the server root: the Anthropic SDK appends ``/v1/...`` to its base URL, the
 # OpenAI one is given ``/openai/v1`` as its base. ``/rejected`` answers everything with 401;
 # ``/strict`` behaves like a reasoning model, refusing ``max_tokens``; ``/missing`` answers a
-# completion with 404 model-not-found. Every completion body is also kept under
-# ``<path>#<n>`` (counting from 1) so a retried request can be inspected.
+# completion with 404 model-not-found, and ``/invalid`` a Messages call with 400. Every POST
+# body is also kept under ``<path>#<n>`` (counting from 1) so a retried request can be
+# inspected.
 _GET_ROUTES: dict[str, dict[str, Any]] = {
     "/v1/models": _ANTHROPIC_MODELS,
     "/openai/v1/models": _OPENAI_MODELS,
@@ -255,6 +260,8 @@ class _FakeProvider(BaseHTTPRequestHandler):
                 self._reply(400, json.dumps(_UNSUPPORTED_MAX_TOKENS).encode())
             else:
                 self._reply(200, _OPENAI_STREAM, "text/event-stream")
+        elif self.path == "/invalid/v1/messages":
+            self._reply(400, json.dumps(_ANTHROPIC_INVALID).encode())
         elif self.path == "/missing/v1/chat/completions":
             self._reply(404, json.dumps(_MODEL_NOT_FOUND).encode())
         elif self.path in _STREAM_ROUTES:
@@ -310,6 +317,18 @@ def test_anthropic_rejected_key_becomes_a_check_error(
 
     with pytest.raises(ProviderCheckError, match="rejected the API key"):
         provider.list_models()
+
+
+def test_anthropic_request_error_carries_the_providers_reason(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    base_url, _ = server
+    provider = AnthropicProvider("claude-nope", api_key="k", base_url=f"{base_url}/invalid")
+
+    with pytest.raises(ProviderRequestError) as caught:
+        list(provider.stream_turn(_REQUEST))
+
+    assert caught.value.detail == "The AI provider returned an error: model: claude-nope not found"
 
 
 # --- OpenAI-compatible ---------------------------------------------------------------
@@ -372,5 +391,11 @@ def test_openai_request_error_carries_the_providers_reason(
     base_url, _ = server
     provider = OpenAiCompatibleProvider("gpt-nope", base_url=f"{base_url}/missing/v1")
 
-    with pytest.raises(ProviderRequestError, match="does not exist"):
+    with pytest.raises(ProviderRequestError) as caught:
         list(provider.stream_turn(_REQUEST))
+
+    # Only the provider's message, not the SDK's "Error code: 404 - {...}" wrapping.
+    assert caught.value.detail == (
+        "The AI provider returned an error: "
+        "The model `gpt-nope` does not exist or you do not have access to it."
+    )

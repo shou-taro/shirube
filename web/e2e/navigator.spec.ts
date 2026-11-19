@@ -16,7 +16,7 @@ import { connect } from './helpers'
  * (covered in the unit tests) does not gate the send.
  */
 
-test('configures a provider, then reports that it could not be reached', async ({ page }) => {
+test('configures a provider, then reports the provider error', async ({ page }) => {
   await connect(page)
 
   const pane = page.getByRole('complementary')
@@ -52,9 +52,10 @@ test('configures a provider, then reports that it could not be reached', async (
   await pane.getByRole('button', { name: 'Send' }).click()
 
   // The question shows immediately, and the stub (no real model) surfaces as an error —
-  // the whole path ran, only the model was absent. (The SDK retries, so allow time.)
+  // the whole path ran, only the model was absent. The provider's own reason reaches the
+  // pane, not a generic failure. (The SDK retries, so allow time.)
   await expect(pane.getByText('Which table holds books?')).toBeVisible()
-  await expect(pane.getByText(/could not be reached|request failed/i)).toBeVisible({
+  await expect(pane.getByText(/returned an error: no model is served here/i)).toBeVisible({
     timeout: 20_000,
   })
 })
@@ -71,7 +72,7 @@ test('keeps the conversation across a reload and clears it on demand', async ({ 
   await pane.getByRole('button', { name: 'Send' }).click()
   await expect(pane.getByText('A remembered question')).toBeVisible()
   // Let the turn settle (error arrives) so it is persisted.
-  await expect(pane.getByText(/could not be reached|request failed/i)).toBeVisible({
+  await expect(pane.getByText(/no model is served here/i)).toBeVisible({
     timeout: 20_000,
   })
 

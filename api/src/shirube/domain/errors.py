@@ -179,10 +179,15 @@ class ProviderRequestError(ShirubeError):
 
 
 def provider_error_reason(exc: Exception) -> str:
-    """The provider's own explanation from an API error body, or the error's text."""
+    """The provider's own explanation from an API error body, or the error's text.
+
+    The SDKs keep the body in different shapes: ``anthropic`` keeps the whole
+    ``{"type": "error", "error": {"message": ...}}``, while ``openai`` unwraps it to the inner
+    ``{"message": ...}``. Both are read; anything else falls back to the error's text.
+    """
     body = getattr(exc, "body", None)
     if isinstance(body, dict):
-        error = body.get("error")
+        error = body.get("error", body)
         if isinstance(error, dict) and isinstance(error.get("message"), str):
             return str(error["message"])
     return str(exc)
