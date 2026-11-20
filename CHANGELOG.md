@@ -10,11 +10,13 @@ may still change between releases).
 
 ### Fixed
 
-- **OpenAI reasoning models (the o-series and GPT-5 family) now work in the navigator.**
-  The output cap was sent as `max_tokens`, which those models reject, so every question
-  failed. The OpenAI platform is now sent `max_completion_tokens` (and left uncapped, since
-  a reasoning model spends its hidden reasoning from the same allowance); another
-  OpenAI-compatible server that refuses `max_tokens` is retried with the newer name.
+- **The output cap is now sent under the name OpenAI reasoning models accept.** It was sent
+  as `max_tokens`, which the o-series and GPT-5 family reject. The OpenAI platform is now
+  sent `max_completion_tokens` (and left uncapped, since a reasoning model spends its hidden
+  reasoning from the same allowance); another OpenAI-compatible server that refuses
+  `max_tokens` is retried with the newer name. This alone does not make every reasoning
+  model usable: the newest ones also refuse tools alongside reasoning on the
+  chat-completions API, which the navigator needs, and now say so in the navigator.
 - **An answer cut off at the output token limit is now reported** instead of passing off a
   truncated — or empty — reply as complete.
 - **A provider error now says why.** When the AI provider rejects a question (an unknown
