@@ -206,7 +206,7 @@ describe('SettingsDialog — AI provider', () => {
 
     // Defaults to the Claude preset with its recommended model; no Remove action yet.
     expect(screen.getByLabelText('settings.aiProviderLabel')).toHaveValue('claude')
-    expect(screen.getByLabelText('settings.aiModel')).toHaveValue('claude-opus-4-8')
+    expect(screen.getByLabelText('settings.aiModel')).toHaveValue('claude-opus-5-5')
     expect(screen.queryByRole('button', { name: 'settings.aiRemove' })).not.toBeInTheDocument()
   })
 

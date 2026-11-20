@@ -339,6 +339,12 @@ class NavigatorService:
                 yield NavigatorError("The AI provider could not be reached, or the request failed.")
                 return
 
+            if stop_reason == "refusal":
+                # A safety decline: whatever streamed before it is not an answer to rely on.
+                yield NavigatorError(
+                    "The model declined to answer this question. Try rephrasing it."
+                )
+                return
             if stop_reason == "max_tokens":
                 # Cut off mid-answer — or mid tool call, whose arguments can't be trusted — so
                 # say so rather than passing a truncated reply off as complete.

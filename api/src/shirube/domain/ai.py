@@ -32,7 +32,7 @@ class AiProviderConfig:
 
     Attributes:
         kind: Which adapter to use (Anthropic-native or OpenAI-compatible).
-        model: The model name to request (e.g. ``claude-opus-4-8``, ``gpt-4o``,
+        model: The model name to request (e.g. ``claude-opus-5-5``, ``gpt-4o``,
             ``llama3.1``).
         base_url: Where to reach the API. Required for an OpenAI-compatible provider —
             there is no single default endpoint — and optional for Anthropic, whose adapter

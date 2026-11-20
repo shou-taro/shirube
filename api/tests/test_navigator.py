@@ -437,6 +437,15 @@ def test_provider_error_reason_is_shown_to_the_user() -> None:
     ]
 
 
+def test_a_refusal_is_reported_not_passed_off_as_an_answer() -> None:
+    provider = FakeProvider([[TextDelta("I"), TurnComplete("refusal")]])
+
+    events = _ask(_navigator(provider))
+
+    assert isinstance(events[-1], NavigatorError)
+    assert "declined" in events[-1].message
+
+
 def test_an_answer_cut_off_at_the_output_cap_is_reported() -> None:
     provider = FakeProvider([[TextDelta("The store ta"), TurnComplete("max_tokens")]])
     navigator = _navigator(provider)

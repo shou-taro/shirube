@@ -160,8 +160,9 @@ class TurnComplete:
     Attributes:
         stop_reason: Why the turn ended — ``tool_use`` means the model wants its tool calls
             run and the loop should continue; ``max_tokens`` means the model hit its output
-            cap before finishing, so the answer (or a tool call) is cut short; anything else
-            (e.g. ``end_turn``) ends the turn normally.
+            cap before finishing, so the answer (or a tool call) is cut short; ``refusal``
+            means the model declined to answer; anything else (e.g. ``end_turn``) ends the
+            turn normally.
         usage: Token usage for the turn, if the provider reported it.
         provider_state: Anything the provider needs back on the next turn to continue from
             this one — e.g. a reasoning model's encrypted reasoning, so it keeps its train of

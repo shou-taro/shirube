@@ -8,7 +8,21 @@ may still change between releases).
 
 ## [Unreleased]
 
+### Changed
+
+- **Claude Opus 5.5 is now the recommended Claude model.** A new Claude setup starts on
+  `claude-opus-5-5`, and a blank model falls back to it. A model you already chose is kept.
+- **Claude keeps its train of thought across look-ups.** Current Claude models think before
+  answering. When a step of an answer included thinking, that step is now sent back to
+  Claude exactly as it came, instead of being rebuilt without the thinking. The thinking is
+  never shown or saved.
+- **Claude has more room to answer.** Its output limit per step rose from 4,096 to 16,000
+  tokens, since thinking counts toward it. Only tokens actually generated are billed.
+
 ### Fixed
+
+- **A question the model declines is now reported as such** instead of ending on a partial
+  or empty answer.
 
 - **OpenAI reasoning models now work in the navigator.** The newest ones (such as
   `gpt-5.6-luna` and `gpt-6-luna`) refuse tools alongside reasoning on the chat-completions

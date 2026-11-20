@@ -90,7 +90,9 @@ def _targets() -> list[_Target | None]:
         targets.append(None)
 
     if key := env("SHIRUBE_TEST_ANTHROPIC_API_KEY"):
-        models = _models("SHIRUBE_TEST_ANTHROPIC_MODELS", "claude-haiku-5-5,claude-opus-4-8")
+        models = _models(
+            "SHIRUBE_TEST_ANTHROPIC_MODELS", "claude-opus-5-5,claude-haiku-5-5,claude-opus-4-8"
+        )
         targets += [
             _Target(f"anthropic:{model}", AiProviderConfig(AiProviderKind.ANTHROPIC, model), key)
             for model in models

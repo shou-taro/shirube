@@ -54,8 +54,8 @@ export const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
   claude: {
     kind: 'anthropic',
     labelKey: 'settings.aiPresetClaude',
-    modelDefault: 'claude-opus-4-8',
-    modelPlaceholder: 'claude-opus-4-8',
+    modelDefault: 'claude-opus-5-5',
+    modelPlaceholder: 'claude-opus-5-5',
     baseUrlDefault: '',
     showBaseUrl: false,
     key: 'required',
