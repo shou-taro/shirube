@@ -87,7 +87,7 @@ strict = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "integration: needs a real PostgreSQL; set SHIRUBE_TEST_DATABASE_URL to run (skipped otherwise)",
+    "integration: needs real infrastructure (a PostgreSQL or an AI provider); skipped unless configured",
 ]
 
 [tool.coverage.run]

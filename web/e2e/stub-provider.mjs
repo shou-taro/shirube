@@ -2,7 +2,7 @@
 //
 // It answers the reachability check the settings run before saving — GET /v1/models — so a
 // provider pointed at it can be configured, but it serves no real model: a chat completion
-// fails, which the navigator surfaces as an error in the conversation. That exercises the
+// fails with a reason, which the navigator surfaces as an error in the conversation. That exercises the
 // whole stack (settings check, save, chat route, tool loop, provider adapter, SSE, pane)
 // right up to where a real model would answer, without needing one in CI.
 import { createServer } from 'node:http'

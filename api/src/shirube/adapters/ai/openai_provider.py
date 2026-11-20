@@ -12,8 +12,9 @@ call.
 import json
 from collections.abc import Iterable, Iterator
 from typing import Any
+from urllib.parse import urlparse
 
-from openai import APIConnectionError, APIError, AuthenticationError, OpenAI
+from openai import APIConnectionError, APIError, AuthenticationError, BadRequestError, OpenAI
 
 from shirube.domain.chat import (
     ChatRole,
@@ -25,11 +26,33 @@ from shirube.domain.chat import (
     TurnComplete,
     TurnRequest,
 )
-from shirube.domain.errors import ProviderCheckError
+from shirube.domain.errors import (
+    ProviderCheckError,
+    ProviderRequestError,
+    provider_error_reason,
+)
 
 # The openai SDK requires a non-empty API key even for a local, keyless endpoint; this
 # placeholder is sent when the provider needs no key (e.g. Ollama).
 _NO_KEY_PLACEHOLDER = "not-needed"  # nosec B105  (a placeholder, not a real credential)
+
+# The OpenAI platform's own host. Its reasoning models (the o-series and the GPT-5 family)
+# reject the legacy ``max_tokens`` and accept only ``max_completion_tokens``, which every
+# current OpenAI model understands; other OpenAI-compatible servers (Ollama, many gateways)
+# only know ``max_tokens``.
+_OPENAI_PLATFORM_HOST = "api.openai.com"
+_LEGACY_TOKEN_PARAM = "max_tokens"  # nosec B105  (a parameter name, not a credential)
+_TOKEN_PARAM = "max_completion_tokens"  # nosec B105  (a parameter name, not a credential)
+
+
+def is_openai_platform(base_url: str | None) -> bool:
+    """Whether ``base_url`` points at the OpenAI platform itself rather than a lookalike."""
+    return bool(base_url) and urlparse(base_url).hostname == _OPENAI_PLATFORM_HOST
+
+
+def _rejects_legacy_token_param(exc: BadRequestError) -> bool:
+    """Whether a 400 is the endpoint refusing ``max_tokens`` in favour of the newer name."""
+    return getattr(exc, "param", None) == _LEGACY_TOKEN_PARAM or _TOKEN_PARAM in str(exc)
 
 
 def to_openai_messages(request: TurnRequest) -> list[dict[str, Any]]:
@@ -72,6 +95,11 @@ def to_openai_tools(tools: Iterable[ToolDefinition]) -> list[dict[str, Any]]:
     ]
 
 
+# OpenAI finish reasons mapped onto the neutral stop reasons; ``length`` is the output cap
+# being hit, which a reasoning model can do before writing any visible text at all.
+_STOP_REASONS = {"tool_calls": "tool_use", "length": "max_tokens"}
+
+
 def parse_openai_stream(chunks: Iterable[Any]) -> Iterator[ProviderEvent]:
     """Turn an OpenAI streamed completion into neutral provider events.
 
@@ -103,7 +131,7 @@ def parse_openai_stream(chunks: Iterable[Any]) -> Iterator[ProviderEvent]:
                 if call.function and call.function.arguments:
                     fragment["args"] += call.function.arguments
             if choice.finish_reason:
-                stop_reason = "tool_use" if choice.finish_reason == "tool_calls" else "end_turn"
+                stop_reason = _STOP_REASONS.get(choice.finish_reason, "end_turn")
 
     for index in sorted(fragments):
         fragment = fragments[index]
@@ -131,18 +159,50 @@ class OpenAiCompatibleProvider:
     ) -> None:
         self._model = model
         self._max_tokens = max_tokens
+        # The name the output cap is sent under: the platform's current one for OpenAI, the
+        # widely supported legacy one elsewhere. A server that turns out to reject the legacy
+        # name gets the newer one from then on (see :meth:`_open_stream`).
+        self._token_param = _TOKEN_PARAM if is_openai_platform(base_url) else _LEGACY_TOKEN_PARAM
         self._client = OpenAI(base_url=base_url, api_key=api_key or _NO_KEY_PLACEHOLDER)
 
     def stream_turn(self, request: TurnRequest) -> Iterator[ProviderEvent]:
-        """Stream one turn via the chat-completions API, yielding neutral events."""
+        """Stream one turn via the chat-completions API, yielding neutral events.
+
+        Raises:
+            ProviderRequestError: if the endpoint rejects or fails the request, carrying the
+                provider's own explanation.
+        """
+        try:
+            yield from parse_openai_stream(self._open_stream(request))
+        except (APIConnectionError, AuthenticationError):
+            # Not the provider's verdict on this request: leave these to the generic message.
+            raise
+        except APIError as exc:
+            raise ProviderRequestError(
+                f"The AI provider returned an error: {provider_error_reason(exc)}"
+            ) from exc
+
+    def _open_stream(self, request: TurnRequest) -> Any:
+        """Start the streamed completion, adapting the output cap's name if it is refused."""
+        try:
+            return self._create(request)
+        except BadRequestError as exc:
+            # A gateway in front of a reasoning model can refuse ``max_tokens`` just as the
+            # platform does; the request is rejected before any output, so retrying is safe.
+            if self._token_param != _LEGACY_TOKEN_PARAM or not _rejects_legacy_token_param(exc):
+                raise
+            self._token_param = _TOKEN_PARAM
+            return self._create(request)
+
+    def _create(self, request: TurnRequest) -> Any:
         # Cap the answer's length when a budget was set, so the prompt plus the reply fit the
         # model's context window; a local runner with a small window relies on this.
         extra: dict[str, Any] = {}
         if self._max_tokens is not None:
-            extra["max_tokens"] = self._max_tokens
+            extra[self._token_param] = self._max_tokens
         # The SDK's typed overloads expect its own TypedDict params; we build plain dicts
         # (valid at the wire level) and translate the neutral turn ourselves.
-        stream = self._client.chat.completions.create(  # type: ignore[call-overload]
+        return self._client.chat.completions.create(  # type: ignore[call-overload]
             model=self._model,
             messages=to_openai_messages(request),
             tools=to_openai_tools(request.tools),
@@ -150,7 +210,6 @@ class OpenAiCompatibleProvider:
             stream_options={"include_usage": True},
             **extra,
         )
-        yield from parse_openai_stream(stream)
 
     def list_models(self) -> list[str]:
         """List the model ids the endpoint offers.

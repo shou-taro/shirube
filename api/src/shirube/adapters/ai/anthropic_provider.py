@@ -21,7 +21,11 @@ from shirube.domain.chat import (
     TurnComplete,
     TurnRequest,
 )
-from shirube.domain.errors import ProviderCheckError
+from shirube.domain.errors import (
+    ProviderCheckError,
+    ProviderRequestError,
+    provider_error_reason,
+)
 
 # The recommended default when the configured model is blank, and the per-turn output cap.
 DEFAULT_MODEL = "claude-opus-4-8"
@@ -80,7 +84,9 @@ def events_from_final_message(final: Any) -> Iterator[ProviderEvent]:
     for block in final.content:
         if block.type == "tool_use":
             yield ToolUse(id=block.id, name=block.name, arguments=dict(block.input))
-    stop_reason = "tool_use" if final.stop_reason == "tool_use" else "end_turn"
+    stop_reason = (
+        final.stop_reason if final.stop_reason in ("tool_use", "max_tokens") else "end_turn"
+    )
     usage = (
         TokenUsage(input_tokens=final.usage.input_tokens, output_tokens=final.usage.output_tokens)
         if final.usage is not None
@@ -100,17 +106,30 @@ class AnthropicProvider:
         self._client = Anthropic(**options)
 
     def stream_turn(self, request: TurnRequest) -> Iterator[ProviderEvent]:
-        """Stream one turn via the Messages API, yielding neutral events."""
-        with self._client.messages.stream(
-            model=self._model,
-            max_tokens=MAX_TOKENS,
-            system=request.system,
-            tools=to_anthropic_tools(request.tools),  # type: ignore[arg-type]
-            messages=to_anthropic_messages(request),  # type: ignore[arg-type]
-        ) as stream:
-            for text in stream.text_stream:
-                yield TextDelta(text)
-            yield from events_from_final_message(stream.get_final_message())
+        """Stream one turn via the Messages API, yielding neutral events.
+
+        Raises:
+            ProviderRequestError: if the API rejects or fails the request, carrying its own
+                explanation.
+        """
+        try:
+            with self._client.messages.stream(
+                model=self._model,
+                max_tokens=MAX_TOKENS,
+                system=request.system,
+                tools=to_anthropic_tools(request.tools),  # type: ignore[arg-type]
+                messages=to_anthropic_messages(request),  # type: ignore[arg-type]
+            ) as stream:
+                for text in stream.text_stream:
+                    yield TextDelta(text)
+                yield from events_from_final_message(stream.get_final_message())
+        except (APIConnectionError, AuthenticationError):
+            # Not the provider's verdict on this request: leave these to the generic message.
+            raise
+        except APIError as exc:
+            raise ProviderRequestError(
+                f"The AI provider returned an error: {provider_error_reason(exc)}"
+            ) from exc
 
     def list_models(self) -> list[str]:
         """List the model ids the account can use.
