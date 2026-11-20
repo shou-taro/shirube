@@ -169,6 +169,59 @@ def test_anthropic_final_message_yields_tool_use_then_complete() -> None:
     ]
 
 
+def test_anthropic_final_message_keeps_a_turn_that_thought_whole() -> None:
+    # Thinking is valid only beside the turn that produced it, so the whole turn — blocks in
+    # order, with only the fields the API reads — rides along to be sent back unchanged.
+    final = SimpleNamespace(
+        content=[
+            SimpleNamespace(type="thinking", thinking="", signature="sig1"),
+            SimpleNamespace(type="text", text="Looking.", citations=None),
+            SimpleNamespace(type="redacted_thinking", data="opaque"),
+            SimpleNamespace(type="tool_use", id="tu1", name="get_object", input={"ref": "s"}),
+        ],
+        stop_reason="tool_use",
+        usage=SimpleNamespace(input_tokens=10, output_tokens=5),
+    )
+
+    *_, complete = events_from_final_message(final)
+
+    assert complete == TurnComplete(
+        "tool_use",
+        TokenUsage(10, 5),
+        provider_state=(
+            {"type": "thinking", "thinking": "", "signature": "sig1"},
+            {"type": "text", "text": "Looking."},
+            {"type": "redacted_thinking", "data": "opaque"},
+            {"type": "tool_use", "id": "tu1", "name": "get_object", "input": {"ref": "s"}},
+        ),
+    )
+
+
+def test_anthropic_final_message_reports_a_refusal() -> None:
+    final = SimpleNamespace(content=[], stop_reason="refusal", usage=None)
+    assert list(events_from_final_message(final)) == [TurnComplete("refusal", TokenUsage())]
+
+
+def test_anthropic_messages_replay_a_turn_that_thought_verbatim() -> None:
+    blocks = (
+        {"type": "thinking", "thinking": "", "signature": "sig1"},
+        {"type": "tool_use", "id": "c1", "name": "search_objects", "input": {"query": "s"}},
+    )
+    request = TurnRequest(
+        system="sys",
+        messages=(
+            TurnMessage(
+                ChatRole.ASSISTANT,
+                "",
+                tool_calls=(ToolCall("c1", "search_objects", {"query": "s"}),),
+                provider_state=blocks,
+            ),
+        ),
+        tools=(),
+    )
+    assert to_anthropic_messages(request) == [{"role": "assistant", "content": list(blocks)}]
+
+
 def test_anthropic_messages_translation() -> None:
     messages = to_anthropic_messages(_REQUEST)
     assert messages[0] == {"role": "user", "content": "Where does store live?"}

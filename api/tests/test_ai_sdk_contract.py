@@ -583,7 +583,48 @@ def test_anthropic_keeps_thinking_out_of_the_answer(server: tuple[str, dict[str,
     base_url, _ = server
     provider = AnthropicProvider("claude-test", api_key="k", base_url=f"{base_url}/claude/thinking")
 
-    assert list(provider.stream_turn(_REQUEST)) == _EXPECTED_EVENTS
+    *relayed, complete = provider.stream_turn(_REQUEST)
+
+    assert relayed == _EXPECTED_EVENTS[:-1]
+    assert isinstance(complete, TurnComplete)
+    assert complete.stop_reason == "tool_use"
+    assert complete.usage == TokenUsage(input_tokens=42, output_tokens=17)
+
+
+def test_anthropic_sends_a_turn_that_thought_back_unchanged(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    base_url, received = server
+    provider = AnthropicProvider("claude-test", api_key="k", base_url=f"{base_url}/claude/thinking")
+    *_, complete = provider.stream_turn(_REQUEST)
+    assert isinstance(complete, TurnComplete)
+
+    follow_up = TurnRequest(
+        system=_REQUEST.system,
+        messages=(
+            _REQUEST.messages[0],
+            TurnMessage(
+                ChatRole.ASSISTANT,
+                "Let me check.",
+                tool_calls=(ToolCall("call_1", "search_objects", {"query": "store"}),),
+                provider_state=complete.provider_state,
+            ),
+            TurnMessage(ChatRole.TOOL, '{"results": []}', tool_call_id="call_1"),
+        ),
+        tools=_REQUEST.tools,
+    )
+    list(provider.stream_turn(follow_up))
+
+    # The thinking block — reasoning and signature as streamed — leads the replayed turn.
+    assert received["/claude/thinking/v1/messages#2"]["messages"][1]["content"] == [
+        {
+            "type": "thinking",
+            "thinking": "The user wants the store table.",
+            "signature": "c2ln",
+        },
+        {"type": "text", "text": "Let me check."},
+        {"type": "tool_use", "id": "call_1", "name": "search_objects", "input": {"query": "store"}},
+    ]
 
 
 def test_anthropic_reports_an_answer_cut_off_at_the_output_cap(

@@ -28,20 +28,32 @@ from shirube.domain.errors import (
 )
 
 # The recommended default when the configured model is blank, and the per-turn output cap.
-DEFAULT_MODEL = "claude-opus-4-8"
-MAX_TOKENS = 4096
+# Current Claude models think before answering, and that thinking counts against the cap
+# even though its text is not returned, so the cap leaves room for it as well as the reply.
+# Only what is generated is billed, so the headroom itself costs nothing.
+DEFAULT_MODEL = "claude-opus-5-5"
+MAX_TOKENS = 16_000
+
+# Content blocks that carry the model's reasoning. A turn that has them is sent back exactly
+# as produced, so the model keeps its train of thought across the tool calls.
+_THINKING_BLOCKS = ("thinking", "redacted_thinking")
 
 
 def to_anthropic_messages(request: TurnRequest) -> list[dict[str, Any]]:
     """Translate a neutral turn into the Anthropic ``messages`` list.
 
-    An assistant turn becomes text and ``tool_use`` blocks; a tool result becomes a user
-    message carrying a ``tool_result`` block keyed by the call it answers.
+    An assistant turn becomes text and ``tool_use`` blocks — or, when it carries its own
+    content blocks in ``provider_state`` (a turn that thought; see
+    :func:`events_from_final_message`), exactly those blocks, unchanged and in order. A tool
+    result becomes a user message carrying a ``tool_result`` block keyed by the call it
+    answers.
     """
     messages: list[dict[str, Any]] = []
     for message in request.messages:
         if message.role is ChatRole.USER:
             messages.append({"role": "user", "content": message.content})
+        elif message.role is ChatRole.ASSISTANT and message.provider_state:
+            messages.append({"role": "assistant", "content": list(message.provider_state)})
         elif message.role is ChatRole.ASSISTANT:
             blocks: list[dict[str, Any]] = []
             if message.content:
@@ -75,24 +87,54 @@ def to_anthropic_tools(tools: Iterable[ToolDefinition]) -> list[dict[str, Any]]:
     ]
 
 
+def _replayable_block(block: Any) -> dict[str, Any] | None:
+    """A content block as it must be sent back: only the fields the API reads from it."""
+    if block.type == "thinking":
+        return {"type": "thinking", "thinking": block.thinking, "signature": block.signature}
+    if block.type == "redacted_thinking":
+        return {"type": "redacted_thinking", "data": block.data}
+    if block.type == "text":
+        return {"type": "text", "text": block.text}
+    if block.type == "tool_use":
+        return {"type": "tool_use", "id": block.id, "name": block.name, "input": block.input}
+    return None
+
+
+def _replay_state(final: Any) -> tuple[dict[str, Any], ...]:
+    """The turn's content to send back verbatim, when it holds reasoning; else nothing.
+
+    A thinking block is valid only alongside the exact turn that produced it, so a turn that
+    thought is kept whole — its blocks, in order — rather than rebuilt from the neutral text
+    and tool calls. A turn without reasoning needs no such care.
+    """
+    if not any(block.type in _THINKING_BLOCKS for block in final.content):
+        return ()
+    blocks = (_replayable_block(block) for block in final.content)
+    return tuple(block for block in blocks if block is not None)
+
+
+# Anthropic stop reasons the loop acts on; anything else (``end_turn``, ``stop_sequence``,
+# ``pause_turn``) ends the turn normally.
+_STOP_REASONS = ("tool_use", "max_tokens", "refusal")
+
+
 def events_from_final_message(final: Any) -> Iterator[ProviderEvent]:
     """Emit the tool calls and completion from a finished Anthropic message.
 
     Text has already been streamed via the SDK's ``text_stream``; this reads the final
-    message for its ``tool_use`` blocks and its stop reason and usage.
+    message for its ``tool_use`` blocks, its stop reason and usage, and — when the model
+    thought — the content to send back with it on the next turn.
     """
     for block in final.content:
         if block.type == "tool_use":
             yield ToolUse(id=block.id, name=block.name, arguments=dict(block.input))
-    stop_reason = (
-        final.stop_reason if final.stop_reason in ("tool_use", "max_tokens") else "end_turn"
-    )
+    stop_reason = final.stop_reason if final.stop_reason in _STOP_REASONS else "end_turn"
     usage = (
         TokenUsage(input_tokens=final.usage.input_tokens, output_tokens=final.usage.output_tokens)
         if final.usage is not None
         else TokenUsage()
     )
-    yield TurnComplete(stop_reason, usage)
+    yield TurnComplete(stop_reason, usage, provider_state=_replay_state(final))
 
 
 class AnthropicProvider:
