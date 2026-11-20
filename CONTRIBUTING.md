@@ -61,6 +61,24 @@ SHIRUBE_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/pagila \
   uv run --directory api pytest -m integration
 ```
 
+The AI navigator has a live test too (`tests/integration/test_live_navigator.py`): it asks a
+real model a question that needs the schema look-up tools, building the provider exactly as
+the app does. Each provider runs only when its variables are set, so pick any of them — the
+module docstring lists them all (OpenAI, Claude, Ollama, and any other OpenAI-compatible
+endpoint). Hosted providers are billed, a few cents a run, so use a key made for testing with
+a spending limit, and keep it out of the repository and your shell history — in a file only
+you can read, sourced for the run:
+
+```bash
+# ~/.config/shirube/live-test.env  (chmod 600)
+SHIRUBE_TEST_OPENAI_API_KEY=...
+SHIRUBE_TEST_ANTHROPIC_API_KEY=...
+# SHIRUBE_TEST_OLLAMA_URL=http://localhost:11434/v1
+
+set -a; . ~/.config/shirube/live-test.env; set +a
+uv run --directory api pytest tests/integration/test_live_navigator.py -v
+```
+
 ### End-to-end (Playwright)
 
 A couple of journeys run through the whole stack — the built SPA served by the backend,

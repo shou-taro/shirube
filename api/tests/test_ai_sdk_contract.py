@@ -1,10 +1,10 @@
 """Contract tests: the AI adapters driven through the real ``anthropic``/``openai`` SDKs.
 
-``test_ai_adapters`` exercises the translation with fake SDK objects, and the live Ollama
-test is skipped unless an endpoint is configured — so neither catches an SDK release that
-changes how a request is sent or a stream is parsed (the streaming helpers, request
-options, exception types). These tests serve hand-written, wire-format responses from a
-local HTTP server and let the real SDK do the rest.
+``test_ai_adapters`` exercises the translation with fake SDK objects, and the live navigator
+test (``integration/test_live_navigator``) is skipped unless a provider is configured — so
+neither catches an SDK release that changes how a request is sent or a stream is parsed (the
+streaming helpers, request options, exception types). These tests serve hand-written,
+wire-format responses from a local HTTP server and let the real SDK do the rest.
 
 What they do **not** prove is compatibility with the real APIs: the canned responses are
 fixed, so a change on the provider's side would go unnoticed here. They guard the
@@ -173,6 +173,53 @@ _OPENAI_STREAM = _sse(
     ]
 )
 
+# How other OpenAI-compatible servers differ from the platform, each on a path the adapter
+# has its own branch for. A local runner or gateway may ignore ``stream_options`` and send no
+# usage chunk; send a tool call whole, in one chunk with its finish reason and without an id;
+# or stop at the output cap (``length``) mid-answer.
+_OPENAI_VARIANTS = {
+    "no-usage": _sse(
+        [
+            _openai_chunk({"role": "assistant", "content": "Let me "}),
+            _openai_chunk({"content": "check."}),
+            _openai_chunk(_openai_tool_delta(name="search_objects", arguments='{"query')),
+            _openai_chunk(_openai_tool_delta(arguments='": "store"}')),
+            _openai_chunk({}, finish_reason="tool_calls"),
+            (None, "[DONE]"),
+        ]
+    ),
+    "whole-call": _sse(
+        [
+            _openai_chunk({"role": "assistant", "content": "Let me "}),
+            _openai_chunk({"content": "check."}),
+            _openai_chunk(
+                {
+                    "tool_calls": [
+                        {
+                            "index": 0,
+                            "type": "function",
+                            "function": {
+                                "name": "search_objects",
+                                "arguments": '{"query": "store"}',
+                            },
+                        }
+                    ]
+                },
+                finish_reason="tool_calls",
+            ),
+            (None, "[DONE]"),
+        ]
+    ),
+    "truncated": _sse(
+        [
+            _openai_chunk({"role": "assistant", "content": "The store table "}),
+            _openai_chunk({}, finish_reason="length"),
+            _openai_chunk(usage={"prompt_tokens": 42, "completion_tokens": 8, "total_tokens": 50}),
+            (None, "[DONE]"),
+        ]
+    ),
+}
+
 _ANTHROPIC_MODELS = {
     "data": [
         {"id": m, "type": "model", "display_name": m, "created_at": "2026-01-01T00:00:00Z"}
@@ -216,7 +263,8 @@ _UNAUTHORIZED = {
 # Paths below the server root: the Anthropic SDK appends ``/v1/...`` to its base URL, the
 # OpenAI one is given ``/openai/v1`` as its base. ``/rejected`` answers everything with 401;
 # ``/strict`` behaves like a reasoning model, refusing ``max_tokens``; ``/missing`` answers a
-# completion with 404 model-not-found, and ``/invalid`` a Messages call with 400. Every POST
+# completion with 404 model-not-found, and ``/invalid`` a Messages call with 400;
+# ``/variant/<name>`` streams one of :data:`_OPENAI_VARIANTS`. Every POST
 # body is also kept under ``<path>#<n>`` (counting from 1) so a retried request can be
 # inspected.
 _GET_ROUTES: dict[str, dict[str, Any]] = {
@@ -260,6 +308,9 @@ class _FakeProvider(BaseHTTPRequestHandler):
                 self._reply(400, json.dumps(_UNSUPPORTED_MAX_TOKENS).encode())
             else:
                 self._reply(200, _OPENAI_STREAM, "text/event-stream")
+        elif self.path.startswith("/variant/"):
+            name = self.path.split("/")[2]
+            self._reply(200, _OPENAI_VARIANTS[name], "text/event-stream")
         elif self.path == "/invalid/v1/messages":
             self._reply(400, json.dumps(_ANTHROPIC_INVALID).encode())
         elif self.path == "/missing/v1/chat/completions":
@@ -399,3 +450,45 @@ def test_openai_request_error_carries_the_providers_reason(
         "The AI provider returned an error: "
         "The model `gpt-nope` does not exist or you do not have access to it."
     )
+
+
+def _variant(base_url: str, name: str) -> OpenAiCompatibleProvider:
+    return OpenAiCompatibleProvider("llama3.1", base_url=f"{base_url}/variant/{name}/v1")
+
+
+def test_openai_tolerates_a_server_that_reports_no_usage(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    # ``stream_options`` ignored: the turn completes with zero usage rather than failing.
+    base_url, _ = server
+
+    assert list(_variant(base_url, "no-usage").stream_turn(_REQUEST)) == [
+        *_EXPECTED_EVENTS[:-1],
+        TurnComplete("tool_use", TokenUsage()),
+    ]
+
+
+def test_openai_reads_a_tool_call_sent_whole_without_an_id(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    # The call arrives in one chunk with its finish reason; lacking an id it gets a stable
+    # one from its index, so the tool result can still be matched back to it.
+    base_url, _ = server
+
+    assert list(_variant(base_url, "whole-call").stream_turn(_REQUEST)) == [
+        TextDelta("Let me "),
+        TextDelta("check."),
+        ToolUse("call_0", "search_objects", {"query": "store"}),
+        TurnComplete("tool_use", TokenUsage()),
+    ]
+
+
+def test_openai_reports_an_answer_cut_off_at_the_output_cap(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    base_url, _ = server
+
+    assert list(_variant(base_url, "truncated").stream_turn(_REQUEST)) == [
+        TextDelta("The store table "),
+        TurnComplete("max_tokens", TokenUsage(input_tokens=42, output_tokens=8)),
+    ]
