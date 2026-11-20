@@ -178,7 +178,8 @@ class AiProvider(Protocol):
     lives in :class:`~shirube.application.navigator.NavigatorService` so it stays
     provider-agnostic. Concrete adapters (a later milestone) translate a :class:`TurnRequest`
     into their SDK's call and yield the provider-neutral events: Anthropic-native for Claude,
-    and one OpenAI-compatible adapter for OpenAI, Ollama and other compatible endpoints.
+    the Responses API for the OpenAI platform, and one chat-completions adapter for Ollama and
+    other OpenAI-compatible endpoints.
     """
 
     def stream_turn(self, request: TurnRequest) -> Iterator[ProviderEvent]:

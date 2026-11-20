@@ -10,6 +10,13 @@ may still change between releases).
 
 ### Fixed
 
+- **OpenAI reasoning models now work in the navigator.** The newest ones (such as
+  `gpt-5.6-luna` and `gpt-6-luna`) refuse tools alongside reasoning on the chat-completions
+  API, and the navigator always needs tools to read the schema. shirube now talks to the
+  OpenAI platform through its Responses API, where they can do both. Their reasoning is
+  carried across the look-ups of one answer, so the model keeps its train of thought; it
+  comes back encrypted and is never stored by OpenAI, shown, or saved. Nothing changes in
+  the settings, and Ollama and other OpenAI-compatible endpoints are unaffected.
 - **The output cap is now sent under the name OpenAI reasoning models accept.** It was sent
   as `max_tokens`, which the o-series and GPT-5 family reject. The OpenAI platform is now
   sent `max_completion_tokens` (and left uncapped, since a reasoning model spends its hidden

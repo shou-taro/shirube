@@ -23,6 +23,7 @@ import pytest
 
 from shirube.adapters.ai.anthropic_provider import AnthropicProvider
 from shirube.adapters.ai.openai_provider import OpenAiCompatibleProvider
+from shirube.adapters.ai.openai_responses_provider import OpenAiResponsesProvider
 from shirube.domain.chat import (
     ChatRole,
     TextDelta,
@@ -290,6 +291,121 @@ _OPENAI_VARIANTS = {
     ),
 }
 
+
+def _response(status: str, output: list[dict[str, Any]], **fields: Any) -> dict[str, Any]:
+    return {
+        "id": "resp_1",
+        "object": "response",
+        "created_at": 0,
+        "model": "gpt-5",
+        "status": status,
+        "output": output,
+        "parallel_tool_calls": True,
+        "tool_choice": "auto",
+        "tools": [],
+        "usage": {
+            "input_tokens": 42,
+            "output_tokens": 17,
+            "total_tokens": 59,
+            "input_tokens_details": {"cached_tokens": 0},
+            "output_tokens_details": {"reasoning_tokens": 9},
+        },
+        **fields,
+    }
+
+
+_REASONING_ITEM = {
+    "type": "reasoning",
+    "id": "rs_1",
+    "summary": [],
+    "encrypted_content": "b3BhcXVl",
+}
+_MESSAGE_ITEM = {
+    "type": "message",
+    "id": "msg_1",
+    "role": "assistant",
+    "status": "completed",
+    "content": [{"type": "output_text", "text": "Let me check.", "annotations": []}],
+}
+_CALL_ITEM = {
+    "type": "function_call",
+    "id": "fc_1",
+    "call_id": "call_1",
+    "name": "search_objects",
+    "arguments": '{"query": "store"}',
+    "status": "completed",
+}
+
+
+def _responses_event(kind: str, n: int, **fields: Any) -> tuple[str, dict[str, Any]]:
+    return kind, {"type": kind, "sequence_number": n, **fields}
+
+
+# A reasoning model's turn on the Responses API: it reasons, says a few words, then calls a
+# tool — the order the platform streams them in.
+_RESPONSES_STREAM = _sse(
+    [
+        _responses_event("response.created", 0, response=_response("in_progress", [])),
+        _responses_event("response.output_item.done", 1, output_index=0, item=_REASONING_ITEM),
+        *(
+            _responses_event(
+                "response.output_text.delta",
+                n,
+                item_id="msg_1",
+                output_index=1,
+                content_index=0,
+                delta=text,
+                logprobs=[],
+            )
+            for n, text in ((2, "Let me "), (3, "check."))
+        ),
+        _responses_event("response.output_item.done", 4, output_index=1, item=_MESSAGE_ITEM),
+        _responses_event(
+            "response.function_call_arguments.delta",
+            5,
+            item_id="fc_1",
+            output_index=2,
+            delta='{"query": "store"}',
+        ),
+        _responses_event("response.output_item.done", 6, output_index=2, item=_CALL_ITEM),
+        _responses_event(
+            "response.completed",
+            7,
+            response=_response("completed", [_REASONING_ITEM, _MESSAGE_ITEM, _CALL_ITEM]),
+        ),
+    ]
+)
+_RESPONSES_TRUNCATED = _sse(
+    [
+        _responses_event(
+            "response.output_text.delta",
+            0,
+            item_id="msg_1",
+            output_index=0,
+            content_index=0,
+            delta="The store table ",
+            logprobs=[],
+        ),
+        _responses_event(
+            "response.incomplete",
+            1,
+            response=_response(
+                "incomplete", [], incomplete_details={"reason": "max_output_tokens"}
+            ),
+        ),
+    ]
+)
+_TOOLS_WITH_REASONING = {
+    "error": {
+        "message": "Function tools with reasoning_effort are not supported for gpt-5 in "
+        "/v1/chat/completions. To use function tools, use /v1/responses or set "
+        "reasoning_effort to 'none'.",
+        "type": "invalid_request_error",
+        "param": "tools",
+        "code": None,
+    }
+}
+
 _ANTHROPIC_MODELS = {
     "data": [
         {"id": m, "type": "model", "display_name": m, "created_at": "2026-01-01T00:00:00Z"}
@@ -333,7 +449,9 @@ _UNAUTHORIZED = {
 # Paths below the server root: the Anthropic SDK appends ``/v1/...`` to its base URL, the
 # OpenAI one is given ``/openai/v1`` as its base. ``/rejected`` answers everything with 401;
 # ``/strict`` behaves like a reasoning model, refusing ``max_tokens``; ``/missing`` answers a
-# completion with 404 model-not-found, and ``/invalid`` a Messages call with 400;
+# completion with 404 model-not-found, ``/invalid`` a Messages call with 400, and
+# ``/refused`` a Responses call with 400; ``/truncated`` streams a Responses answer cut off
+# at the output cap;
 # ``/variant/<name>`` streams one of :data:`_OPENAI_VARIANTS`, ``/claude/<name>`` one of
 # :data:`_ANTHROPIC_VARIANTS`. Every POST
 # body is also kept under ``<path>#<n>`` (counting from 1) so a retried request can be
@@ -345,6 +463,8 @@ _GET_ROUTES: dict[str, dict[str, Any]] = {
 _STREAM_ROUTES = {
     "/v1/messages": _ANTHROPIC_STREAM,
     "/openai/v1/chat/completions": _OPENAI_STREAM,
+    "/openai/v1/responses": _RESPONSES_STREAM,
+    "/truncated/v1/responses": _RESPONSES_TRUNCATED,
 }
 
 
@@ -387,6 +507,8 @@ class _FakeProvider(BaseHTTPRequestHandler):
             self._reply(200, _OPENAI_VARIANTS[name], "text/event-stream")
         elif self.path == "/invalid/v1/messages":
             self._reply(400, json.dumps(_ANTHROPIC_INVALID).encode())
+        elif self.path == "/refused/v1/responses":
+            self._reply(400, json.dumps(_TOOLS_WITH_REASONING).encode())
         elif self.path == "/missing/v1/chat/completions":
             self._reply(404, json.dumps(_MODEL_NOT_FOUND).encode())
         elif self.path in _STREAM_ROUTES:
@@ -588,3 +710,93 @@ def test_openai_reports_an_answer_cut_off_at_the_output_cap(
         TextDelta("The store table "),
         TurnComplete("max_tokens", TokenUsage(input_tokens=42, output_tokens=8)),
     ]
+
+
+# --- OpenAI platform (Responses API) -------------------------------------------------
+
+
+def test_responses_streams_a_turn_and_returns_the_reasoning(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    base_url, received = server
+    provider = OpenAiResponsesProvider("gpt-5", base_url=f"{base_url}/openai/v1", api_key="k")
+
+    events = list(provider.stream_turn(_REQUEST))
+
+    *relayed, complete = events
+    assert relayed == _EXPECTED_EVENTS[:-1]
+    assert isinstance(complete, TurnComplete)
+    assert complete.stop_reason == "tool_use"
+    assert complete.usage == TokenUsage(input_tokens=42, output_tokens=17)
+    # The reasoning comes back whole, encrypted content included, ready to send back.
+    assert [item["encrypted_content"] for item in complete.provider_state] == ["b3BhcXVl"]
+
+    sent = received["/openai/v1/responses"]
+    assert sent["stream"] is True
+    assert sent["store"] is False
+    assert sent["include"] == ["reasoning.encrypted_content"]
+    assert sent["instructions"] == "You are the navigator."
+    assert [tool["name"] for tool in sent["tools"]] == ["search_objects"]
+    assert [item.get("type", item.get("role")) for item in sent["input"]] == [
+        "user",
+        "assistant",
+        "function_call",
+        "function_call_output",
+    ]
+
+
+def test_responses_sends_the_reasoning_back_on_the_next_turn(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    base_url, received = server
+    provider = OpenAiResponsesProvider("gpt-5", base_url=f"{base_url}/openai/v1", api_key="k")
+    *_, complete = provider.stream_turn(_REQUEST)
+    assert isinstance(complete, TurnComplete)
+
+    # The navigator stores the state on the assistant message and asks again.
+    follow_up = TurnRequest(
+        system=_REQUEST.system,
+        messages=(
+            _REQUEST.messages[0],
+            TurnMessage(
+                ChatRole.ASSISTANT,
+                "Let me check.",
+                tool_calls=(ToolCall("call_1", "search_objects", {"query": "store"}),),
+                provider_state=complete.provider_state,
+            ),
+            TurnMessage(ChatRole.TOOL, '{"results": []}', tool_call_id="call_1"),
+        ),
+        tools=_REQUEST.tools,
+    )
+    list(provider.stream_turn(follow_up))
+
+    replayed = received["/openai/v1/responses#2"]["input"][1]
+    assert replayed["type"] == "reasoning"
+    assert replayed["id"] == "rs_1"
+    assert replayed["encrypted_content"] == "b3BhcXVl"
+
+
+def test_responses_reports_an_answer_cut_off_at_the_output_cap(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    base_url, _ = server
+    provider = OpenAiResponsesProvider("gpt-5", base_url=f"{base_url}/truncated/v1", api_key="k")
+
+    assert list(provider.stream_turn(_REQUEST)) == [
+        TextDelta("The store table "),
+        TurnComplete("max_tokens", TokenUsage(input_tokens=42, output_tokens=17)),
+    ]
+
+
+def test_responses_request_error_carries_the_providers_reason(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    base_url, _ = server
+    provider = OpenAiResponsesProvider("gpt-5", base_url=f"{base_url}/refused/v1", api_key="k")
+
+    with pytest.raises(ProviderRequestError) as caught:
+        list(provider.stream_turn(_REQUEST))
+
+    assert caught.value.detail.startswith(
+        "The AI provider returned an error: Function tools with reasoning_effort"
+    )

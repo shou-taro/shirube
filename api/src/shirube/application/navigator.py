@@ -310,6 +310,7 @@ class NavigatorService:
             text_parts: list[str] = []
             calls: list[ToolCall] = []
             stop_reason = "end_turn"
+            provider_state: tuple[object, ...] = ()
             try:
                 for event in self._provider.stream_turn(
                     TurnRequest(
@@ -327,6 +328,7 @@ class NavigatorService:
                     elif isinstance(event, TurnComplete):
                         usage = _add_usage(usage, event.usage)
                         stop_reason = event.stop_reason
+                        provider_state = event.provider_state
             except ShirubeError as exc:
                 # The provider answered, but with an error it explained — show its reason.
                 yield NavigatorError(exc.detail)
@@ -351,6 +353,9 @@ class NavigatorService:
                     role=ChatRole.ASSISTANT,
                     content="".join(text_parts),
                     tool_calls=tuple(calls),
+                    # Handed back to the provider with this message on the next turn, so a
+                    # reasoning model picks up where it left off after the look-ups.
+                    provider_state=provider_state,
                 )
             )
             if not calls:

@@ -1,8 +1,11 @@
 """OpenAI-compatible provider adapter (Milestone 2 — AI navigator).
 
-Talks to any endpoint that speaks the OpenAI chat-completions API — OpenAI itself, a gateway,
-or a local runner such as Ollama — via the ``openai`` SDK pointed at the configured base URL.
-One adapter reaches them all, which is why Ollama needs none of its own.
+Talks to any endpoint that speaks the OpenAI chat-completions API — a gateway, or a local
+runner such as Ollama — via the ``openai`` SDK pointed at the configured base URL. One adapter
+reaches them all, which is why Ollama needs none of its own. The OpenAI platform itself is
+reached through the Responses API instead (see :mod:`.openai_responses_provider`), though
+this adapter still lists its models and still works against it, short of tools on its
+newest reasoning models.
 
 The translation to and from the OpenAI wire shapes is factored into pure module functions so
 it can be unit-tested without a network; the class just wires them to the SDK's streaming

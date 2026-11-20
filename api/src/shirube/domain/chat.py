@@ -99,12 +99,16 @@ class TurnMessage:
         content: The text, or a tool result's serialised content.
         tool_calls: The tool calls an assistant message requested (empty otherwise).
         tool_call_id: For a ``TOOL`` message, the id of the call it answers.
+        provider_state: For an assistant message, what its provider asked to be sent back
+            with it on the next turn (see :attr:`TurnComplete.provider_state`). Opaque here:
+            only the adapter that produced it reads it.
     """
 
     role: ChatRole
     content: str = ""
     tool_calls: tuple[ToolCall, ...] = ()
     tool_call_id: str | None = None
+    provider_state: tuple[Any, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,10 +163,14 @@ class TurnComplete:
             cap before finishing, so the answer (or a tool call) is cut short; anything else
             (e.g. ``end_turn``) ends the turn normally.
         usage: Token usage for the turn, if the provider reported it.
+        provider_state: Anything the provider needs back on the next turn to continue from
+            this one — e.g. a reasoning model's encrypted reasoning, so it keeps its train of
+            thought across tool calls. The loop stores it on the assistant message unread.
     """
 
     stop_reason: str
     usage: TokenUsage = field(default_factory=TokenUsage)
+    provider_state: tuple[Any, ...] = ()
 
 
 ProviderEvent = TextDelta | ToolUse | TurnComplete

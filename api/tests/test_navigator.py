@@ -156,6 +156,25 @@ def test_dispatches_a_tool_then_relays_the_answer() -> None:
     assert "public.store" in ids
 
 
+def test_provider_state_is_handed_back_with_the_assistant_message() -> None:
+    # A reasoning model's reasoning rides on the turn's completion; the next request carries
+    # it unchanged on the assistant message, so the model continues its train of thought.
+    reasoning = ({"type": "reasoning", "id": "rs_1", "encrypted_content": "opaque"},)
+    provider = FakeProvider(
+        [
+            [
+                ToolUse("t1", "search_objects", {"query": "store"}),
+                TurnComplete("tool_use", provider_state=reasoning),
+            ],
+            [TextDelta("The store table."), TurnComplete("end_turn")],
+        ]
+    )
+    _ask(_navigator(provider))
+
+    assistant = [m for m in provider.requests[1].messages if m.role is ChatRole.ASSISTANT]
+    assert [m.provider_state for m in assistant] == [reasoning]
+
+
 def test_handles_multiple_tool_calls_in_one_turn() -> None:
     provider = FakeProvider(
         [
