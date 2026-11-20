@@ -13,8 +13,8 @@ design decision.
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/)
-- Node.js
-- [pnpm](https://pnpm.io/) (e.g. `corepack enable pnpm`)
+- Node.js 26 (see `.nvmrc`)
+- [pnpm](https://pnpm.io/) 10 (e.g. `npm install -g pnpm@10`; Node 25+ no longer bundles corepack)
 
 ## Running in development
 
