@@ -26,7 +26,7 @@ CONTRIBUTING.md).
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -59,7 +59,8 @@ class _Target:
 
     name: str
     config: AiProviderConfig
-    api_key: str | None
+    # Kept out of the repr, so a failing run's report never prints the key.
+    api_key: str | None = field(repr=False)
 
 
 def _models(var: str, default: str) -> list[str]:
