@@ -11,7 +11,7 @@ vulnerability, not a bug.
 | --- | --- | --- | --- |
 | **Backend unit** | Logic, branching, transforms, validation, error translation, SQL *construction* | pytest | none (fakes) |
 | **Backend integration** | Whether the SQL is *correct against a real PostgreSQL* — introspection, row reads, the read-only guarantee | pytest + a real Postgres | real DB |
-| **AI provider contract** | The adapters through the real SDKs, and the ways OpenAI-compatible servers differ (no usage, whole tool calls, a refused `max_tokens`, a cut-off answer) | pytest + a local fake server | none |
+| **AI provider contract** | The adapters through the real SDKs, the ways OpenAI-compatible servers differ (no usage, whole tool calls, a refused `max_tokens`), Claude's thinking blocks, and a cut-off answer on both | pytest + a local fake server | none |
 | **Live AI navigator** | The full tool-calling loop against a real model — hosted or local — built as the app builds it; run by hand, not in CI | pytest + a provider key or local runner | real provider (billed if hosted) |
 | **Frontend unit / component** | Pure logic and each component's behaviour (props/state → render, interaction) | Vitest + React Testing Library (jsdom) | none (fetch mocked) |
 | **End-to-end** | Cross-layer wiring and critical journeys through the whole stack | Playwright | built SPA + backend + DB |

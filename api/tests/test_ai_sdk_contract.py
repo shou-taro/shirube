@@ -79,24 +79,41 @@ def _anthropic_block(event: str, index: int, **fields: Any) -> tuple[str, dict[s
     return event, {"type": event, "index": index, **fields}
 
 
-_ANTHROPIC_STREAM = _sse(
-    [
+_ANTHROPIC_START = (
+    "message_start",
+    {
+        "type": "message_start",
+        "message": {
+            "id": "msg_1",
+            "type": "message",
+            "role": "assistant",
+            "model": "claude-test",
+            "content": [],
+            "stop_reason": None,
+            "stop_sequence": None,
+            "usage": {"input_tokens": 42, "output_tokens": 1},
+        },
+    },
+)
+
+
+def _anthropic_end(stop_reason: str, output_tokens: int) -> list[tuple[str, dict[str, Any]]]:
+    return [
         (
-            "message_start",
+            "message_delta",
             {
-                "type": "message_start",
-                "message": {
-                    "id": "msg_1",
-                    "type": "message",
-                    "role": "assistant",
-                    "model": "claude-test",
-                    "content": [],
-                    "stop_reason": None,
-                    "stop_sequence": None,
-                    "usage": {"input_tokens": 42, "output_tokens": 1},
-                },
+                "type": "message_delta",
+                "delta": {"stop_reason": stop_reason, "stop_sequence": None},
+                "usage": {"output_tokens": output_tokens},
             },
         ),
+        ("message_stop", {"type": "message_stop"}),
+    ]
+
+
+_ANTHROPIC_STREAM = _sse(
+    [
+        _ANTHROPIC_START,
         _anthropic_block("content_block_start", 0, content_block={"type": "text", "text": ""}),
         _anthropic_block("content_block_delta", 0, delta={"type": "text_delta", "text": "Let me "}),
         _anthropic_block("content_block_delta", 0, delta={"type": "text_delta", "text": "check."}),
@@ -122,17 +139,70 @@ _ANTHROPIC_STREAM = _sse(
             delta={"type": "input_json_delta", "partial_json": '"store"}'},
         ),
         _anthropic_block("content_block_stop", 1),
-        (
-            "message_delta",
-            {
-                "type": "message_delta",
-                "delta": {"stop_reason": "tool_use", "stop_sequence": None},
-                "usage": {"output_tokens": 17},
-            },
-        ),
-        ("message_stop", {"type": "message_stop"}),
+        *_anthropic_end("tool_use", 17),
     ]
 )
+
+# How a Claude model's answer can differ from the plain one above. A model with thinking on
+# (the default on the newest ones) opens with a thinking block, whose reasoning and
+# signature must not leak into the answer; and an answer can stop at the output cap.
+_ANTHROPIC_VARIANTS = {
+    "thinking": _sse(
+        [
+            _ANTHROPIC_START,
+            _anthropic_block(
+                "content_block_start",
+                0,
+                content_block={"type": "thinking", "thinking": "", "signature": ""},
+            ),
+            _anthropic_block(
+                "content_block_delta",
+                0,
+                delta={"type": "thinking_delta", "thinking": "The user wants the store table."},
+            ),
+            _anthropic_block(
+                "content_block_delta", 0, delta={"type": "signature_delta", "signature": "c2ln"}
+            ),
+            _anthropic_block("content_block_stop", 0),
+            _anthropic_block("content_block_start", 1, content_block={"type": "text", "text": ""}),
+            _anthropic_block(
+                "content_block_delta", 1, delta={"type": "text_delta", "text": "Let me "}
+            ),
+            _anthropic_block(
+                "content_block_delta", 1, delta={"type": "text_delta", "text": "check."}
+            ),
+            _anthropic_block("content_block_stop", 1),
+            _anthropic_block(
+                "content_block_start",
+                2,
+                content_block={
+                    "type": "tool_use",
+                    "id": "call_1",
+                    "name": "search_objects",
+                    "input": {},
+                },
+            ),
+            _anthropic_block(
+                "content_block_delta",
+                2,
+                delta={"type": "input_json_delta", "partial_json": '{"query": "store"}'},
+            ),
+            _anthropic_block("content_block_stop", 2),
+            *_anthropic_end("tool_use", 17),
+        ]
+    ),
+    "truncated": _sse(
+        [
+            _ANTHROPIC_START,
+            _anthropic_block("content_block_start", 0, content_block={"type": "text", "text": ""}),
+            _anthropic_block(
+                "content_block_delta", 0, delta={"type": "text_delta", "text": "The store table "}
+            ),
+            _anthropic_block("content_block_stop", 0),
+            *_anthropic_end("max_tokens", 8),
+        ]
+    ),
+}
 
 
 def _openai_chunk(
@@ -264,7 +334,8 @@ _UNAUTHORIZED = {
 # OpenAI one is given ``/openai/v1`` as its base. ``/rejected`` answers everything with 401;
 # ``/strict`` behaves like a reasoning model, refusing ``max_tokens``; ``/missing`` answers a
 # completion with 404 model-not-found, and ``/invalid`` a Messages call with 400;
-# ``/variant/<name>`` streams one of :data:`_OPENAI_VARIANTS`. Every POST
+# ``/variant/<name>`` streams one of :data:`_OPENAI_VARIANTS`, ``/claude/<name>`` one of
+# :data:`_ANTHROPIC_VARIANTS`. Every POST
 # body is also kept under ``<path>#<n>`` (counting from 1) so a retried request can be
 # inspected.
 _GET_ROUTES: dict[str, dict[str, Any]] = {
@@ -308,6 +379,9 @@ class _FakeProvider(BaseHTTPRequestHandler):
                 self._reply(400, json.dumps(_UNSUPPORTED_MAX_TOKENS).encode())
             else:
                 self._reply(200, _OPENAI_STREAM, "text/event-stream")
+        elif self.path.startswith("/claude/"):
+            name = self.path.split("/")[2]
+            self._reply(200, _ANTHROPIC_VARIANTS[name], "text/event-stream")
         elif self.path.startswith("/variant/"):
             name = self.path.split("/")[2]
             self._reply(200, _OPENAI_VARIANTS[name], "text/event-stream")
@@ -380,6 +454,28 @@ def test_anthropic_request_error_carries_the_providers_reason(
         list(provider.stream_turn(_REQUEST))
 
     assert caught.value.detail == "The AI provider returned an error: model: claude-nope not found"
+
+
+def test_anthropic_keeps_thinking_out_of_the_answer(server: tuple[str, dict[str, Any]]) -> None:
+    # Only the text and the tool call come through; the reasoning stays out of the answer.
+    base_url, _ = server
+    provider = AnthropicProvider("claude-test", api_key="k", base_url=f"{base_url}/claude/thinking")
+
+    assert list(provider.stream_turn(_REQUEST)) == _EXPECTED_EVENTS
+
+
+def test_anthropic_reports_an_answer_cut_off_at_the_output_cap(
+    server: tuple[str, dict[str, Any]],
+) -> None:
+    base_url, _ = server
+    provider = AnthropicProvider(
+        "claude-test", api_key="k", base_url=f"{base_url}/claude/truncated"
+    )
+
+    assert list(provider.stream_turn(_REQUEST)) == [
+        TextDelta("The store table "),
+        TurnComplete("max_tokens", TokenUsage(input_tokens=42, output_tokens=8)),
+    ]
 
 
 # --- OpenAI-compatible ---------------------------------------------------------------
