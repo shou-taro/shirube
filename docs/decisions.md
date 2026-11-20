@@ -351,9 +351,17 @@ manual edges).**
   - **Anthropic native** — talks to the Claude API directly, so Claude (the recommended
     default) gets first-class tool use and thinking rather than a lowest-common-denominator
     shim.
-  - **OpenAI-compatible** — one adapter covers OpenAI, Ollama, and the many local runners
-    and gateways that speak the OpenAI chat-completions shape. Ollama is reached this way;
+  - **OpenAI-compatible** — one adapter covers Ollama and the many local runners and
+    gateways that speak the OpenAI chat-completions shape. Ollama is reached this way;
     there is no separate Ollama adapter.
+  - **The OpenAI platform itself** is the one exception, picked by its host
+    (`api.openai.com`) under the same `openai_compatible` setting, so nothing changes for
+    the user. Its newest reasoning models refuse tools alongside reasoning on chat
+    completions, so the platform is reached through the **Responses API** instead. That API
+    also hands a reasoning model's reasoning back encrypted, with `store=False` so OpenAI
+    keeps no copy, and the navigator sends it back across the tool calls of one answer so
+    the model keeps its train of thought. This reasoning lives only for that one answer: it
+    is never shown, saved, or sent to the browser.
 - **No provider ships enabled by default** (as with connections — see *external-send
   privacy* below); the user picks and configures one, and that choice is the consent. The
   recommended default *model*, once a provider is chosen, is the latest Claude; a

@@ -2,7 +2,7 @@
 
 The adapters' request/response translation is pure and factored out, so it is exercised here
 with hand-built turn requests and fake SDK stream objects — no provider is contacted. The
-live behaviour of a real endpoint is proven separately by the gated Ollama integration test.
+live behaviour of a real endpoint is proven separately by the gated live navigator test.
 """
 
 import json
@@ -27,6 +27,12 @@ from shirube.adapters.ai.openai_provider import (
     to_openai_messages,
     to_openai_tools,
 )
+from shirube.adapters.ai.openai_responses_provider import (
+    OpenAiResponsesProvider,
+    parse_responses_stream,
+    to_responses_input,
+    to_responses_tools,
+)
 from shirube.domain.ai import AiProviderConfig, AiProviderKind
 from shirube.domain.chat import (
     ChatRole,
@@ -39,7 +45,11 @@ from shirube.domain.chat import (
     TurnMessage,
     TurnRequest,
 )
-from shirube.domain.errors import InvalidProviderConfigError, ProviderCheckError
+from shirube.domain.errors import (
+    InvalidProviderConfigError,
+    ProviderCheckError,
+    ProviderRequestError,
+)
 
 _TOOL = ToolDefinition("search_objects", "Find objects.", {"type": "object", "properties": {}})
 
@@ -378,13 +388,202 @@ def test_other_endpoints_send_the_cap_as_max_tokens() -> None:
     assert sent["max_tokens"] == 512 and "max_completion_tokens" not in sent
 
 
-def test_factory_leaves_the_openai_platform_uncapped() -> None:
-    # A reasoning model spends hidden reasoning from the cap, so none is sent to the platform.
+def _captured_responses_create(provider: OpenAiResponsesProvider) -> dict[str, object]:
+    """Swap the Responses SDK call for a recorder and run one turn, returning its kwargs."""
+    sent: dict[str, object] = {}
+
+    def create(**kwargs: object) -> list[object]:
+        sent.update(kwargs)
+        return []
+
+    provider._client = SimpleNamespace(  # type: ignore[assignment]
+        responses=SimpleNamespace(create=create)
+    )
+    list(provider.stream_turn(_REQUEST))
+    return sent
+
+
+def test_factory_sends_the_openai_platform_through_the_responses_api_uncapped() -> None:
+    # Its reasoning models only take tools there; and a reasoning model spends hidden
+    # reasoning from the cap, so none is sent.
     config = AiProviderConfig(
         AiProviderKind.OPENAI_COMPATIBLE, "gpt-5", "https://api.openai.com/v1", 128000
     )
-    sent = _captured_create(build_provider(config, "k"))  # type: ignore[arg-type]
-    assert "max_tokens" not in sent and "max_completion_tokens" not in sent
+    provider = build_provider(config, "k")
+    assert isinstance(provider, OpenAiResponsesProvider)
+    sent = _captured_responses_create(provider)
+    assert "max_output_tokens" not in sent
+    assert sent["store"] is False
+    assert sent["include"] == ["reasoning.encrypted_content"]
+    assert sent["instructions"] == "You are the navigator."
+
+
+def test_factory_keeps_other_endpoints_on_chat_completions() -> None:
+    config = AiProviderConfig(
+        AiProviderKind.OPENAI_COMPATIBLE, "gpt-5", "https://gateway.example/v1", 128000
+    )
+    assert isinstance(build_provider(config, "k"), OpenAiCompatibleProvider)
+
+
+def test_responses_provider_ignores_an_environment_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A keyless config must not quietly borrow OPENAI_API_KEY, nor fail while being built.
+    monkeypatch.setenv("OPENAI_API_KEY", "from-the-environment")
+    provider = OpenAiResponsesProvider("gpt-5", base_url="https://api.openai.com/v1", api_key=None)
+    assert provider._client.api_key == "missing"
+
+
+def test_responses_provider_sends_a_set_cap_as_max_output_tokens() -> None:
+    provider = OpenAiResponsesProvider(
+        "gpt-5", base_url="https://api.openai.com/v1", api_key="k", max_tokens=512
+    )
+    assert _captured_responses_create(provider)["max_output_tokens"] == 512
+
+
+# --- OpenAI Responses API ------------------------------------------------------------
+
+
+def test_to_responses_input_maps_each_role_and_replays_reasoning_first() -> None:
+    reasoning = {"type": "reasoning", "id": "rs_1", "encrypted_content": "opaque"}
+    request = TurnRequest(
+        system="sys",
+        messages=(
+            TurnMessage(ChatRole.USER, "Where does store live?"),
+            TurnMessage(
+                ChatRole.ASSISTANT,
+                "Let me look.",
+                tool_calls=(ToolCall("c1", "search_objects", {"query": "store"}),),
+                provider_state=(reasoning,),
+            ),
+            TurnMessage(ChatRole.TOOL, '{"results": []}', tool_call_id="c1"),
+        ),
+        tools=(),
+    )
+
+    assert to_responses_input(request) == [
+        {"role": "user", "content": "Where does store live?"},
+        reasoning,
+        {"role": "assistant", "content": "Let me look."},
+        {
+            "type": "function_call",
+            "call_id": "c1",
+            "name": "search_objects",
+            "arguments": '{"query": "store"}',
+        },
+        {"type": "function_call_output", "call_id": "c1", "output": '{"results": []}'},
+    ]
+
+
+def test_to_responses_input_omits_an_empty_assistant_text() -> None:
+    request = TurnRequest(
+        system="sys",
+        messages=(
+            TurnMessage(ChatRole.ASSISTANT, "", tool_calls=(ToolCall("c1", "list_schemas", {}),)),
+        ),
+        tools=(),
+    )
+    assert [item.get("type", item.get("role")) for item in to_responses_input(request)] == [
+        "function_call"
+    ]
+
+
+def test_to_responses_tools_is_flat_and_not_strict() -> None:
+    assert to_responses_tools([_TOOL]) == [
+        {
+            "type": "function",
+            "name": "search_objects",
+            "description": "Find objects.",
+            "parameters": {"type": "object", "properties": {}},
+            "strict": False,
+        }
+    ]
+
+
+class _Item(SimpleNamespace):
+    def model_dump(self, exclude_none: bool = False) -> dict[str, object]:
+        return {k: v for k, v in vars(self).items() if not (exclude_none and v is None)}
+
+
+def _event(kind: str, **fields: object) -> SimpleNamespace:
+    return SimpleNamespace(type=kind, **fields)
+
+
+def _response(**fields: object) -> SimpleNamespace:
+    return SimpleNamespace(usage=SimpleNamespace(input_tokens=42, output_tokens=17), **fields)
+
+
+def test_parse_responses_stream_relays_text_tool_calls_and_reasoning() -> None:
+    reasoning = _Item(type="reasoning", id="rs_1", encrypted_content="opaque", summary=[])
+    call = _Item(
+        type="function_call", call_id="call_1", name="search_objects", arguments='{"query": "s"}'
+    )
+    events = [
+        _event("response.created"),
+        _event("response.output_item.done", item=reasoning),
+        _event("response.output_text.delta", delta="Let me "),
+        _event("response.output_text.delta", delta="check."),
+        _event("response.function_call_arguments.delta", delta='{"query'),
+        _event("response.output_item.done", item=call),
+        _event("response.completed", response=_response()),
+    ]
+
+    assert list(parse_responses_stream(events)) == [
+        TextDelta("Let me "),
+        TextDelta("check."),
+        ToolUse("call_1", "search_objects", {"query": "s"}),
+        TurnComplete(
+            "tool_use",
+            TokenUsage(input_tokens=42, output_tokens=17),
+            provider_state=(
+                {"type": "reasoning", "id": "rs_1", "encrypted_content": "opaque", "summary": []},
+            ),
+        ),
+    ]
+
+
+def test_parse_responses_stream_ends_a_plain_answer() -> None:
+    events = [
+        _event("response.output_text.delta", delta="Done."),
+        _event("response.completed", response=_response()),
+    ]
+    assert list(parse_responses_stream(events))[-1] == TurnComplete(
+        "end_turn", TokenUsage(input_tokens=42, output_tokens=17)
+    )
+
+
+def test_parse_responses_stream_reports_the_output_cap() -> None:
+    call = _Item(type="function_call", call_id="c", name="get_object", arguments='{"ref')
+    events = [
+        _event("response.output_item.done", item=call),
+        _event(
+            "response.incomplete",
+            response=_response(incomplete_details=SimpleNamespace(reason="max_output_tokens")),
+        ),
+    ]
+    # A cut-off call still surfaces, but the stop reason keeps the loop from running it.
+    *_, complete = parse_responses_stream(events)
+    assert isinstance(complete, TurnComplete) and complete.stop_reason == "max_tokens"
+
+
+def test_parse_responses_stream_tolerates_unparseable_arguments() -> None:
+    call = _Item(type="function_call", call_id="c", name="list_schemas", arguments="[1, 2]")
+    events = [
+        _event("response.output_item.done", item=call),
+        _event("response.completed", response=_response()),
+    ]
+    assert ToolUse("c", "list_schemas", {}) in list(parse_responses_stream(events))
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        _event("response.failed", response=SimpleNamespace(error=SimpleNamespace(message="boom"))),
+        _event("error", message="boom"),
+    ],
+)
+def test_parse_responses_stream_raises_a_mid_stream_failure(event: SimpleNamespace) -> None:
+    with pytest.raises(ProviderRequestError) as caught:
+        list(parse_responses_stream([event]))
+    assert caught.value.detail == "The AI provider returned an error: boom"
 
 
 def test_factory_caps_a_local_runner_to_its_output_reserve() -> None:

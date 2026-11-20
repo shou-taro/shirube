@@ -84,7 +84,7 @@ def _targets() -> list[_Target | None]:
                 ),
                 key,
             )
-            for model in _models("SHIRUBE_TEST_OPENAI_MODELS", "gpt-5.6-luna,gpt-6-luna")
+            for model in _models("SHIRUBE_TEST_OPENAI_MODELS", "gpt-5.6-luna,gpt-6-luna,gpt-4o")
         ]
     else:
         targets.append(None)

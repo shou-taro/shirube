@@ -7,6 +7,7 @@ Keeps the choice of concrete adapter at the edge: the application layer depends 
 
 from shirube.adapters.ai.anthropic_provider import AnthropicProvider
 from shirube.adapters.ai.openai_provider import OpenAiCompatibleProvider, is_openai_platform
+from shirube.adapters.ai.openai_responses_provider import OpenAiResponsesProvider
 from shirube.application.context_budget import output_reserve_for, resolve_window
 from shirube.domain.ai import AiProviderConfig, AiProviderKind
 from shirube.domain.errors import InvalidProviderConfigError, ProviderCheckError
@@ -32,19 +33,22 @@ def build_provider(config: AiProviderConfig, api_key: str | None) -> AiProvider:
 
     if not config.base_url:
         raise InvalidProviderConfigError("An OpenAI-compatible provider needs a base URL.")
-    # Cap the answer to the window's output reserve, so the reply cannot push a small local
-    # model's prompt-plus-answer past its context window. The OpenAI platform is left
-    # uncapped: its models' windows are large, and a reasoning model spends its hidden
-    # reasoning from the same allowance, so a tight cap would cut the answer off before it
-    # writes anything. Each model's own output limit still applies.
-    max_tokens = (
-        None if is_openai_platform(config.base_url) else output_reserve_for(resolve_window(config))
-    )
+    if is_openai_platform(config.base_url):
+        # The platform itself goes through the Responses API, where its reasoning models can
+        # use tools. It is left uncapped: its models' windows are large, and a reasoning
+        # model spends its hidden reasoning from the same allowance, so a tight cap would cut
+        # the answer off before it writes anything. Each model's own output limit applies.
+        return OpenAiResponsesProvider(
+            model=config.model, base_url=config.base_url, api_key=api_key
+        )
+    # Every other endpoint speaks chat completions. Cap the answer to the window's output
+    # reserve, so the reply cannot push a small local model's prompt-plus-answer past its
+    # context window.
     return OpenAiCompatibleProvider(
         model=config.model,
         base_url=config.base_url,
         api_key=api_key,
-        max_tokens=max_tokens,
+        max_tokens=output_reserve_for(resolve_window(config)),
     )
 
 
