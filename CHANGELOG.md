@@ -12,6 +12,8 @@ may still change between releases).
 
 - **Claude Opus 5.5 is now the recommended Claude model.** A new Claude setup starts on
   `claude-opus-5-5`, and a blank model falls back to it. A model you already chose is kept.
+- **The OpenAI model field now suggests `gpt-5.6-luna`** instead of `gpt-4o`. The field still
+  starts empty, so the model stays yours to choose.
 - **Claude keeps its train of thought across look-ups.** Current Claude models think before
   answering. When a step of an answer included thinking, that step is now sent back to
   Claude exactly as it came, instead of being rebuilt without the thinking. The thinking is

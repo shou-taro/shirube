@@ -66,7 +66,7 @@ export const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
     kind: 'openai_compatible',
     labelKey: 'settings.aiPresetOpenai',
     modelDefault: '',
-    modelPlaceholder: 'gpt-4o',
+    modelPlaceholder: 'gpt-5.6-luna',
     baseUrlDefault: 'https://api.openai.com/v1',
     showBaseUrl: false,
     key: 'required',
