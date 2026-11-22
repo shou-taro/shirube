@@ -328,7 +328,11 @@ describe('SettingsDialog — AI provider', () => {
     // Hosted OpenAI hides the context-window field (like Claude); its large window is sent
     // automatically.
     expect(screen.queryByLabelText('settings.aiContextWindow')).not.toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('settings.aiModel'), { target: { value: 'gpt-4o' } })
+    // The model is left for the user to choose; a current model is only suggested.
+    const model = screen.getByLabelText('settings.aiModel')
+    expect(model).toHaveValue('')
+    expect(model).toHaveAttribute('placeholder', 'gpt-5.6-luna')
+    fireEvent.change(model, { target: { value: 'gpt-4o' } })
     fireEvent.change(screen.getByLabelText('settings.aiApiKey'), { target: { value: 'sk-typed' } })
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))
 
