@@ -12,6 +12,9 @@
 
 import type { AiProviderKind } from '@/lib/api'
 import { AI_PRESET_KEY } from '@/lib/storage'
+// The recommended models live with the backend, which falls back to the same Claude model,
+// so one edit there moves both (see api/src/shirube/adapters/ai/recommended.py).
+import RECOMMENDED from '../../../api/src/shirube/adapters/ai/recommended_models.json'
 
 /** The parts of a saved provider that identify which preset it came from. */
 interface SavedProvider {
@@ -54,8 +57,8 @@ export const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
   claude: {
     kind: 'anthropic',
     labelKey: 'settings.aiPresetClaude',
-    modelDefault: 'claude-opus-5-5',
-    modelPlaceholder: 'claude-opus-5-5',
+    modelDefault: RECOMMENDED.anthropic,
+    modelPlaceholder: RECOMMENDED.anthropic,
     baseUrlDefault: '',
     showBaseUrl: false,
     key: 'required',
@@ -66,7 +69,7 @@ export const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
     kind: 'openai_compatible',
     labelKey: 'settings.aiPresetOpenai',
     modelDefault: '',
-    modelPlaceholder: 'gpt-5.6-luna',
+    modelPlaceholder: RECOMMENDED.openai,
     baseUrlDefault: 'https://api.openai.com/v1',
     showBaseUrl: false,
     key: 'required',
@@ -80,7 +83,7 @@ export const AI_PRESETS: Record<ProviderPreset, PresetSpec> = {
     labelKey: 'settings.aiPresetOllama',
     shortLabelKey: 'settings.aiPresetOllamaShort',
     modelDefault: '',
-    modelPlaceholder: 'llama3.1',
+    modelPlaceholder: RECOMMENDED.ollama,
     baseUrlDefault: 'http://localhost:11434/v1',
     showBaseUrl: true,
     key: 'none',

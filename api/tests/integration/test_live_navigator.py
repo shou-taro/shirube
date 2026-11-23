@@ -9,9 +9,9 @@ is enabled by its own environment variables and skipped when they are absent, so
 sets none) stays green and spends nothing:
 
 - OpenAI platform — ``SHIRUBE_TEST_OPENAI_API_KEY``; models from ``SHIRUBE_TEST_OPENAI_MODELS``
-  (comma-separated).
+  (comma-separated), by default the recommended model and a few others.
 - Claude API — ``SHIRUBE_TEST_ANTHROPIC_API_KEY``; models from
-  ``SHIRUBE_TEST_ANTHROPIC_MODELS``.
+  ``SHIRUBE_TEST_ANTHROPIC_MODELS``, with the same kind of default.
 - Ollama — ``SHIRUBE_TEST_OLLAMA_URL`` (the base URL ending in ``/v1``); model from
   ``SHIRUBE_TEST_OLLAMA_MODEL``.
 - Any other OpenAI-compatible endpoint, such as a gateway —
@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
+from shirube.adapters.ai import recommended
 from shirube.adapters.ai.factory import build_provider, list_provider_models
 from shirube.application.navigator import NavigatorService
 from shirube.domain.ai import AiProviderConfig, AiProviderKind
@@ -63,8 +64,22 @@ class _Target:
     api_key: str | None = field(repr=False)
 
 
-def _models(var: str, default: str) -> list[str]:
-    return [m.strip() for m in os.environ.get(var, default).split(",") if m.strip()]
+def _models(var: str, default: list[str]) -> list[str]:
+    """The models named in ``var`` (comma-separated), or ``default`` when it is unset."""
+    if (value := os.environ.get(var)) is None:
+        return default
+    return [m.strip() for m in value.split(",") if m.strip()]
+
+
+# By default each hosted provider runs its recommended model (recommended_models.json), so a
+# change of recommendation is checked here before it ships, followed by a few others that
+# cover a smaller model and an older generation.
+_OPENAI_MODELS = [recommended.OPENAI_MODEL, "gpt-6-luna", "gpt-4o"]
+_ANTHROPIC_MODELS = [recommended.ANTHROPIC_MODEL, "claude-haiku-5-5", "claude-opus-4-8"]
+
+
+def _unique(models: list[str]) -> list[str]:
+    return list(dict.fromkeys(models))
 
 
 def _targets() -> list[_Target | None]:
@@ -84,15 +99,13 @@ def _targets() -> list[_Target | None]:
                 ),
                 key,
             )
-            for model in _models("SHIRUBE_TEST_OPENAI_MODELS", "gpt-5.6-luna,gpt-6-luna,gpt-4o")
+            for model in _models("SHIRUBE_TEST_OPENAI_MODELS", _unique(_OPENAI_MODELS))
         ]
     else:
         targets.append(None)
 
     if key := env("SHIRUBE_TEST_ANTHROPIC_API_KEY"):
-        models = _models(
-            "SHIRUBE_TEST_ANTHROPIC_MODELS", "claude-opus-5-5,claude-haiku-5-5,claude-opus-4-8"
-        )
+        models = _models("SHIRUBE_TEST_ANTHROPIC_MODELS", _unique(_ANTHROPIC_MODELS))
         targets += [
             _Target(f"anthropic:{model}", AiProviderConfig(AiProviderKind.ANTHROPIC, model), key)
             for model in models
@@ -118,7 +131,7 @@ def _targets() -> list[_Target | None]:
                 AiProviderConfig(AiProviderKind.OPENAI_COMPATIBLE, model, base_url=url),
                 env("SHIRUBE_TEST_COMPAT_API_KEY"),
             )
-            for model in _models("SHIRUBE_TEST_COMPAT_MODELS", "")
+            for model in _models("SHIRUBE_TEST_COMPAT_MODELS", [])
         ]
     else:
         targets.append(None)

@@ -79,6 +79,15 @@ set -a; . ~/.config/shirube/live-test.env; set +a
 uv run --directory api pytest tests/integration/test_live_navigator.py -v
 ```
 
+#### Changing the recommended models
+
+The model each provider suggests lives in one file,
+`api/src/shirube/adapters/ai/recommended_models.json`. The backend's Claude default, the
+settings form (Claude's prefilled model, the OpenAI and Ollama hints) and the live test's
+default models all read it, so moving to a newer model is a one-line change. Run the live test
+before opening the pull request: it tries the newly recommended model first. Add a CHANGELOG
+line, since users see the new suggestion.
+
 ### End-to-end (Playwright)
 
 A couple of journeys run through the whole stack — the built SPA served by the backend,
