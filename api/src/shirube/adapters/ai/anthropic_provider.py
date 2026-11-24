@@ -11,6 +11,7 @@ from typing import Any
 
 from anthropic import Anthropic, APIConnectionError, APIError, AuthenticationError
 
+from shirube.adapters.ai.recommended import ANTHROPIC_MODEL
 from shirube.domain.chat import (
     ChatRole,
     ProviderEvent,
@@ -27,11 +28,11 @@ from shirube.domain.errors import (
     provider_error_reason,
 )
 
-# The recommended default when the configured model is blank, and the per-turn output cap.
-# Current Claude models think before answering, and that thinking counts against the cap
-# even though its text is not returned, so the cap leaves room for it as well as the reply.
-# Only what is generated is billed, so the headroom itself costs nothing.
-DEFAULT_MODEL = "claude-opus-5-5"
+# The recommended default when the configured model is blank (see ``recommended.py``), and
+# the per-turn output cap. Current Claude models think before answering, and that thinking
+# counts against the cap even though its text is not returned, so the cap leaves room for it
+# as well as the reply. Only what is generated is billed, so the headroom itself costs nothing.
+DEFAULT_MODEL = ANTHROPIC_MODEL
 MAX_TOKENS = 16_000
 
 # Content blocks that carry the model's reasoning. A turn that has them is sent back exactly

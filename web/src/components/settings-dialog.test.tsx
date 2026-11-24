@@ -25,6 +25,7 @@ vi.mock('@/lib/api', async (importOriginal) => ({
   listAiProviderModels: vi.fn(),
 }))
 
+import RECOMMENDED from '../../../api/src/shirube/adapters/ai/recommended_models.json'
 import { SettingsDialog } from '@/components/settings-dialog'
 import {
   type AiProvider,
@@ -206,7 +207,7 @@ describe('SettingsDialog — AI provider', () => {
 
     // Defaults to the Claude preset with its recommended model; no Remove action yet.
     expect(screen.getByLabelText('settings.aiProviderLabel')).toHaveValue('claude')
-    expect(screen.getByLabelText('settings.aiModel')).toHaveValue('claude-opus-5-5')
+    expect(screen.getByLabelText('settings.aiModel')).toHaveValue(RECOMMENDED.anthropic)
     expect(screen.queryByRole('button', { name: 'settings.aiRemove' })).not.toBeInTheDocument()
   })
 
@@ -331,7 +332,7 @@ describe('SettingsDialog — AI provider', () => {
     // The model is left for the user to choose; a current model is only suggested.
     const model = screen.getByLabelText('settings.aiModel')
     expect(model).toHaveValue('')
-    expect(model).toHaveAttribute('placeholder', 'gpt-5.6-luna')
+    expect(model).toHaveAttribute('placeholder', RECOMMENDED.openai)
     fireEvent.change(model, { target: { value: 'gpt-4o' } })
     fireEvent.change(screen.getByLabelText('settings.aiApiKey'), { target: { value: 'sk-typed' } })
     fireEvent.click(screen.getByRole('button', { name: 'settings.aiSave' }))

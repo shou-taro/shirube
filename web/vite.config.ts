@@ -1,7 +1,14 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import path from 'node:path'
+import { searchForWorkspaceRoot } from 'vite'
 import { defineConfig } from 'vitest/config'
+
+// Shared with the backend, which ships it in its package (see src/lib/ai-presets.ts).
+const RECOMMENDED_MODELS = path.resolve(
+  import.meta.dirname,
+  '../api/src/shirube/adapters/ai/recommended_models.json',
+)
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -12,6 +19,10 @@ export default defineConfig({
     },
   },
   server: {
+    fs: {
+      // The recommended AI models are shared with the backend and imported from its package.
+      allow: [searchForWorkspaceRoot(process.cwd()), RECOMMENDED_MODELS],
+    },
     proxy: {
       // Proxy API calls to the backend (default port 7472) during development.
       '/api': { target: 'http://127.0.0.1:7472', changeOrigin: true },
